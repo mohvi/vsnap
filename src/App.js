@@ -18,7 +18,7 @@ import HomePage from './components/Home';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null);  
+  const [userData, setUserData] = useState(null);
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,15 +35,11 @@ function App() {
     if (user) {
       const fetchUserData = async () => {
         try {
-          const userRef = ref(db, 'users/' + user.uid);  
+          const userRef = ref(db, 'users/' + user.uid);
           const snapshot = await get(userRef);
-          
-          if (snapshot.exists()) {
-            const data = snapshot.val();  
-            console.log(data)
 
-            console.log('Dados do usuário:', data);
-            setUserData(data);  
+          if (snapshot.exists()) {
+            setUserData(snapshot.val());
           } else {
             console.log('Usuário não encontrado no Realtime Database');
           }
@@ -69,7 +65,6 @@ function App() {
             ...challenge,
           }));
 
-          console.log('Challenges:', formattedChallenges);
           setChallenges(formattedChallenges);
         } else {
           console.log('Nenhum desafio encontrado.');
@@ -89,16 +84,16 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
-        <Header />
+        <Header user={user} />
         <div className="App flex flex-col min-h-screen" style={{ marginBottom: '5%' }}>
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/perfil" element={<Profile user={userData} />} />
-            <Route path="/camp" element={<NotAllowed user={userData} />} />
+            <Route path="/camp" element={<NotAllowed />} />
             <Route path="/rewards" element={<Rewards user={user} />} />
             <Route path="/campaign" element={<Campaign />} />
             <Route path="/cc" element={<CreateChallenge />} />
-            <Route path="/explore" element={<ExploreChallenges challenges={challenges} />} />            
+            <Route path="/explore" element={<ExploreChallenges challenges={challenges} />} />
             <Route path="/campaign/:id" element={<CampaignDetails user={userData} />} />
             <Route path="/campaign/:campaignId/post/:postId" element={<PostDetails user={user} />} />
             <Route path="/" element={<HomePage />} />

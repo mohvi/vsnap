@@ -44,7 +44,6 @@ const Auth = () => {
   };
 
   const handleSignIn = async (provider, providerName) => {
-    setIsLoading(true);
     try {
       const result = await signInWithPopup(auth, provider);
       await saveUserData(result.user);
@@ -75,9 +74,7 @@ const Auth = () => {
       } else {
         alert(`Erro ao fazer login com ${providerName}. Tente novamente.`);
       }
-    } finally {
-      setIsLoading(false);
-    }
+    } 
   };
   
 
