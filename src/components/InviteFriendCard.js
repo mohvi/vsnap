@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { FaWhatsapp, FaFacebook, FaEnvelope, FaSms, FaLink } from "react-icons/fa";
-import { auth } from "../fb"; 
+import { FaWhatsapp, FaFacebook, FaEnvelope, FaSms, FaLink, FaInfoCircle } from "react-icons/fa";
+import { auth } from "../fb";
 import { getDatabase, ref, get, child, update } from "firebase/database";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 
 const InviteFriendCard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [isSharing, setIsSharing] = useState(false);
   const [invitedFriendsCount, setInvitedFriendsCount] = useState(0);
-  const [rewardClaimed, setRewardClaimed] = useState(false); 
+  const [rewardClaimed, setRewardClaimed] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,7 +49,7 @@ const InviteFriendCard = () => {
       const snapshot = await get(child(dbRef, `users/${uid}`));
       if (snapshot.exists()) {
         const userData = snapshot.val();
-        setRewardClaimed(userData.rewardClaimed || false); 
+        setRewardClaimed(userData.rewardClaimed || false);
       }
     } catch (error) {
       console.error("Erro ao verificar status da recompensa:", error);
@@ -60,9 +60,9 @@ const InviteFriendCard = () => {
     if (invitedFriendsCount >= 20 && !rewardClaimed) {
       try {
         const dbRef = ref(getDatabase(), `users/${user.uid}`);
-        await update(dbRef, { rewardClaimed: true }); 
+        await update(dbRef, { rewardClaimed: true });
         alert("Recompensa resgatada com sucesso!");
-        setRewardClaimed(true); 
+        setRewardClaimed(true);
       } catch (error) {
         console.error("Erro ao resgatar a recompensa:", error);
         alert("Houve um erro ao resgatar sua recompensa.");
@@ -81,28 +81,7 @@ const InviteFriendCard = () => {
       alert("Por favor, faça login para compartilhar seu link de convite.");
       return;
     }
-
-    setIsSharing(true);
-
-    if (navigator.share) {
-      navigator
-        .share({
-          title: "Convide seus amigos",
-          text: "Cadastre-se no aplicativo usando este link:",
-          url: inviteLink,
-        })
-        .then(() => {
-          setIsSharing(false);
-        })
-        .catch((error) => {
-          console.error("Erro ao compartilhar:", error);
-          alert("Não foi possível compartilhar o link.");
-          setIsSharing(false);
-        });
-    } else {
-      setIsModalOpen(true);
-      setIsSharing(false);
-    }
+    setIsModalOpen(true);
   };
 
   const handleCopyLink = () => {
@@ -119,97 +98,130 @@ const InviteFriendCard = () => {
   };
 
   return (
-    <div className="bg-white shadow-lg rounded-lg p-6 w-full mx-auto">
-      <h2 className="text-xl font-bold text-gray-800 text-center mb-4">Convide Amigos</h2>
-      <div className="flex items-center justify-between mb-6">
-        <div className="text-gray-600 text-center">
-          <span className="block font-bold text-blue-500">{invitedFriendsCount}</span>
-          <span className="block font-bold text-sm">Amigos</span>
+    <div className="bg-white shadow-md rounded-lg p-6 w-full max-w-sm mx-auto relative">
+      {/* Info icon button */}
+      <button 
+        onClick={() => setIsInfoModalOpen(true)}
+        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        aria-label="Informações sobre o desafio"
+      >
+        <FaInfoCircle size={20} />
+      </button>
+
+      <h2 className="text-lg font-semibold text-gray-800 text-center mb-4">Convide 20 Amigos</h2>
+      <div className="flex justify-between items-center mb-6">
+        <div className="text-center">
+          <span className="block text-2xl font-bold text-gray-700">{invitedFriendsCount}</span>
+          <span className="block text-sm text-gray-500">Amigos Convidados</span>
         </div>
-        <div className="bg-blue-100 rounded-full p-4 flex items-center justify-center shadow-md">
-          <svg
-            className="w-12 h-12 text-blue-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M7 8h10M7 12h8m-8 4h6m1-6h.01M3 5h18v14H3V5z"
-            ></path>
-          </svg>
-        </div>
-        <div className="text-gray-600 text-center">
-          <span className="block font-bold text-blue-500">1GB</span>
-          <span className="block font-bold text-sm">Vodacom</span>
+        <div className="text-center">
+          <span className="block text-2xl font-bold text-gray-700">50MT</span>
+          <span className="block text-sm text-gray-500">Dinheiro</span>
         </div>
       </div>
-   <div className="flex flex-col sm:flex-row justify-between gap-4">
+      <div className="space-y-4">
         <button
           onClick={handleShareClick}
-          className={`w-full sm:w-auto flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300 transform hover:scale-105 ${
-            isSharing ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-          disabled={isSharing}>
-          {isSharing ? "Compartilhando..." : "Convidar Amigos"}
+          className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition duration-300"
+        >
+          Convidar Amigos
         </button>
         <button
           onClick={handleViewFriends}
-          className="w-full sm:w-auto flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition duration-300 transform hover:scale-105">
+          className="w-full bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 transition duration-300"
+        >
           Ver Amigos Convidados
         </button>
+        {!rewardClaimed && invitedFriendsCount >= 20 && (
+          <button
+            onClick={handleClaimReward}
+            className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition duration-300"
+          >
+            Resgatar Recompensa
+          </button>
+        )}
       </div>
+
+      {/* Share Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Compartilhar Convite</h3>
-            <div className="flex flex-col space-y-4">
+          <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-xs">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Compartilhar Convite</h3>
+            <div className="space-y-3">
               <a
                 href={`https://wa.me/?text=Cadastre-se%20no%20app%20usando%20este%20link:%20${inviteLink}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-start space-x-2 text-green-500 hover:underline hover:text-green-600">
-                <FaWhatsapp size={24} />
+                className="flex items-center space-x-2 text-green-500 hover:text-green-600"
+              >
+                <FaWhatsapp size={20} />
                 <span>WhatsApp</span>
               </a>
               <a
                 href={`https://www.facebook.com/sharer/sharer.php?u=${inviteLink}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-start space-x-2 text-blue-600 hover:underline hover:text-blue-700"
+                className="flex items-center space-x-2 text-blue-500 hover:text-blue-600"
               >
-                <FaFacebook size={24} />
+                <FaFacebook size={20} />
                 <span>Facebook</span>
               </a>
               <a
                 href={`mailto:?subject=Convite%20para%20se%20cadastrar%20no%20app&body=Cadastre-se%20no%20app%20usando%20este%20link:%20${inviteLink}`}
-                className="flex items-center justify-start space-x-2 text-red-500 hover:underline hover:text-red-600"
+                className="flex items-center space-x-2 text-red-500 hover:text-red-600"
               >
-                <FaEnvelope size={24} />
+                <FaEnvelope size={20} />
                 <span>Email</span>
               </a>
               <a
                 href={`sms:?&body=Cadastre-se%20no%20app%20usando%20este%20link:%20${inviteLink}`}
-                className="flex items-center justify-start space-x-2 text-blue-500 hover:underline hover:text-blue-600"
+                className="flex items-center space-x-2 text-blue-500 hover:text-blue-600"
               >
-                <FaSms size={24} />
+                <FaSms size={20} />
                 <span>SMS</span>
               </a>
               <button
                 onClick={handleCopyLink}
-                className="flex items-center justify-start space-x-2 text-gray-700 hover:underline hover:text-gray-800"
+                className="flex items-center space-x-2 text-gray-700 hover:text-gray-800"
               >
-                <FaLink size={24} />
+                <FaLink size={20} />
                 <span>Copiar Link</span>
               </button>
             </div>
-
             <button
               onClick={() => setIsModalOpen(false)}
-              className="mt-6 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300">
+              className="mt-4 w-full bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 transition duration-300"
+            >
               Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Info Modal */}
+      {isInfoModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-xs">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Sobre o Desafio</h3>
+            <div className="text-gray-600 space-y-3">
+              <p>
+                <strong>Duração:</strong> Este desafio tem duração de 1 semana.
+              </p>
+              <p>
+                <strong>Premiação:</strong> Serão premiados os primeiros 10 usuários que atingirem a marca de 20 amigos convidados.
+              </p>
+              <p>
+                <strong>Recompensa:</strong> Cada um dos 10 primeiros receberá 50MT em dinheiro.
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                O prêmio será creditado automaticamente na sua conta assim que você atingir a marca e clicar em "Resgatar Recompensa".
+              </p>
+            </div>
+            <button
+              onClick={() => setIsInfoModalOpen(false)}
+              className="mt-4 w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition duration-300"
+            >
+              Entendi
             </button>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ref as dbRef, set } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from '../fb'; // Certifique-se de que `storage` está configurado corretamente
-import { FaImage, FaClock, FaMoneyBillWave } from 'react-icons/fa';
+import { FaImage, FaClock, FaMoneyBillWave, FaUsers } from 'react-icons/fa';
 
 function CreateChallenge() {
   const [challengeData, setChallengeData] = useState({
@@ -10,7 +10,8 @@ function CreateChallenge() {
     description: '',
     image: null,
     prizeAmount: 0,
-    duration: 24, // Fixed 24-hour duration
+    duration: 24, // Duração inicial padrão (pode ser alterada)
+    maxParticipants: null, // Limite de participantes (opcional)
     rules: ''
   });
 
@@ -56,9 +57,9 @@ function CreateChallenge() {
         imageUrl = await getDownloadURL(imageRef); // Get the download URL
       }
 
-      // Calculate end time (now + 24 hours)
+      // Calculate end time based on user-defined duration
       const startTime = new Date();
-      const endTime = new Date(startTime.getTime() + (24 * 60 * 60 * 1000));
+      const endTime = new Date(startTime.getTime() + (challengeData.duration * 60 * 60 * 1000));
 
       // Save challenge data to Firebase Realtime Database
       await set(challengeRef, {
@@ -69,6 +70,7 @@ function CreateChallenge() {
         prizeAmount: challengeData.prizeAmount || 0,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
+        maxParticipants: challengeData.maxParticipants || null, // Limite de participantes (opcional)
         rules: challengeData.rules,
         status: 'active',
         createdAt: new Date().toISOString(),
@@ -84,6 +86,7 @@ function CreateChallenge() {
           image: null,
           prizeAmount: 0,
           duration: 24,
+          maxParticipants: null,
           rules: ''
         });
         setPreviewImage(null);
@@ -102,7 +105,7 @@ function CreateChallenge() {
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-blue-800 mb-2">Criar Novo Desafio</h1>
-          <p className="text-gray-600">Todos os desafios têm duração de 24 horas e sem limite de participantes</p>
+          <p className="text-gray-600">Todos os desafios têm duração variável e podem ter limite de participantes</p>
         </div>
 
         {error && (
@@ -148,24 +151,45 @@ function CreateChallenge() {
             />
           </div>
 
-          {/* Duration (fixed 24 hours) */}
+          {/* Duration */}
           <div className="mb-6 bg-blue-50 p-4 rounded-lg">
             <label className="block text-gray-700 font-medium mb-2 flex items-center">
               <span className="bg-blue-100 p-2 rounded-full mr-2">
                 <FaClock className="text-blue-600" />
               </span>
-              Duração do Desafio
+              Duração do Desafio (em horas)
             </label>
             <div className="flex items-center">
               <input
                 type="number"
                 name="duration"
-                value={24}
-                readOnly
-                className="w-20 p-3 border border-gray-300 rounded-lg bg-gray-100 mr-2"
+                value={challengeData.duration}
+                onChange={handleInputChange}
+                min="1"
+                className="w-20 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mr-2"
+                required
               />
-              <span className="text-gray-700">horas (máximo permitido)</span>
+              <span className="text-gray-700">horas</span>
             </div>
+          </div>
+
+          {/* Max Participants */}
+          <div className="mb-6">
+            <label className="block text-gray-700 font-medium mb-2 flex items-center">
+              <span className="bg-blue-100 p-2 rounded-full mr-2">
+                <FaUsers className="text-blue-600" />
+              </span>
+              Limite de Participantes (opcional)
+            </label>
+            <input
+              type="number"
+              name="maxParticipants"
+              value={challengeData.maxParticipants || ''}
+              onChange={handleInputChange}
+              min="1"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Ex: 100"
+            />
           </div>
 
           {/* Prize Amount */}

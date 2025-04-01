@@ -3,6 +3,7 @@ import { Share2, Trophy, Award, ArrowRight, Heart, MessageSquare, Repeat, Bookma
 import { db, storage, auth } from '../fb';
 import { ref as dbRef, set, push, onValue, query, orderByChild, equalTo, limitToLast, get } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import InviteFriendCard from './InviteFriendCard';
 
 export default function HomePage() {
   const [activeChallenge, setActiveChallenge] = useState(null);
@@ -230,18 +231,26 @@ export default function HomePage() {
 
   if (!activeChallenge) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center p-6 max-w-md mx-auto bg-white rounded-xl shadow-md">
-          <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Nenhum Desafio Ativo</h2>
-          <p className="text-gray-600">Não há desafios ativos no momento. Volte mais tarde!</p>
-        </div>
+      <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
+      {/* Card de Convite */}
+      <div className="mb-8">
+        <InviteFriendCard />
       </div>
+
+      {/* Mensagem de Nenhum Desafio Ativo */}
+      <div className="text-center p-6 max-w-md mx-auto bg-white rounded-xl shadow-md">
+        <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-gray-800 mb-2">Nenhum Desafio Ativo</h2>
+        <p className="text-gray-600">Não há desafios ativos no momento. Volte mais tarde!</p>
+      </div>
+    </div>
     );
   }
 
   return (
     <div className="max-w-2xl mx-auto bg-white min-h-screen">
+
+      <InviteFriendCard/>
       {/* Cabeçalho */}
       <header className="sticky top-0 z-10 bg-white bg-opacity-90 backdrop-blur-sm p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
@@ -385,8 +394,6 @@ export default function HomePage() {
                   <div className="flex items-center space-x-1">
                     <span className="font-semibold text-gray-900">{post.username}</span>
                     <span className="text-gray-500">{post.handle}</span>
-                    <span className="text-gray-500">·</span>
-                    <span className="text-gray-500">Sua entrada</span>
                   </div>
                   <p className="text-gray-800 mt-1 mb-3">{post.content}</p>
                   {post.image && (

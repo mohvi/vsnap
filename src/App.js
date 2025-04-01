@@ -40,6 +40,8 @@ function App() {
           
           if (snapshot.exists()) {
             const data = snapshot.val();  
+            console.log(data)
+
             console.log('Dados do usuário:', data);
             setUserData(data);  
           } else {

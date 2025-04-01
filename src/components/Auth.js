@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Google, Facebook } from '@mui/icons-material';
 import { auth, googleProvider, facebookProvider } from '../fb';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, fetchSignInMethodsForEmail, linkWithCredential } from 'firebase/auth';
 import { getDatabase, ref, set, get } from 'firebase/database';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../img/logo.png';
@@ -23,12 +23,9 @@ const Auth = () => {
 
   const saveUserData = async (user) => {
     const userRef = ref(db, 'users/' + user.uid);
-
     const snapshot = await get(userRef);
-    if (snapshot.exists()) {
-      console.log('Usuário já existe no banco de dados, apenas fazendo login...');
-      return;
-    }
+
+    if (snapshot.exists()) return;
 
     const userData = {
       displayName: user.displayName,
@@ -39,7 +36,7 @@ const Auth = () => {
       country: 'Unknown',
       ip: 'Unknown',
       loginDate: new Date().toISOString(),
-      referrer: referrerUid || null, 
+      referrer: referrerUid || null,
     };
 
     await set(userRef, userData);
@@ -53,12 +50,36 @@ const Auth = () => {
       await saveUserData(result.user);
       navigate('/');
     } catch (error) {
-      console.error(`Erro ao fazer login com ${providerName}:`, error.message);
-      alert(`Erro ao fazer login com ${providerName}. Tente novamente.`);
+      console.error(`Erro ao fazer login com ${providerName}:`, error);
+  
+      if (error.code === 'auth/account-exists-with-different-credential') {
+        const email = error.customData?.email;
+        let credential;
+  
+        // Verifica qual o provedor para chamar a função correta
+        if (providerName === 'Google') {
+          credential = googleProvider.credentialFromError?.(error);
+        } else if (providerName === 'Facebook') {
+          credential = facebookProvider.credentialFromError?.(error);
+        }
+  
+        if (email && credential) {
+          const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+          if (signInMethods.length > 0) {
+            alert(`Conta já existente! Faça login usando ${signInMethods[0]} e tente novamente.`);
+          } else {
+            await linkWithCredential(auth.currentUser, credential);
+            alert('Conta vinculada com sucesso! Agora você pode entrar usando qualquer método.');
+          }
+        }
+      } else {
+        alert(`Erro ao fazer login com ${providerName}. Tente novamente.`);
+      }
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 px-4">
