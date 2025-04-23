@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Auth from './components/Auth';
 import Campaign from './components/Campaign';
 import Header from './components/Header';
@@ -81,25 +81,110 @@ function App() {
     return <div>Carregando...</div>;
   }
 
+  // ProtectedRoute component to handle authentication
+  const ProtectedRoute = ({ children }) => {
+    if (!user) {
+      return <Navigate to="/auth" replace />;
+    }
+    return children;
+  };
+
+  // Layout component to conditionally render header and footer
+  const Layout = ({ children }) => {
+    const location = useLocation();
+    const isAuthPage = location.pathname === '/auth';
+
+    return (
+      <>
+        {!isAuthPage && <Header user={user} />}
+        <div className="App flex flex-col min-h-screen" style={{ marginBottom: !isAuthPage ? '5%' : '0' }}>
+          {children}
+        </div>
+        {!isAuthPage && user && <BottomMenu />}
+      </>
+    );
+  };
+
   return (
     <ThemeProvider>
       <Router>
-        <Header user={user} />
-        <div className="App flex flex-col min-h-screen" style={{ marginBottom: '5%' }}>
+        <Layout>
           <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/perfil" element={<Profile user={userData} />} />
-            <Route path="/camp" element={<NotAllowed />} />
-            <Route path="/rewards" element={<Rewards user={user} />} />
-            <Route path="/campaign" element={<Campaign />} />
-            <Route path="/cc" element={<CreateChallenge />} />
-            <Route path="/explore" element={<ExploreChallenges challenges={challenges} />} />
-            <Route path="/campaign/:id" element={<CampaignDetails user={userData} />} />
-            <Route path="/campaign/:campaignId/post/:postId" element={<PostDetails user={user} />} />
-            <Route path="/" element={<HomePage />} />
+            <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
+            <Route 
+              path="/perfil" 
+              element={
+                <ProtectedRoute>
+                  <Profile user={userData} />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/camp" 
+              element={
+                <ProtectedRoute>
+                  <NotAllowed />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/rewards" 
+              element={
+                <ProtectedRoute>
+                  <Rewards user={user} />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/campaign" 
+              element={
+                <ProtectedRoute>
+                  <Campaign />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/cc" 
+              element={
+                <ProtectedRoute>
+                  <CreateChallenge />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/explore" 
+              element={
+                <ProtectedRoute>
+                  <ExploreChallenges challenges={challenges} />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/campaign/:id" 
+              element={
+                <ProtectedRoute>
+                  <CampaignDetails user={userData} />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/campaign/:campaignId/post/:postId" 
+              element={
+                <ProtectedRoute>
+                  <PostDetails user={user} />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute>
+                  <HomePage />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
-        </div>
-        <BottomMenu />
+        </Layout>
       </Router>
     </ThemeProvider>
   );
