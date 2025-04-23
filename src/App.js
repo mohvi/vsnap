@@ -15,6 +15,7 @@ import ExploreChallenges from './components/ExploreChallenges';
 import { ref, get } from 'firebase/database';
 import CreateChallenge from './components/CreateChallenge';
 import HomePage from './components/Home';
+import InvitedFriends from './components/InvitedFriends';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -119,6 +120,15 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/invited-friends" 
+              element={
+                <ProtectedRoute>
+                  <InvitedFriends user={userData} />
+                </ProtectedRoute>
+              } 
+            />
+             
             <Route 
               path="/camp" 
               element={
