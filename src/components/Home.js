@@ -241,7 +241,7 @@ export default function HomePage() {
       <div className="text-center p-6 max-w-md mx-auto bg-white rounded-xl shadow-md">
         <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-gray-800 mb-2">Nenhum Desafio Ativo</h2>
-        <p className="text-gray-600">Não há desafios ativos no momento. Volte mais tarde!</p>
+        <p className="text-gray-600">Não há desafios ativos no momento.</p>
       </div>
     </div>
     );
