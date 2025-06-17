@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Google, Facebook, ErrorOutline } from '@mui/icons-material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Google, Facebook, ErrorOutline, Devices, Celebration, EmojiEvents, Stars } from '@mui/icons-material';
 import { auth, googleProvider, facebookProvider } from '../fb';
-import { signInWithPopup, fetchSignInMethodsForEmail, linkWithCredential } from 'firebase/auth';
+import { signInWithPopup, signOut } from 'firebase/auth';
 import { getDatabase, ref, set, get } from 'firebase/database';
 import { useNavigate, useLocation } from 'react-router-dom';
+import Particles from 'react-tsparticles';
+import { loadSlim } from 'tsparticles-slim'; 
 import logo from '../img/logo.png';
 
 const Auth = () => {
@@ -11,9 +13,15 @@ const Auth = () => {
   const [activeProvider, setActiveProvider] = useState(null);
   const [error, setError] = useState(null);
   const [referrerUid, setReferrerUid] = useState(null);
+  const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const db = getDatabase();
+
+  // Particles initialization
+  const particlesInit = useCallback(async (engine) => {
+    await loadSlim(engine);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -23,34 +31,30 @@ const Auth = () => {
     }
   }, [location]);
 
+
   const saveUserData = async (user) => {
     try {
       const userRef = ref(db, 'users/' + user.uid);
       const snapshot = await get(userRef);
 
+
       if (snapshot.exists()) {
-        // Update last login date if user exists
         await set(ref(db, `users/${user.uid}/loginDate`), new Date().toISOString());
         return;
       }
 
       const userData = {
-        displayName: user.displayName,
         uid: user.uid,
         email: user.email,
         profilepic: user.photoURL,
-        provider: user.providerData[0]?.providerId,
-        country: 'Unknown',
-        ip: 'Unknown',
         joinDate: new Date().toISOString(),
         loginDate: new Date().toISOString(),
         referrer: referrerUid || null,
+        isComplete: false
       };
 
       await set(userRef, userData);
-      localStorage.setItem('user', JSON.stringify(userData));
       
-      // Track referral if applicable
       if (referrerUid) {
         const referralRef = ref(db, `referrals/${referrerUid}/${user.uid}`);
         await set(referralRef, {
@@ -60,6 +64,7 @@ const Auth = () => {
       }
     } catch (error) {
       console.error('Error saving user data:', error);
+      throw error;
     }
   };
 
@@ -75,41 +80,39 @@ const Auth = () => {
     } catch (error) {
       console.error(`Error signing in with ${providerName}:`, error);
       
-      if (error.code === 'auth/account-exists-with-different-credential') {
-        const email = error.customData?.email;
-        let credential;
-        
-        if (providerName === 'Google') {
-          credential = googleProvider.credentialFromError?.(error);
-        } else if (providerName === 'Facebook') {
-          credential = facebookProvider.credentialFromError?.(error);
-        }
+      let errorTitle = 'Erro no login';
+      let errorMessage = `Ocorreu um erro ao tentar entrar com ${providerName}. Por favor, tente novamente.`;
 
-        if (email && credential) {
-          try {
-            const methods = await fetchSignInMethodsForEmail(auth, email);
-            setError({
-              title: 'Conta já existente',
-              message: `Você já possui uma conta registrada com ${methods[0]}. Por favor, faça login usando esse método.`
-            });
-          } catch (e) {
-            setError({
-              title: 'Erro de vinculação',
-              message: 'Ocorreu um erro ao verificar sua conta. Tente novamente mais tarde.'
-            });
-          }
-        }
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        setError({
-          title: 'Login cancelado',
-          message: 'A janela de login foi fechada antes de concluir o processo.'
-        });
-      } else {
-        setError({
-          title: 'Erro no login',
-          message: `Ocorreu um erro ao tentar entrar com ${providerName}. Por favor, tente novamente.`
-        });
+      if (error.code === 'auth/account-exists-with-different-credential') {
+        errorTitle = 'Conta já registrada';
+        errorMessage = 'Este e-mail já está associado a outra conta com outro método.';
+      } 
+      else if (error.code === 'auth/popup-closed-by-user') {
+        errorTitle = 'Janela fechada';
+        errorMessage = 'Você fechou a janela de login antes de concluir. Tente novamente.';
       }
+      else if (error.code === 'auth/user-disabled') {
+        errorTitle = 'Conta desativada';
+        errorMessage = 'Sua conta foi desativada. Entre em contato com o suporte por suporte@votasnap.com ou 840237100 para mais informações.';
+      }
+      else if (error.code === 'auth/network-request-failed') {
+        errorTitle = 'Problema de conexão';
+        errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
+      }
+      else if (error.message === 'multi_device') {
+        errorTitle = 'Sessão ativa';
+        errorMessage = 'Você já está logado em outro dispositivo. Por segurança, permitimos apenas um login por vez.';
+      }
+      else if (error.code === 'auth/too-many-requests') {
+        errorTitle = 'Acesso temporariamente bloqueado';
+        errorMessage = 'Muitas tentativas de login em um curto período. Tente novamente mais tarde.';
+      }
+
+      setError({
+        title: errorTitle,
+        message: errorMessage,
+        icon: error.message === 'multi_device' ? <Devices className="mr-2" /> : <ErrorOutline className="mr-2" />
+      });
     } finally {
       setIsLoading(false);
       setActiveProvider(null);
@@ -117,23 +120,114 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 px-4">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center transition-all duration-300 hover:shadow-xl">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 px-4 relative overflow-hidden">
+      {/* Particles Background */}
+      <div className="absolute inset-0 z-0">
+        <Particles
+          id="tsparticles"
+          init={particlesInit}
+          options={{
+            fpsLimit: 60,
+            interactivity: {
+              events: {
+                onHover: {
+                  enable: true,
+                  mode: "repulse",
+                },
+                onClick: {
+                  enable: true,
+                  mode: "push",
+                },
+              },
+              modes: {
+                repulse: {
+                  distance: 100,
+                  duration: 0.4,
+                },
+                push: {
+                  quantity: 4,
+                },
+              },
+            },
+            particles: {
+              color: {
+                value: ["#4F46E5", "#EC4899", "#10B981"],
+              },
+              links: {
+                color: "#9CA3AF",
+                distance: 150,
+                enable: true,
+                opacity: 0.3,
+                width: 1,
+              },
+              collisions: {
+                enable: true,
+              },
+              move: {
+                direction: "none",
+                enable: true,
+                outModes: {
+                  default: "bounce",
+                },
+                random: false,
+                speed: 1,
+                straight: false,
+              },
+              number: {
+                density: {
+                  enable: true,
+                  area: 800,
+                },
+                value: 60,
+              },
+              opacity: {
+                value: 0.5,
+              },
+              shape: {
+                type: "circle",
+              },
+              size: {
+                value: { min: 1, max: 5 },
+              },
+            },
+            detectRetina: true,
+          }}
+        />
+      </div>
+
+      <div 
+        className=" p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transition-all duration-500 hover:shadow-2xl relative z-10 border-4 border-transparent hover:border-purple-200"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Hover Effects */}
+        {isHovered && (
+          <>
+            <Celebration className="absolute -top-4 -left-4 text-yellow-400 animate-bounce" />
+            <Stars className="absolute -top-4 -right-4 text-pink-400 animate-pulse" />
+            <EmojiEvents className="absolute -bottom-4 -left-4 text-blue-400 animate-spin-slow" />
+          </>
+        )}
+
         <img 
           src={logo} 
           alt="VotaSnap Logo" 
-          className="w-32 mx-auto mb-6 hover:scale-105 transition-transform duration-300" 
+          className="w-40 mx-auto mb-6 hover:scale-110 transition-transform duration-500 transform hover:rotate-6" 
         />
         
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Bem-vindo ao VotaSnap</h1>
-        <p className="text-gray-600 mb-8">Entre para participar de desafios e ganhar recompensas!</p>
+        <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-3">
+          Bem-vindo ao VotaSnap!
+        </h1>
+        <p className="text-lg text-gray-600 mb-8 font-medium">
+          Entre agora e comece a ganhar recompensas incríveis! 🎉
+        </p>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded">
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg animate-shake">
             <div className="flex items-center">
-              <ErrorOutline className="mr-2" />
+              {error.icon}
               <div>
-                <h3 className="font-medium">{error.title}</h3>
+                <h3 className="font-bold">{error.title}</h3>
                 <p className="text-sm">{error.message}</p>
               </div>
             </div>
@@ -141,8 +235,8 @@ const Auth = () => {
         )}
 
         {referrerUid && (
-          <div className="mb-6 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">
-            Você está aceitando um convite de amigo! Ambos ganharão recompensas quando você se cadastrar.
+          <div className="mb-6 p-4 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 rounded-lg text-sm font-medium border-2 border-blue-200 animate-pulse">
+            🎁 Bônus especial! Você e seu amigo ganharão recompensas extras ao se cadastrar!
           </div>
         )}
 
@@ -150,21 +244,21 @@ const Auth = () => {
           <button
             onClick={() => handleSignIn(googleProvider, 'Google')}
             disabled={isLoading}
-            className={`flex items-center justify-center w-full py-3 px-4 rounded-xl transition-all duration-300 ${
+            className={`flex items-center justify-center w-full py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 ${
               isLoading && activeProvider === 'Google' 
                 ? 'bg-gray-300 cursor-not-allowed' 
-                : 'bg-red-500 hover:bg-red-600 shadow-md hover:shadow-lg'
+                : 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-lg hover:shadow-xl'
             }`}
           >
             {isLoading && activeProvider === 'Google' ? (
-              <div className="flex items-center">
+              <div className="flex items-center text-white">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                 Carregando...
               </div>
             ) : (
               <>
-                <Google className="mr-3 text-white" />
-                <span className="text-white font-medium">Continuar com Google</span>
+                <Google className="mr-3 text-white text-2xl" />
+                <span className="text-white font-bold text-lg">Continuar com Google</span>
               </>
             )}
           </button>
@@ -172,30 +266,33 @@ const Auth = () => {
           <button
             onClick={() => handleSignIn(facebookProvider, 'Facebook')}
             disabled={isLoading}
-            className={`flex items-center justify-center w-full py-3 px-4 rounded-xl transition-all duration-300 ${
+            className={`flex items-center justify-center w-full py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 ${
               isLoading && activeProvider === 'Facebook' 
                 ? 'bg-gray-300 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
             }`}
           >
             {isLoading && activeProvider === 'Facebook' ? (
-              <div className="flex items-center">
+              <div className="flex items-center text-white">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                 Carregando...
               </div>
             ) : (
               <>
-                <Facebook className="mr-3 text-white" />
-                <span className="text-white font-medium">Continuar com Facebook</span>
+                <Facebook className="mr-3 text-white text-2xl" />
+                <span className="text-white font-bold text-lg">Continuar com Facebook</span>
               </>
             )}
           </button>
         </div>
 
-        <div className="text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-gray-500 font-medium">
           Ao continuar, você concorda com nossos{' '}
-          <a href="#" className="text-blue-500 hover:underline">Termos de Serviço</a> e{' '}
-          <a href="#" className="text-blue-500 hover:underline">Política de Privacidade</a>.
+          <a href="#" className="text-blue-500 hover:underline font-bold">Termos</a> e{' '}
+          <a href="#" className="text-blue-500 hover:underline font-bold">Privacidade</a>.
+          <div className="mt-2 text-xs text-gray-400">
+            ✨ Diversão garantida! 🚀
+          </div>
         </div>
       </div>
     </div>

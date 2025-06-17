@@ -6,6 +6,7 @@ import { auth, db } from '../fb';
 import { get, ref, set, push, update } from 'firebase/database';
 import { FaUserCircle, FaMoneyBillWave, FaBell, FaSearch, FaHome, FaTrophy } from 'react-icons/fa';
 import { FiMoreHorizontal } from 'react-icons/fi';
+import logo from '../img/logo.png'
 
 const Header = () => {
     const [user, setUser] = useState(null);
@@ -91,7 +92,6 @@ const Header = () => {
             setIsLoading(false);
         }
     };
-
     return (
         <>
             <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
@@ -101,21 +101,6 @@ const Header = () => {
                         <h1 className="text-xl font-bold text-indigo-600">Votasnap</h1>
                     </Link>
 
-                    {/* Navigation */}
-                    <nav className="hidden md:flex items-center space-x-8">
-                        <Link to="/" className="text-gray-700 hover:text-indigo-600 flex flex-col items-center">
-                            <FaHome className="w-5 h-5" />
-                            <span className="text-xs mt-1">Início</span>
-                        </Link>
-                        <Link to="/search" className="text-gray-500 hover:text-indigo-600 flex flex-col items-center">
-                            <FaSearch className="w-5 h-5" />
-                            <span className="text-xs mt-1">Explorar</span>
-                        </Link>
-                        <Link to="/challenges" className="text-gray-500 hover:text-indigo-600 flex flex-col items-center">
-                            <FaTrophy className="w-5 h-5" />
-                            <span className="text-xs mt-1">Desafios</span>
-                        </Link>
-                    </nav>
 
                     {/* User Actions */}
                     <div className="flex items-center space-x-4">
@@ -156,28 +141,6 @@ const Header = () => {
                 </div>
             </header>
 
-            {/* Mobile Bottom Navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-3 px-4 md:hidden">
-                <Link to="/" className="text-gray-700 hover:text-indigo-600 flex flex-col items-center">
-                    <FaHome className="w-5 h-5" />
-                    <span className="text-xs mt-1">Início</span>
-                </Link>
-                <Link to="/search" className="text-gray-500 hover:text-indigo-600 flex flex-col items-center">
-                    <FaSearch className="w-5 h-5" />
-                    <span className="text-xs mt-1">Explorar</span>
-                </Link>
-                <Link to="/challenges" className="text-gray-500 hover:text-indigo-600 flex flex-col items-center">
-                    <FaTrophy className="w-5 h-5" />
-                    <span className="text-xs mt-1">Desafios</span>
-                </Link>
-                <button 
-                    onClick={() => setShowModal(true)}
-                    className="text-gray-500 hover:text-indigo-600 flex flex-col items-center"
-                >
-                    <FaMoneyBillWave className="w-5 h-5" />
-                    <span className="text-xs mt-1">Saldo</span>
-                </button>
-            </nav>
 
             {/* Withdrawal Modal */}
             {showModal && (

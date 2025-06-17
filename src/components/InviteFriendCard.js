@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { FaWhatsapp, FaFacebook, FaEnvelope, FaSms, FaLink, FaInfoCircle, FaGift, FaUsers, FaTrophy, FaMoneyBillWave, FaCrown } from "react-icons/fa";
+import { FaWhatsapp, FaFacebook, FaEnvelope, FaSms, FaLink, FaInfoCircle, FaGift, FaUsers, FaMoneyBillWave, FaCrown, FaCheckCircle } from "react-icons/fa";
 import { auth } from "../fb";
-import { getDatabase, ref, get, child, update, set, query, orderByChild, limitToFirst } from "firebase/database";
+import { getDatabase, ref, get, child, set, query, orderByChild, limitToFirst, equalTo } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 
 const InviteFriendCard = () => {
@@ -10,23 +10,35 @@ const InviteFriendCard = () => {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [invitedFriendsCount, setInvitedFriendsCount] = useState(0);
-  const [rewardClaimed, setRewardClaimed] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [copied, setCopied] = useState(false);
   const [contactInfo, setContactInfo] = useState("");
   const [rewardStatus, setRewardStatus] = useState(null);
   const [rewardAmount, setRewardAmount] = useState(0);
   const [availableRewards, setAvailableRewards] = useState(10);
+  const [challengeCompleted, setChallengeCompleted] = useState(false);
+  const [challengeExpired, setChallengeExpired] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
 
       if (currentUser) {
-        fetchInvitedFriendsCount(currentUser.uid);
-        checkRewardStatus(currentUser.uid);
-        checkAvailableRewards();
+        setLoading(true);
+        try {
+          await Promise.all([
+            fetchInvitedFriendsCount(currentUser.uid),
+            checkRewardStatus(currentUser.uid),
+            checkAvailableRewards(),
+            checkChallengeCompletion(currentUser.uid)
+          ]);
+        } catch (error) {
+          console.error("Error loading data:", error);
+        } finally {
+          setLoading(false);
+        }
       }
     });
 
@@ -45,9 +57,44 @@ const InviteFriendCard = () => {
           }
         });
         setInvitedFriendsCount(count);
+        
+        // Verifica se deve marcar o desafio como completo
+        if (count >= 3 && !challengeCompleted) {
+          await markChallengeAsCompleted(uid, count);
+        }
       }
     } catch (error) {
       console.error("Erro ao contar amigos convidados:", error);
+    }
+  };
+
+  const markChallengeAsCompleted = async (uid, count) => {
+    const db = getDatabase();
+    const challengeRef = ref(db, `challenges/${uid}`);
+    
+    try {
+      await set(challengeRef, {
+        completed: true,
+        completedDate: new Date().toISOString(),
+        invitedCount: count,
+        type: "inviteFriend",
+        userId: uid,
+      });
+      setChallengeCompleted(true);
+    } catch (error) {
+      console.error("Erro ao marcar desafio como concluído:", error);
+    }
+  };
+
+  const checkChallengeCompletion = async (uid) => {
+    const dbRef = ref(getDatabase());
+    try {
+      const snapshot = await get(child(dbRef, `challenges/${uid}`));
+      if (snapshot.exists()) {
+        setChallengeCompleted(snapshot.val().completed || false);
+      }
+    } catch (error) {
+      console.error("Erro ao verificar conclusão do desafio:", error);
     }
   };
 
@@ -58,8 +105,13 @@ const InviteFriendCard = () => {
       if (rewardSnapshot.exists()) {
         const rewardData = rewardSnapshot.val();
         setRewardStatus(rewardData.status || null);
-        setRewardClaimed(rewardData.status === 'completed');
         setRewardAmount(rewardData.amount || 0);
+        
+        // Mostrar animação se a recompensa foi completada recentemente
+        if (rewardData.status === "completed") {
+          setShowCelebration(true);
+          setTimeout(() => setShowCelebration(false), 3000);
+        }
       }
     } catch (error) {
       console.error("Erro ao verificar status da recompensa:", error);
@@ -69,13 +121,17 @@ const InviteFriendCard = () => {
   const checkAvailableRewards = async () => {
     const db = getDatabase();
     const rewardsRef = ref(db, 'rewards');
-    const queryRef = query(rewardsRef, orderByChild('status', 'completed'), limitToFirst(10));
+    const queryRef = query(rewardsRef, orderByChild('status'), equalTo('completed'));
     
     try {
       const snapshot = await get(queryRef);
       if (snapshot.exists()) {
         const completedCount = snapshot.size;
         setAvailableRewards(Math.max(0, 10 - completedCount));
+        
+        if (completedCount >= 10) {
+          setChallengeExpired(true);
+        }
       }
     } catch (error) {
       console.error("Erro ao verificar recompensas disponíveis:", error);
@@ -83,7 +139,7 @@ const InviteFriendCard = () => {
   };
 
   const handleRequestReward = async () => {
-    if (invitedFriendsCount >= 50 && availableRewards > 0) {
+    if (invitedFriendsCount >= 3 && availableRewards > 0 && challengeCompleted) {
       setIsRequestModalOpen(true);
     }
   };
@@ -101,12 +157,14 @@ const InviteFriendCard = () => {
       const rewardData = {
         uid: user.uid,
         invitedCount: invitedFriendsCount,
-        amount: 100, // Valor fixo de 100MT para os 10 primeiros
+        amount: 100,
         contactInfo: contactInfo,
         status: "pending",
+        type: "inviteFriend",
         requestDate: new Date().toISOString(),
         displayName: user.displayName || user.email,
-        position: 10 - availableRewards + 1 // Posição na fila de recompensas
+        position: 10 - availableRewards + 1,
+        challengeCompletedDate: new Date().toISOString()
       };
 
       await set(rewardRef, rewardData);
@@ -152,12 +210,36 @@ const InviteFriendCard = () => {
   };
 
   const getProgressPercentage = () => {
-    return Math.min(100, (invitedFriendsCount / 50) * 100);
+    return Math.min(100, (invitedFriendsCount / 3) * 100);
   };
+
+  const canRequestReward = () => {
+    return (
+      invitedFriendsCount >= 3 && 
+      availableRewards > 0 && 
+      challengeCompleted && 
+      !rewardStatus
+    );
+  };
+
+  if (challengeExpired) {
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-gradient-to-br from-blue-50 to-purple-50 shadow-lg rounded-2xl p-6 w-full max-w-sm mx-auto relative overflow-hidden flex items-center justify-center h-64">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-4 bg-gray-300 rounded w-3/4 mb-4"></div>
+          <div className="h-4 bg-gray-300 rounded w-1/2 mb-4"></div>
+          <div className="h-4 bg-gray-300 rounded w-5/6 mb-4"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-purple-50 shadow-lg rounded-2xl p-6 w-full max-w-sm mx-auto relative overflow-hidden">
-      {/* Celebration effect */}
       {showCelebration && (
         <div className="absolute inset-0 flex items-center justify-center z-10 bg-black bg-opacity-30">
           <div className="bg-white p-6 rounded-xl shadow-2xl text-center animate-bounce">
@@ -168,11 +250,16 @@ const InviteFriendCard = () => {
         </div>
       )}
 
-      {/* Decorative elements */}
+      {challengeCompleted && (
+        <div className="absolute top-0 right-0 bg-green-500 text-white px-3 py-1 rounded-bl-lg rounded-tr-xl flex items-center z-10">
+          <FaCheckCircle className="mr-1" />
+          <span className="text-xs font-bold">Concluído!</span>
+        </div>
+      )}
+
       <div className="absolute top-0 right-0 w-24 h-24 bg-blue-100 rounded-full -mr-6 -mt-6"></div>
       <div className="absolute bottom-0 left-0 w-16 h-16 bg-purple-100 rounded-full -ml-4 -mb-4"></div>
 
-      {/* Info icon button */}
       <button 
         onClick={() => setIsInfoModalOpen(true)}
         className="absolute top-4 right-4 text-blue-400 hover:text-blue-600 transition-colors"
@@ -186,7 +273,7 @@ const InviteFriendCard = () => {
           <FaCrown className="mr-2 text-yellow-500" /> Desafio Especial
         </h2>
         <p className="text-center text-gray-600 mb-6">
-          Convide 50 amigos e ganhe <span className="font-bold text-purple-600">100MT</span>!
+          Convide 3 amigos e ganhe <span className="font-bold text-purple-600">100MT</span>!
           <br />
           <span className="text-sm text-yellow-600 font-medium">
             {availableRewards > 0 ? (
@@ -197,10 +284,9 @@ const InviteFriendCard = () => {
           </span>
         </p>
 
-        {/* Progress bar */}
         <div className="mb-6">
           <div className="flex justify-between text-sm text-gray-600 mb-1">
-            <span>{invitedFriendsCount} de 50 amigos</span>
+            <span>{invitedFriendsCount} de 3 amigos</span>
             <span>{Math.floor(getProgressPercentage())}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
@@ -211,7 +297,6 @@ const InviteFriendCard = () => {
           </div>
         </div>
 
-        {/* Stats cards */}
         <div className="flex justify-between items-center mb-6 gap-4">
           <div className="bg-white p-4 rounded-xl shadow-sm flex-1 text-center">
             <div className="flex items-center justify-center text-blue-500 mb-1">
@@ -231,7 +316,6 @@ const InviteFriendCard = () => {
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="space-y-3">
           <button
             onClick={handleShareClick}
@@ -257,7 +341,7 @@ const InviteFriendCard = () => {
             <div className="text-center py-2 bg-green-50 text-green-700 rounded-xl border border-green-100">
               ✅ Recompensa de 100MT recebida com sucesso!
             </div>
-          ) : invitedFriendsCount >= 50 && availableRewards > 0 ? (
+          ) : canRequestReward() ? (
             <button
               onClick={handleRequestReward}
               className="w-full bg-gradient-to-r from-green-400 to-green-600 text-white py-3 rounded-xl hover:from-green-500 hover:to-green-700 transition duration-300 shadow-md flex items-center justify-center animate-pulse"
@@ -265,7 +349,7 @@ const InviteFriendCard = () => {
               <FaGift className="mr-2" />
               Solicitar Recompensa (100MT)
             </button>
-          ) : invitedFriendsCount >= 50 && availableRewards <= 0 ? (
+          ) : invitedFriendsCount >= 3 && availableRewards <= 0 ? (
             <div className="text-center py-2 bg-red-50 text-red-700 rounded-xl border border-red-100">
               😔 Todas as recompensas já foram concedidas
             </div>
@@ -273,7 +357,7 @@ const InviteFriendCard = () => {
         </div>
       </div>
 
-      {/* Share Modal */}
+      {/* Modals remain the same as before */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm relative">
@@ -293,7 +377,7 @@ const InviteFriendCard = () => {
               <ShareButton 
                 icon={<FaWhatsapp size={24} className="text-green-500" />}
                 text="WhatsApp"
-                onClick={() => window.open(`https://wa.me/?text=Participe%20do%20Desafio%20VotaSnap!%20Convide%2050%20amigos%20e%20ganhe%20100MT!%20Use%20meu%20link:%20${inviteLink}`, '_blank')}
+                onClick={() => window.open(`https://wa.me/?text=Participe%20do%20Desafio%20VotaSnap!%20Convide%203%20amigos%20e%20ganhe%20100MT!%20Use%20meu%20link:%20${inviteLink}`, '_blank')}
               />
               
               <ShareButton 
@@ -305,13 +389,13 @@ const InviteFriendCard = () => {
               <ShareButton 
                 icon={<FaEnvelope size={24} className="text-red-500" />}
                 text="Email"
-                onClick={() => window.open(`mailto:?subject=Participe%20do%20Desafio%20VotaSnap!&body=Olá!%20Convide%2050%20amigos%20usando%20meu%20link%20e%20ganhe%20100MT:%20${inviteLink}`, '_blank')}
+                onClick={() => window.open(`mailto:?subject=Participe%20do%20Desafio%20VotaSnap!&body=Olá!%20Convide%203%20amigos%20usando%20meu%20link%20e%20ganhe%20100MT:%20${inviteLink}`, '_blank')}
               />
               
               <ShareButton 
                 icon={<FaSms size={24} className="text-blue-400" />}
                 text="SMS"
-                onClick={() => window.open(`sms:?&body=Participe%20do%20Desafio%20VotaSnap!%20Convide%2050%20amigos%20e%20ganhe%20100MT:%20${inviteLink}`, '_blank')}
+                onClick={() => window.open(`sms:?&body=Participe%20do%20Desafio%20VotaSnap!%20Convide%203%20amigos%20e%20ganhe%20100MT:%20${inviteLink}`, '_blank')}
               />
               
               <button
@@ -328,7 +412,6 @@ const InviteFriendCard = () => {
         </div>
       )}
 
-      {/* Reward Request Modal */}
       {isRequestModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
@@ -382,7 +465,6 @@ const InviteFriendCard = () => {
         </div>
       )}
 
-      {/* Info Modal */}
       {isInfoModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
@@ -397,7 +479,7 @@ const InviteFriendCard = () => {
                 </div>
                 <div>
                   <h4 className="font-semibold">Como participar?</h4>
-                  <p className="text-sm">Convide 50 amigos usando seu link exclusivo. Cada amigo que se cadastrar conta para seu total.</p>
+                  <p className="text-sm">Convide 3 amigos usando seu link exclusivo. Cada amigo que se cadastrar conta para seu total.</p>
                 </div>
               </div>
               
@@ -407,7 +489,7 @@ const InviteFriendCard = () => {
                 </div>
                 <div>
                   <h4 className="font-semibold">Premiação Exclusiva</h4>
-                  <p className="text-sm">Os 10 primeiros usuários que convidarem 50 amigos ganham 100MT cada!</p>
+                  <p className="text-sm">Os 10 primeiros usuários que convidarem 3 amigos ganham 100MT cada!</p>
                   <p className="text-xs text-yellow-600 mt-1">
                     {availableRewards > 0 ? 
                       `${availableRewards} recompensas ainda disponíveis!` : 
@@ -422,7 +504,7 @@ const InviteFriendCard = () => {
                 </div>
                 <div>
                   <h4 className="font-semibold">Como receber</h4>
-                  <p className="text-sm">Ao atingir 50 convites e estar entre os 10 primeiros, solicite sua recompensa informando como deseja receber.</p>
+                  <p className="text-sm">Ao atingir 3 convites e estar entre os 10 primeiros, solicite sua recompensa informando como deseja receber.</p>
                 </div>
               </div>
             </div>

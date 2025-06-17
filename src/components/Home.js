@@ -1,747 +1,417 @@
-import React, { useEffect, useState } from 'react';
-import { Share2, Trophy, Award, ArrowRight, Heart, MessageSquare, Repeat, Bookmark, MoreHorizontal, Flag, BarChart2 } from 'lucide-react';
-import { db, storage, auth } from '../fb';
-import { ref as dbRef, set, push, onValue, query, orderByChild, equalTo, limitToLast, get, update } from 'firebase/database';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import InviteFriendCard from './InviteFriendCard';
+import React, { useState } from 'react';
+import { Share2, Zap, Award, TrendingUp, Users, Sparkles, ChevronRight, Heart, MessageSquare, X, Check, Image, Video, Camera } from 'lucide-react';
 
-export default function HomePage() {
-  const [activeChallenge, setActiveChallenge] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState({});
-  const [isParticipating, setIsParticipating] = useState(false);
-  const [hasPosted, setHasPosted] = useState(false);
-  const [newPostContent, setNewPostContent] = useState('');
-  const [newPostImage, setNewPostImage] = useState(null);
-  const [previewImage, setPreviewImage] = useState(null);
-  const [userPosts, setUserPosts] = useState([]);
-  const [challengePosts, setChallengePosts] = useState([]);
-  const [user, setUser] = useState(null);
-  const [viewMode, setViewMode] = useState('grid');
-  const [ranking, setRanking] = useState([]);
-  const [showRanking, setShowRanking] = useState(false);
-  const [userLikes, setUserLikes] = useState({});
+const HomePage = () => {
+  const [activeTab, setActiveTab] = useState('destaques');
+  const [showParticipateModal, setShowParticipateModal] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState(null);
+  const [submission, setSubmission] = useState({
+    image: null,
+    caption: '',
+    termsAccepted: false
+  });
 
-  // Observar autenticação do usuário
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        loadUserPosts(currentUser.uid);
-        loadUserLikes(currentUser.uid);
-      }
-    });
-    return unsubscribe;
-  }, []);
-
-  const loadUserPosts = (userId) => {
-    const userPostsRef = query(
-      dbRef(db, 'posts'),
-      orderByChild('userId'),
-      equalTo(userId)
-    );
-    onValue(userPostsRef, (snapshot) => {
-      const posts = [];
-      snapshot.forEach((childSnapshot) => {
-        posts.push({
-          id: childSnapshot.key,
-          ...childSnapshot.val()
-        });
-      });
-      setUserPosts(posts);
-    });
-  };
-
-  const loadUserLikes = (userId) => {
-    const likesRef = query(
-      dbRef(db, 'userLikes'),
-      orderByChild('userId'),
-      equalTo(userId)
-    );
-    onValue(likesRef, (snapshot) => {
-      const likes = {};
-      snapshot.forEach((childSnapshot) => {
-        const likeData = childSnapshot.val();
-        likes[likeData.postId] = true;
-      });
-      setUserLikes(likes);
-    });
-  };
-
-  // Buscar desafio ativo mais recente
-  useEffect(() => {
-    const challengesRef = dbRef(db, 'challenges');
-    const activeChallengeQuery = query(
-      challengesRef,
-      orderByChild('status'),
-      equalTo('active'),
-      limitToLast(1)
-    );
-    
-    const unsubscribe = onValue(activeChallengeQuery, (snapshot) => {
-      if (snapshot.exists()) {
-        const challengesData = snapshot.val();
-        const [challengeId, challengeData] = Object.entries(challengesData)[0];
-        const challenge = {
-          id: challengeId,
-          ...challengeData,
-          startTime: new Date(challengeData.startTime),
-          endTime: new Date(challengeData.endTime)
-        };
-        
-        setActiveChallenge(challenge);
-        loadChallengePosts(challengeId);
-        loadRanking(challengeId);
-        
-        if (user) {
-          checkUserParticipation(challengeId, user.uid);
-        }
-      } else {
-        setActiveChallenge(null);
-        setChallengePosts([]);
-        setRanking([]);
-      }
-      setLoading(false);
-    });
-    
-    return () => unsubscribe();
-  }, [user]);
-
-  const checkUserParticipation = (challengeId, userId) => {
-    const userPostsRef = query(
-      dbRef(db, 'posts'),
-      orderByChild('userId'),
-      equalTo(userId)
-    );
-    
-    get(userPostsRef).then((snapshot) => {
-      let hasParticipated = false;
-      snapshot.forEach((childSnapshot) => {
-        if (childSnapshot.val().challengeId === challengeId) {
-          hasParticipated = true;
-        }
-      });
-      setIsParticipating(hasParticipated);
-      setHasPosted(hasParticipated);
-    });
-  };
-
-  // Carregar posts do desafio e ordenar por likes
-  const loadChallengePosts = (challengeId) => {
-    const postsRef = query(
-      dbRef(db, 'posts'),
-      orderByChild('challengeId'),
-      equalTo(challengeId)
-    );
-    
-    onValue(postsRef, (snapshot) => {
-      const posts = [];
-      snapshot.forEach((childSnapshot) => {
-        posts.push({
-          id: childSnapshot.key,
-          ...childSnapshot.val()
-        });
-      });
-      
-      // Ordenar por likes (mais curtidos primeiro)
-      const sortedPosts = [...posts].sort((a, b) => (b.likes || 0) - (a.likes || 0));
-      setChallengePosts(sortedPosts);
-    });
-  };
-
-  // Carregar ranking de participantes baseado em likes totais
-  const loadRanking = (challengeId) => {
-    const postsRef = query(
-      dbRef(db, 'posts'),
-      orderByChild('challengeId'),
-      equalTo(challengeId)
-    );
-    
-    onValue(postsRef, (snapshot) => {
-      const participants = {};
-      snapshot.forEach((childSnapshot) => {
-        const post = childSnapshot.val();
-        if (!participants[post.userId]) {
-          participants[post.userId] = {
-            userId: post.userId,
-            username: post.username,
-            avatar: post.avatar,
-            totalLikes: 0,
-            postsCount: 0,
-            bestPost: null
-          };
-        }
-        
-        participants[post.userId].totalLikes += post.likes || 0;
-        participants[post.userId].postsCount += 1;
-        
-        // Manter registro do post mais curtido do usuário
-        if (!participants[post.userId].bestPost || (post.likes || 0) > (participants[post.userId].bestPost.likes || 0)) {
-          participants[post.userId].bestPost = {
-            id: childSnapshot.key,
-            ...post
-          };
-        }
-      });
-      
-      // Converter para array e ordenar por total de likes (decrescente)
-      const rankingArray = Object.values(participants).sort((a, b) => b.totalLikes - a.totalLikes);
-      
-      // Adicionar posição no ranking
-      rankingArray.forEach((participant, index) => {
-        participant.position = index + 1;
-      });
-      
-      setRanking(rankingArray);
-    });
-  };
-
-  // Atualizar contador regressivo
-  useEffect(() => {
-    if (!activeChallenge) return;
-    
-    const timer = setInterval(() => {
-      const now = new Date();
-      const difference = activeChallenge.endTime - now;
-      
-      if (difference > 0) {
-        setTimeLeft({
-          days: Math.max(0, Math.floor(difference / (1000 * 60 * 60 * 24))),
-          hours: Math.max(0, Math.floor((difference / (1000 * 60 * 60)) % 24)),
-          minutes: Math.max(0, Math.floor((difference / 1000 / 60) % 60)),
-          seconds: Math.max(0, Math.floor((difference / 1000) % 60))
-        });
-      } else {
-        clearInterval(timer);
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-        
-        // Atualizar status para expirado
-        const challengeRef = dbRef(db, `challenges/${activeChallenge.id}`);
-        update(challengeRef, { status: 'expired' });
-      }
-    }, 1000);
-    
-    return () => clearInterval(timer);
-  }, [activeChallenge]);
-
-  const formatTime = (time) => {
-    return time < 10 ? `0${time}` : time;
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setNewPostImage(file);
-      setPreviewImage(URL.createObjectURL(file));
+  // Exemplos reais de desafios de marcas
+  const featuredChallenges = [
+    {
+      id: 1,
+      brand: {
+        name: "CDM",
+        logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAfCAMAAACF8f6iAAAAt1BMVEWwHin///+oAACwHCeuDx6tCRr73xCsABCtBRivFyOrAADXpqn69fXUnaCtABTfuLrkxMbPjpHCa3DIfoKsACrpz9GyLDWxJS/Qk5erAAe3RUzHeX3r1dfx3+DbrK+7U1nAZGr06uvls3v/22X+23P74qj19vv/9Mm+SADlsxX+2AD/0Rjz7+P535vakwDPjZfiqADSn6qzND3cs73/6hHAUwC/aHfzxRf/vAj/xwu7U2DThhXPeCJrAv64AAAB0klEQVQ4je2S23bUIBSGOU4ghJzI+ThRW22m1hirnarv/1xukpnlDXPhnRf914KfBXzsvQGE3vTfivLQ84REzKt9vw7lNsU5tWvgNznmmSiOdOO3cdf3+TD6lMokSSSQITi7wXkp3lXFl0EuZAOmQ8QN+CidHL9yOAXwfht15GjNo2Sy884QVNotvWljTN69/3AXAHr/8ZPZUiCtNeOskldbBM5qkT0cDvPp7vHx8/z0xRIB6TdeOCu0hY02GWpBQOf5cFi+bilHWz+ELrDOYWndys8eng+7npdv+K8izwWGg03GR0iGe8RNT/E1HPR57QLlaJdbQpqBLfM14vcOY2XJSMHN+S4Q+fvrBRj/WF73XOcX+wxqtUVojCfiBKnXXWqJl/Npnk+v5xdK4BxNdAQNznRHRJQk0/Zffv46Wy2/M1RPATZMeIK1OJiclwMgFUQUktQyyzKa2Y4inxAOK5QyQgh1cqwAUVqUpWQFXdmKGC14AT9clAUq4aHW0kUKlXZDrpK+0Xk1HHU+HONcDXrMoyjvtFJJ1TcukBmjk+qYqhZMjboyozGVGXSSpAq6oTLKCSLGBOeSCWtCCs4kY5yv0JiAqRDMXeONG/uHvW+66A/8BSHuqQ0AZgAAAABJRU5ErkJggg==",
+        verified: true
+      },
+      title: "MELHOR FOTO COM CDM NO VERÃO",
+      description: "Capture seu momento com CDM na praia, piscina ou em qualquer lugar de verão. Mostre criatividade e originalidade!",
+      prize: "Uma grade de cervejas CDM + R$5.000 em dinheiro",
+      participants: 312,
+      deadline: "Termina em 5 dias",
+      coverImage: "https://scontent.fnbo19-2.fna.fbcdn.net/v/t39.30808-6/465132271_9146077245424643_234251552846165849_n.png?_nc_cat=111&ccb=1-7&_nc_sid=0b6b33&_nc_ohc=RhQqNhgxj-wQ7kNvwG7gIp2&_nc_oc=AdlKPJX_y-X0fp8rlwuIgguVCyKmk6EvgA943VcwYpkiTf4DlYkOFZPKx5jLRAeIFmgO_4FBhsgUlMR9PMyzFwWo&_nc_zt=23&_nc_ht=scontent.fnbo19-2.fna&_nc_gid=MKLN00rgbVAxI2wObXVNug&oh=00_AfNVPhWxTL0X4XlhvsuT6pceWEZ3i3KuHNytd9hoapXc5A&oe=684FE972",
+      interaction: "3.8K curtidas",
+      type: "photo"
+    },
+    {
+      id: 2,
+      brand: {
+        name: "Coca-Cola",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Coca-Cola_logo.svg/1200px-Coca-Cola_logo.svg.png",
+        verified: true
+      },
+      title: "VÍDEO CRIATIVO COM COCA-COLA",
+      description: "Crie um vídeo de 15-30 segundos mostrando seu momento de refrescância com Coca-Cola. Use a hashtag #ShareACoke",
+      prize: "R$10.000 + Aparecer no comercial oficial",
+      participants: 892,
+      deadline: "Termina em 2 dias",
+      coverImage: "https://www.coca-cola.com/content/dam/onexp/mx/es/brands/coca-cola/Coca-Cola_Principal_Bottle_500ml.png",
+      interaction: "12.5K curtidas",
+      type: "video"
+    },
+    {
+      id: 3,
+      brand: {
+        name: "Nike",
+        logo: "https://static.nike.com/a/images/f_jpg,q_auto:eco/61b4738b-e1e1-4786-8f6c-26aa0008e80b/swoosh-logo-black.png",
+        verified: true
+      },
+      title: "FOTO DE TREINO COM NIKE",
+      description: "Mostre seu treino com produtos Nike. Melhor foto ganha um kit completo de roupas e tênis!",
+      prize: "Kit Nike no valor de R$3.000",
+      participants: 1245,
+      deadline: "Termina em 7 dias",
+      coverImage: "https://static.nike.com/a/images/t_PDP_1280_v1/f_auto,q_auto:eco/skwgyqrbfzhu6uyeh0gg/air-max-270-mens-shoes-KkLcGR.png",
+      interaction: "8.2K curtidas",
+      type: "photo"
+    },
+    {
+      id: 4,
+      brand: {
+        name: "Red Bull",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Red_Bull.svg/1200px-Red_Bull.svg.png",
+        verified: true
+      },
+      title: "VÍDEO DE AVENTURA EXTREMA",
+      description: "Grave um vídeo mostrando sua aventura radical com Red Bull. Pode ser esporte, viagem ou desafio pessoal!",
+      prize: "Viagem para evento Red Bull + R$7.000",
+      participants: 543,
+      deadline: "Termina em 10 dias",
+      coverImage: "https://www.redbull.com/_next/image/?url=https%3A%2F%2Fimg.redbull.com%2Fimages%2Fc_limit%2Cw_1500%2Ch_1500%2Cf_auto%2Cq_auto%2Fv1%2Fcontenthub%2F2022%2F05%2F17%2Fb3a5c3a6-8a6d-4e45-8438-3780e8a8a5a3%2Fred-bull-energy-drink&w=3840&q=75",
+      interaction: "5.1K curtidas",
+      type: "video"
     }
+  ];
+
+  const trendingBrands = [
+    { id: 1, name: "2M", logo: "https://cdm.co.mz/wp-content/themes/cdm/img/logo-cdm-abinbev.png", challenges: 5 },
+    { id: 2, name: "CDM", logo: "https://cdm.co.mz/wp-content/themes/cdm/img/logo-cdm-abinbev.png", challenges: 3 },
+    { id: 3, name: "Coca-Cola", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Coca-Cola_logo.svg/1200px-Coca-Cola_logo.svg.png", challenges: 2 },
+    { id: 4, name: "Unitel", logo: "https://www.unitel.mz/wp-content/uploads/2022/02/unitel-logo.png", challenges: 4 },
+    { id: 5, name: "Nike", logo: "https://static.nike.com/a/images/f_jpg,q_auto:eco/61b4738b-e1e1-4786-8f6c-26aa0008e80b/swoosh-logo-black.png", challenges: 6 },
+    { id: 6, name: "Red Bull", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Red_Bull.svg/1200px-Red_Bull.svg.png", challenges: 3 },
+    { id: 7, name: "Apple", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1200px-Apple_logo_black.svg.png", challenges: 2 },
+    { id: 8, name: "Samsung", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Samsung_Logo.svg/1200px-Samsung_Logo.svg.png", challenges: 4 }
+  ];
+
+  const handleParticipateClick = (challenge) => {
+    setSelectedChallenge(challenge);
+    setShowParticipateModal(true);
   };
 
-  const handleLikePost = async (postId, currentLikes) => {
-    if (!user) {
-      alert('Por favor, faça login para curtir postagens.');
-      return;
-    }
-    
-    try {
-      // Verificar se o usuário já curtiu este post
-      const likeRef = dbRef(db, `userLikes/${user.uid}_${postId}`);
-      
-      if (userLikes[postId]) {
-        // Se já curtiu, remover o like
-        await set(likeRef, null);
-        await update(dbRef(db, `posts/${postId}`), {
-          likes: (currentLikes || 0) - 1
-        });
-        setUserLikes(prev => {
-          const newLikes = {...prev};
-          delete newLikes[postId];
-          return newLikes;
-        });
-      } else {
-        // Se não curtiu, adicionar o like
-        await set(likeRef, {
-          userId: user.uid,
-          postId: postId,
-          timestamp: Date.now()
-        });
-        await update(dbRef(db, `posts/${postId}`), {
-          likes: (currentLikes || 0) + 1
-        });
-        setUserLikes(prev => ({...prev, [postId]: true}));
-      }
-      
-      // Recarregar ranking após atualização de likes
-      if (activeChallenge) {
-        loadRanking(activeChallenge.id);
-      }
-    } catch (error) {
-      console.error('Erro ao curtir postagem:', error);
-    }
-  };
-
-  const handleSharePost = (post) => {
-    const shareText = `Confira esta postagem no desafio "${post.challengeTitle}" por ${post.username}: ${post.content}`;
-    const shareUrl = `${window.location.origin}/post/${post.id}`;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: post.challengeTitle,
-        text: shareText,
-        url: shareUrl
-      }).catch(err => console.log('Erro ao compartilhar:', err));
-    } else {
-      navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-      alert('Link copiado para a área de transferência!');
-    }
-  };
-
-  const handleReportPost = (postId) => {
-    if (!user) {
-      alert('Por favor, faça login para reportar postagens.');
-      return;
-    }
-    
-    if (window.confirm('Tem certeza que deseja reportar esta postagem?')) {
-      const reportRef = push(dbRef(db, 'reports'));
-      set(reportRef, {
-        postId,
-        reporterId: user.uid,
-        timestamp: Date.now(),
-        status: 'pending'
-      });
-      alert('Postagem reportada com sucesso. Nossa equipe irá analisar.');
-    }
-  };
-
-  const handleSubmitPost = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    // Lógica para enviar a participação
+    alert(`Participação enviada para o desafio: ${selectedChallenge.title}`);
+    setShowParticipateModal(false);
+    setSubmission({ image: null, caption: '', termsAccepted: false });
+  };
 
-    if (!user) {
-      alert('Por favor, faça login para participar do desafio.');
-      return;
-    }
-
-    if (!newPostContent.trim() && !newPostImage) {
-      alert('Por favor, insira uma descrição ou selecione uma imagem.');
-      return;
-    }
-
-    if (hasPosted) {
-      alert('Você já publicou uma entrada para este desafio.');
-      return;
-    }
-
-    try {
-      const postsRef = dbRef(db, 'posts');
-      const newPostRef = push(postsRef);
-
-      let imageUrl = null;
-      if (newPostImage) {
-        const imageRef = storageRef(storage, `postImages/${user.uid}/${newPostRef.key}/${newPostImage.name}`);
-        await uploadBytes(imageRef, newPostImage);
-        imageUrl = await getDownloadURL(imageRef);
-      }
-
-      const newPost = {
-        userId: user.uid,
-        username: user.displayName || 'Usuário',
-        handle: `@${user.email?.split('@')[0] || 'usuario'}`,
-        avatar: user.photoURL || '',
-        content: newPostContent,
-        image: imageUrl,
-        likes: 0,
-        comments: 0,
-        shares: 0,
-        timePosted: new Date().toISOString(),
-        challengeId: activeChallenge.id,
-        challengeTitle: activeChallenge.title,
-        timestamp: Date.now()
-      };
-
-      await set(newPostRef, newPost);
-      
-      setIsParticipating(true);
-      setHasPosted(true);
-      setNewPostContent('');
-      setNewPostImage(null);
-      setPreviewImage(null);
-      
-      // Atualizar ranking após nova postagem
-      loadRanking(activeChallenge.id);
-      
-      alert('Postagem criada com sucesso! Boa sorte no desafio!');
-    } catch (error) {
-      console.error('Erro ao criar postagem:', error);
-      alert('Ocorreu um erro ao criar sua postagem. Tente novamente.');
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSubmission({ ...submission, image: URL.createObjectURL(e.target.files[0]) });
     }
   };
 
-  if (loading) {
+  // Componente ChallengeCard
+  const ChallengeCard = ({ challenge }) => {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      <div className="border rounded-2xl overflow-hidden hover:shadow-lg transition duration-300 bg-white">
+        <div className="relative h-48 bg-gradient-to-br from-pink-100 to-blue-100">
+          <img 
+            src={challenge.coverImage} 
+            alt={challenge.title}
+            className="w-full h-full object-contain"
+          />
+          <div className="absolute top-4 left-4 flex items-center">
+            <img 
+              src={challenge.brand.logo} 
+              alt={challenge.brand.name} 
+              className="w-10 h-10 rounded-full border-2 border-white bg-white shadow-md"
+            />
+            <span className="ml-2 font-medium text-white bg-gradient-to-r from-pink-500 to-blue-500 px-3 py-1 rounded-full text-sm flex items-center">
+              {challenge.brand.name}
+              {challenge.brand.verified && (
+                <svg className="w-4 h-4 inline ml-1 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82 1.89 3.2L12 21.04l3.4 1.47 1.89-3.2 3.61-.82-.34-3.7L23 12zm-12.91 4.72l-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z"/>
+                </svg>
+              )}
+            </span>
+          </div>
+          <div className="absolute top-4 right-4 bg-white/90 rounded-full px-3 py-1 text-sm font-medium flex items-center shadow-sm">
+            {challenge.type === 'photo' ? (
+              <>
+                <Image className="w-4 h-4 mr-1 text-pink-500" /> Foto
+              </>
+            ) : (
+              <>
+                <Video className="w-4 h-4 mr-1 text-blue-500" /> Vídeo
+              </>
+            )}
+          </div>
+        </div>
+        
+        <div className="p-5">
+          <h3 className="text-xl font-bold mb-2 text-gray-800">{challenge.title}</h3>
+          <p className="text-gray-600 mb-4">{challenge.description}</p>
+          
+          <div className="flex justify-between items-center mb-4">
+            <div className="bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium flex items-center">
+              <Award className="w-4 h-4 mr-1" /> {challenge.prize}
+            </div>
+            <div className="text-gray-500 text-sm flex items-center">
+              <Zap className="w-4 h-4 mr-1" /> {challenge.deadline}
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-center mb-4 text-sm">
+            <div className="text-gray-500 flex items-center">
+              <Users className="w-4 h-4 mr-1" /> {challenge.participants} participantes
+            </div>
+            <div className="flex space-x-3">
+              <span className="flex items-center text-gray-500">
+                <Heart className="w-4 h-4 mr-1 text-pink-500" /> {challenge.interaction.split(' ')[0]}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex space-x-3">
+            <button 
+              onClick={() => handleParticipateClick(challenge)}
+              className="bg-gradient-to-r from-pink-500 to-blue-500 text-white px-4 py-2 rounded-lg flex-1 hover:from-pink-600 hover:to-blue-600 transition flex items-center justify-center shadow-md hover:shadow-lg"
+            >
+              Participar Agora
+            </button>
+            <button className="border border-gray-200 bg-white text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center justify-center shadow-sm">
+              <Share2 className="w-5 h-5 mr-2" /> Compartilhar
+            </button>
+          </div>
+        </div>
       </div>
     );
-  }
+  };
 
-  if (!activeChallenge) {
+  const BrandShowcase = ({ brands }) => {
     return (
-      <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
-        <div className="mb-8">
-          <InviteFriendCard />
-        </div>
-        <div className="text-center p-6 max-w-md mx-auto bg-white rounded-xl shadow-md">
-          <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Nenhum Desafio Ativo</h2>
-          <p className="text-gray-600">Não há desafios ativos no momento.</p>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        {brands.map(brand => (
+          <div key={brand.id} className="border rounded-xl p-4 text-center hover:shadow-md transition cursor-pointer bg-white transform hover:-translate-y-1">
+            <div className="w-20 h-20 mx-auto mb-3 rounded-full overflow-hidden border-2 border-gray-200 bg-white p-2">
+              <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain" />
+            </div>
+            <h3 className="font-bold text-gray-800">{brand.name}</h3>
+            <p className="text-sm text-gray-500">{brand.challenges} desafios</p>
+          </div>
+        ))}
       </div>
     );
-  }
+  };
+
+const ParticipateModal = () => {
+  if (!showParticipateModal) return null;
 
   return (
-    <div className="max-w-6xl mx-auto bg-white min-h-screen">
-      <InviteFriendCard/>
-
-      {/* Cabeçalho */}
-      <header className="sticky top-0 z-10 bg-white bg-opacity-90 backdrop-blur-sm p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-800">Desafio Ativo</h1>
-          <div className="flex items-center space-x-4">
-            <button 
-              onClick={() => setShowRanking(!showRanking)}
-              className="flex items-center bg-indigo-100 px-3 py-1 rounded-full"
-            >
-              <BarChart2 className="w-4 h-4 text-indigo-600 mr-1" />
-              <span className="text-sm font-medium text-indigo-700">
-                {showRanking ? 'Ver Postagens' : 'Ver Ranking'}
-              </span>
-            </button>
-            <div className="flex items-center bg-indigo-100 px-3 py-1 rounded-full">
-              <Award className="w-4 h-4 text-indigo-600 mr-1" />
-              <span className="text-sm font-medium text-indigo-700">
-                Prêmio: {activeChallenge.prizeAmount} MZN
-              </span>
-            </div>
-          </div>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-xl flex flex-col">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="text-xl font-bold text-gray-800">Participar no desafio</h3>
+          <button 
+            onClick={() => setShowParticipateModal(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
-      </header>
-
-      {/* Card do Desafio Ativo */}
-      <div className="border-b border-gray-200 p-4 bg-indigo-50">
-        <div className="flex items-start space-x-3">
-          <div className="bg-indigo-100 p-2 rounded-full">
-            <Trophy className="w-6 h-6 text-indigo-600" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-gray-800">{activeChallenge.title}</h2>
-            <p className="text-gray-600 mt-1">{activeChallenge.description}</p>
-            
-            {activeChallenge.imageUrl && (
-              <div className="mt-3 rounded-lg overflow-hidden">
-                <img
-                  src={activeChallenge.imageUrl}
-                  alt={activeChallenge.title}
-                  className="w-full h-48 object-cover"
-                />
-              </div>
-            )}
-            
-            <div className="mt-3 flex items-center space-x-4">
-              <div className="bg-white px-3 py-1 rounded-lg shadow-sm">
-                <span className="font-mono font-bold text-indigo-600">
-                  {timeLeft.days > 0 ? `${timeLeft.days}d ` : ''}
-                  {formatTime(timeLeft.hours)}:{formatTime(timeLeft.minutes)}:{formatTime(timeLeft.seconds)}
-                </span>
-                <span className="text-xs text-gray-500 ml-1">restante</span>
-              </div>
-              <div className="text-sm text-gray-600">
-                Termina em: {activeChallenge.endTime.toLocaleDateString()} às {activeChallenge.endTime.toLocaleTimeString()}
+        
+        <div className="overflow-y-auto flex-1"> {/* Adicionei overflow-y-auto e flex-1 aqui */}
+          <div className="p-6">
+            <div className="flex items-center mb-6">
+              <img 
+                src={selectedChallenge.brand.logo} 
+                alt={selectedChallenge.brand.name} 
+                className="w-12 h-12 rounded-full border-2 border-white bg-white shadow-md mr-3"
+              />
+              <div>
+                <h4 className="font-bold text-gray-800">{selectedChallenge.brand.name}</h4>
+                <p className="text-sm text-gray-500">{selectedChallenge.title}</p>
               </div>
             </div>
             
-            {hasPosted ? (
-              <div className="mt-4 p-2 bg-green-100 text-green-800 rounded-lg text-center">
-                Você já publicou sua entrada para este desafio!
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-2 font-medium">
+                  {selectedChallenge.type === 'photo' ? 'Envie sua foto' : 'Envie seu vídeo'}
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition bg-gray-50">
+                  {submission.image ? (
+                    <div className="relative">
+                      {selectedChallenge.type === 'photo' ? (
+                        <img src={submission.image} alt="Preview" className="w-full h-48 object-contain mx-auto" />
+                      ) : (
+                        <video controls className="w-full h-48 object-contain mx-auto">
+                          <source src={submission.image} type="video/mp4" />
+                          Seu navegador não suporta vídeos.
+                        </video>
+                      )}
+                      <button 
+                        type="button"
+                        onClick={() => setSubmission({...submission, image: null})}
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100"
+                      >
+                        <X className="w-5 h-5 text-gray-600" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                        {selectedChallenge.type === 'photo' ? (
+                          <Image className="w-6 h-6 text-blue-500" />
+                        ) : (
+                          <Video className="w-6 h-6 text-blue-500" />
+                        )}
+                      </div>
+                      <p className="text-gray-500 mb-1">Clique para enviar ou arraste arquivos</p>
+                      <p className="text-sm text-gray-400">
+                        {selectedChallenge.type === 'photo' 
+                          ? "Formatos: JPG, PNG (até 10MB)" 
+                          : "Formatos: MP4 (15-60 segundos, até 50MB)"}
+                      </p>
+                      <input 
+                        type="file" 
+                        accept={selectedChallenge.type === 'photo' ? "image/*" : "video/*"}
+                        onChange={handleImageChange}
+                        className="hidden"
+                        id="media-upload"
+                      />
+                      <label 
+                        htmlFor="media-upload"
+                        className="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
+                      >
+                        Selecionar arquivo
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
-            ) : (
-              <button
-                onClick={() => setIsParticipating(true)}
-                className="mt-4 w-full py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
+              
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-2 font-medium">Legenda</label>
+                <textarea 
+                  value={submission.caption}
+                  onChange={(e) => setSubmission({...submission, caption: e.target.value})}
+                  placeholder={`Escreva uma legenda criativa para sua ${selectedChallenge.type === 'photo' ? 'foto' : 'vídeo'}...`}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="3"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Não esqueça de incluir a hashtag #{selectedChallenge.brand.name.replace(/\s+/g, '')} e outras relevantes
+                </p>
+              </div>
+              
+              <div className="mb-6">
+                <label className="flex items-start">
+                  <input 
+                    type="checkbox" 
+                    checked={submission.termsAccepted}
+                    onChange={(e) => setSubmission({...submission, termsAccepted: e.target.checked})}
+                    className="mt-1 mr-2"
+                    required
+                  />
+                  <span className="text-sm text-gray-600">
+                    Concordo com os termos do desafio e confirmo que este conteúdo é original e foi criado por mim.
+                  </span>
+                </label>
+              </div>
+              
+              <button 
+                type="submit"
+                disabled={!submission.image || !submission.termsAccepted}
+                className={`w-full py-3 rounded-lg font-bold flex items-center justify-center ${!submission.image || !submission.termsAccepted ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-pink-500 to-blue-500 text-white hover:from-pink-600 hover:to-blue-600 shadow-md'}`}
               >
-                Participar do Desafio
+                <Check className="w-5 h-5 mr-2" /> Enviar Participação
               </button>
-            )}
+            </form>
           </div>
         </div>
       </div>
-
-      {/* Formulário de Postagem */}
-      {isParticipating && !hasPosted && (
-        <div className="border-b border-gray-200 p-4">
-          <form onSubmit={handleSubmitPost}>
-            <div className="flex space-x-3">
-              <img
-                src={user?.photoURL || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100"}
-                alt="User"
-                className="w-12 h-12 rounded-full"
-              />
-              <div className="flex-1">
-                <textarea
-                  placeholder={`Compartilhe sua entrada para o desafio "${activeChallenge.title}"...`}
-                  value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
-                  className="w-full p-2 border-b border-gray-200 focus:outline-none focus:border-indigo-500 resize-none"
-                  rows={2}
-                  required
-                />
-                {previewImage && (
-                  <div className="mt-3 rounded-lg overflow-hidden">
-                    <img
-                      src={previewImage}
-                      alt="Preview"
-                      className="w-full h-48 object-cover"
-                    />
-                  </div>
-                )}
-                <div className="flex justify-between items-center mt-2">
-                  <div className="flex space-x-2 text-indigo-500">
-                    <label className="p-1 rounded-full hover:bg-indigo-50 cursor-pointer">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        onChange={handleFileChange} 
-                        accept="image/*" 
-                      />
-                    </label>
-                  </div>
-                  <button
-                    type="submit"
-                    className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-indigo-700"
-                  >
-                    Publicar Entrada
-                  </button>
-                </div>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Seção de Ranking */}
-      {showRanking && (
-        <div className="p-4 bg-white border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-            <Trophy className="w-5 h-5 text-yellow-500 mr-2" />
-            Ranking do Desafio
-          </h2>
-          
-          <div className="space-y-3">
-            {ranking.slice(0, 10).map((participant) => (
-              <div key={participant.userId} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                <div className="flex-shrink-0 mr-4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold 
-                    ${participant.position === 1 ? 'bg-yellow-500' : 
-                      participant.position === 2 ? 'bg-gray-400' : 
-                      participant.position === 3 ? 'bg-amber-600' : 'bg-indigo-500'}`}>
-                    {participant.position}
-                  </div>
-                </div>
-                <img
-                  src={participant.avatar || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100"}
-                  alt={participant.username}
-                  className="w-10 h-10 rounded-full mr-3"
-                />
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-800">{participant.username}</h3>
-                  <p className="text-sm text-gray-600">
-                    {participant.totalLikes} curtidas • {participant.postsCount} {participant.postsCount === 1 ? 'post' : 'posts'}
-                  </p>
-                </div>
-                {participant.bestPost && (
-                  <button 
-                    onClick={() => handleLikePost(participant.bestPost.id, participant.bestPost.likes)}
-                    className={`flex items-center space-x-1 px-2 py-1 rounded-full ${userLikes[participant.bestPost.id] ? 'text-red-500 bg-red-50' : 'text-gray-500 hover:text-red-500'}`}
-                  >
-                    <Heart className="w-4 h-4" />
-                    <span>{participant.bestPost.likes || 0}</span>
-                  </button>
-                )}
-              </div>
-            ))}
-            
-            {ranking.length === 0 && (
-              <div className="text-center py-4 text-gray-500">
-                Ainda não há participantes no ranking
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Seção de Postagens */}
-      {!showRanking && (
-        <>
-          {/* Controles de Visualização */}
-          <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="text-lg font-bold text-gray-800">
-              {challengePosts.length} {challengePosts.length === 1 ? 'Entrada' : 'Entradas'}
-            </h2>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500'}`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500'}`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Visualização em Grelha */}
-          {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-              {challengePosts.map(post => (
-                <div key={post.id} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                  {post.image && (
-                    <div className="relative">
-                      <img
-                        src={post.image}
-                        alt="Post"
-                        className="w-full h-48 object-cover"
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                        <div className="flex items-center">
-                          <img
-                            src={post.avatar || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100"}
-                            alt={post.username}
-                            className="w-8 h-8 rounded-full mr-2"
-                          />
-                          <span className="text-white font-medium">{post.username}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <div className="p-3">
-                    <p className="text-gray-800 line-clamp-2">{post.content}</p>
-                    <div className="flex justify-between items-center mt-3">
-                      <button 
-                        onClick={() => handleLikePost(post.id, post.likes)}
-                        className={`flex items-center ${userLikes[post.id] ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
-                      >
-                        <Heart className="w-5 h-5 mr-1" fill={userLikes[post.id] ? 'currentColor' : 'none'} />
-                        <span>{post.likes || 0}</span>
-                      </button>
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleSharePost(post)}
-                          className="text-gray-500 hover:text-blue-500"
-                        >
-                          <Share2 className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleReportPost(post.id)}
-                          className="text-gray-500 hover:text-red-500"
-                        >
-                          <Flag className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Visualização em Lista */}
-          {viewMode === 'list' && (
-            <div className="divide-y divide-gray-200">
-              {challengePosts.map(post => (
-                <div key={post.id} className="p-4 hover:bg-gray-50">
-                  <div className="flex space-x-3">
-                    <img
-                      src={post.avatar || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100"}
-                      alt={post.username}
-                      className="w-12 h-12 rounded-full"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-1">
-                        <span className="font-semibold text-gray-900">{post.username}</span>
-                        <span className="text-gray-500">{post.handle}</span>
-                        <span className="text-gray-500">·</span>
-                        <span className="text-gray-500">
-                          {new Date(post.timePosted).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-gray-800 mt-1 mb-3">{post.content}</p>
-                      {post.image && (
-                        <div className="rounded-xl border border-gray-200 overflow-hidden mb-3">
-                          <img
-                            src={post.image}
-                            alt="Post"
-                            className="w-full h-64 object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center">
-                        <div className="flex space-x-4">
-                          <button 
-                            onClick={() => handleLikePost(post.id, post.likes)}
-                            className={`flex items-center space-x-1 ${userLikes[post.id] ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
-                          >
-                            <Heart className="w-5 h-5" fill={userLikes[post.id] ? 'currentColor' : 'none'} />
-                            <span>{post.likes || 0}</span>
-                          </button>
-                          <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-500">
-                            <MessageSquare className="w-5 h-5" />
-                            <span>{post.comments || 0}</span>
-                          </button>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button 
-                            onClick={() => handleSharePost(post)}
-                            className="text-gray-500 hover:text-blue-500"
-                          >
-                            <Share2 className="w-5 h-5" />
-                          </button>
-                          <button 
-                            onClick={() => handleReportPost(post.id)}
-                            className="text-gray-500 hover:text-red-500"
-                          >
-                            <Flag className="w-5 h-5" />
-                          </button>
-                          <button className="text-gray-500 hover:text-gray-700">
-                            <MoreHorizontal className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Mensagem quando não há postagens */}
-          {challengePosts.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
-              Nenhuma entrada publicada ainda para este desafio. Seja o primeiro a participar!
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
-}
+};
+
+  return (
+    <div className="p-4 bg-gray-50">
+      <section className="relative h-96 rounded-2xl overflow-hidden mb-10 shadow-lg">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-90"></div>
+        <div className="absolute inset-0 flex items-center px-10 z-10">
+          <div className="max-w-xl">
+            <h1 className="text-4xl font-bold text-white mb-4">
+              Desafios que conectam <span className="text-yellow-300">você</span> às melhores marcas
+            </h1>
+            <p className="text-xl text-white/90 mb-6">
+              Participe, crie conteúdo autêntico e ganhe prêmios incríveis!
+            </p>
+            <button className="bg-gradient-to-r from-yellow-400 to-yellow-300 text-blue-900 px-6 py-3 rounded-full font-bold flex items-center hover:from-yellow-300 hover:to-yellow-200 transition transform hover:scale-105 shadow-lg">
+              <Zap className="mr-2" /> Ver Desafios em Destaque
+            </button>
+          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/30 to-transparent"></div>
+      </section>
+
+      <div className="flex border-b mb-8 bg-white rounded-t-lg shadow-sm">
+        <button 
+          onClick={() => setActiveTab('destaques')}
+          className={`px-6 py-3  flex items-center ${activeTab === 'destaques' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <Sparkles className="mr-2" /> Desafios
+        </button>
+        <button 
+          onClick={() => setActiveTab('marcas')}
+          className={`px-6 py-3  flex items-center ${activeTab === 'marcas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <TrendingUp className="mr-2" /> Marcas
+        </button>
+      </div>
+
+      <div className="mb-12">
+        {activeTab === 'destaques' && (
+          <div className="grid md:grid-cols-2 gap-6">
+            {featuredChallenges.map(challenge => (
+              <ChallengeCard key={challenge.id} challenge={challenge} />
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'marcas' && (
+          <BrandShowcase brands={trendingBrands} />
+        )}
+      </div>
+
+      <section className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-8 mb-10 text-center shadow-inner">
+        <h2 className="text-2xl font-bold mb-2 text-gray-800">Sua marca aqui!</h2>
+        <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+          Conecte-se com milhares de criadores de conteúdo e aumente seu engajamento com desafios patrocinados.
+        </p>
+        <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-full font-bold hover:shadow-lg transition flex items-center mx-auto">
+          Saiba mais para marcas <ChevronRight className="inline ml-2" />
+        </button>
+      </section>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 text-center">
+        <div className="p-6 bg-white rounded-xl shadow-sm">
+          <div className="text-4xl font-bold text-purple-600 mb-2">+200</div>
+          <div className="text-gray-500 font-medium">Desafios ativos</div>
+        </div>
+        <div className="p-6 bg-white rounded-xl shadow-sm">
+          <div className="text-4xl font-bold text-blue-600 mb-2">+50K</div>
+          <div className="text-gray-500 font-medium">Criadores</div>
+        </div>
+        <div className="p-6 bg-white rounded-xl shadow-sm">
+          <div className="text-4xl font-bold text-pink-600 mb-2">+100</div>
+          <div className="text-gray-500 font-medium">Marcas parceiras</div>
+        </div>
+      </div>
+      
+      <ParticipateModal />
+    </div>
+  );
+};
+
+export default HomePage;

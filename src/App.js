@@ -1,30 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from './fb';
+import { ref, get, onValue, set } from 'firebase/database';
+
+// Components
 import Auth from './components/Auth';
-import Campaign from './components/Campaign';
-import Header from './components/Header';
-import { ThemeProvider } from './context/ThemeContext';
-import Profile from './components/Profile';
-import { auth, db } from './fb'; 
-import BottomMenu from './components/Bottom';
-import Rewards from './components/Rewards';
-import PostDetails from './components/PostDetails';
-import CampaignDetails from './components/Campaign';
-import NotAllowed from './components/NotAllowed';
-import ExploreChallenges from './components/ExploreChallenges';
-import { ref, get } from 'firebase/database';
-import CreateChallenge from './components/CreateChallenge';
 import HomePage from './components/Home';
-import InvitedFriends from './components/InvitedFriends';
+import Profile from './components/Profile';
+import Rewards from './components/Rewards';
+import NotAllowed from './components/NotAllowed';
+import CreateChallenge from './components/CreateChallenge';
+import Header from './components/Header';
+import BottomMenu from './components/Bottom';
+import CompleteProfileModal from './components/CompleteProfileModal';
+import logo from './img/logo.png';
 
 function App() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCompleteProfile, setShowCompleteProfile] = useState(false);
 
+  // Check auth state and user profile completion
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        try {
+          const userRef = ref(db, `users/${currentUser.uid}`);
+          const snapshot = await get(userRef);
+          
+          if (snapshot.exists()) {
+            const userData = snapshot.val();
+            setUserData(userData);
+            
+            // Show modal if profile is not marked as complete
+            setShowCompleteProfile(userData.isComplete !== true);
+          } else {
+            // New user - show complete profile modal
+            setShowCompleteProfile(true);
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setShowCompleteProfile(false);
+        }
+      } else {
+        // No user logged in
+        setUserData(null);
+        setShowCompleteProfile(false);
+      }
+      
       setUser(currentUser);
       setLoading(false);
     });
@@ -32,73 +57,77 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // Real-time user data updates
   useEffect(() => {
-    if (user) {
-      const fetchUserData = async () => {
-        try {
-          const userRef = ref(db, 'users/' + user.uid);
-          const snapshot = await get(userRef);
+    if (!user) return;
 
-          if (snapshot.exists()) {
-            setUserData(snapshot.val());
-          } else {
-            console.log('Usuário não encontrado no Realtime Database');
-          }
-        } catch (error) {
-          console.error('Erro ao buscar dados do usuário:', error);
-        }
-      };
+    const userRef = ref(db, `users/${user.uid}`);
+    const unsubscribe = onValue(userRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        setUserData(userData);
+        
+        // Update modal visibility based on isComplete
+        setShowCompleteProfile(userData.isComplete !== true);
+      }
+    });
 
-      fetchUserData();
-    }
+    return () => unsubscribe();
   }, [user]);
 
-  useEffect(() => {
-    const fetchChallenges = async () => {
-      try {
-        const challengesRef = ref(db, 'challenges');
-        const snapshot = await get(challengesRef);
+  const handleProfileComplete = async (profileData) => {
+    try {
+      await set(ref(db, `users/${user.uid}`), {
+        uid: user.uid,
+        email: user.email,
+        ...profileData,
+        isComplete: true,  // Mark profile as complete
+        joinDate: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        points: 0,
+        level: 1,
+        ageVerified: profileData.isOver13
+      });
+      setShowCompleteProfile(false);
+    } catch (error) {
+      console.error('Error completing profile:', error);
+    }
+  };
 
-        if (snapshot.exists()) {
-          const challengesData = snapshot.val();
-          const formattedChallenges = Object.entries(challengesData).map(([id, challenge]) => ({
-            id,
-            ...challenge,
-          }));
+  // Route protection components
+  const ProtectedRoute = ({ children, requireAgeVerification = false }) => {
+    const location = useLocation();
 
-          setChallenges(formattedChallenges);
-        } else {
-          console.log('Nenhum desafio encontrado.');
-        }
-      } catch (error) {
-        console.error('Erro ao buscar desafios:', error);
-      }
-    };
-
-    fetchChallenges();
-  }, []);
-
-  if (loading) {
-    return <div>Carregando...</div>;
-  }
-
-  // ProtectedRoute component to handle authentication
-  const ProtectedRoute = ({ children }) => {
     if (!user) {
-      return <Navigate to="/auth" replace />;
+      return <Navigate to="/auth" state={{ from: location }} replace />;
+    }
+
+    if (requireAgeVerification && (!userData || !userData.ageVerified)) {
+      return <Navigate to="/not-allowed" replace />;
+    }
+
+    return children;
+  };
+
+  const AuthRoute = ({ children }) => {
+    if (user) {
+      return <Navigate to="/" replace />;
     }
     return children;
   };
 
-  // Layout component to conditionally render header and footer
+  // App layout wrapper
   const Layout = ({ children }) => {
     const location = useLocation();
     const isAuthPage = location.pathname === '/auth';
 
     return (
       <>
-        {!isAuthPage && <Header user={user} />}
-        <div className="App flex flex-col min-h-screen" style={{ marginBottom: !isAuthPage ? '5%' : '0' }}>
+        {!isAuthPage && <Header user={user} userData={userData} />}
+        <div className="App" style={{ 
+          paddingBottom: !isAuthPage && user ? '80px' : '0',
+          minHeight: '100vh'
+        }}>
           {children}
         </div>
         {!isAuthPage && user && <BottomMenu />}
@@ -106,97 +135,126 @@ function App() {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="relative flex flex-col items-center justify-center h-screen bg-gradient-to-br from-[#0f0c29] to-[#24243e] overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(15)].map((_, i) => (
+            <div 
+              key={i}
+              className="absolute rounded-full bg-white bg-opacity-10"
+              style={{
+                width: `${Math.random() * 8 + 4}px`,
+                height: `${Math.random() * 8 + 4}px`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `float ${Math.random() * 15 + 10}s linear infinite`,
+                animationDelay: `${Math.random() * 5}s`
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Loading content */}
+        <div className="relative z-10 text-center px-4 max-w-md">
+          {/* Spinner */}
+          <div className="mx-auto mb-8 w-20 h-20 border-4 border-white border-opacity-20 border-t-cyan-400 rounded-full animate-spin">
+          </div>
+          
+          {/* Loading text */}
+          <h1 className="text-3xl font-bold text-white mb-4">
+            <span className="animate-pulse">Loading</span>
+          </h1>
+          
+          {/* Progress bar */}
+          <div className="w-full bg-white bg-opacity-10 h-1.5 rounded-full overflow-hidden mb-6">
+            <div 
+              className="bg-cyan-400 h-full rounded-full animate-progress"
+              style={{
+                width: '65%',
+                animation: 'progress 1.5s ease-in-out infinite alternate'
+              }}
+            />
+          </div>
+          
+          {/* Status message */}
+          <p className="text-white text-opacity-70 text-sm">
+            Preparing your experience...
+          </p>
+        </div>
+
+        {/* Animation styles */}
+        <style jsx>{`
+          @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.6; }
+            50% { transform: translateY(-15px) translateX(5px); opacity: 1; }
+          }
+          @keyframes progress {
+            0% { width: 30%; }
+            100% { width: 80%; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
-    <ThemeProvider>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
-            <Route 
-              path="/perfil" 
-              element={
-                <ProtectedRoute>
-                  <Profile user={userData} />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/invited-friends" 
-              element={
-                <ProtectedRoute>
-                  <InvitedFriends user={userData} />
-                </ProtectedRoute>
-              } 
-            />
-             
-            <Route 
-              path="/camp" 
-              element={
-                <ProtectedRoute>
-                  <NotAllowed />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/rewards" 
-              element={
-                <ProtectedRoute>
-                  <Rewards user={user} />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/campaign" 
-              element={
-                <ProtectedRoute>
-                  <Campaign />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/cc" 
-              element={
-                <ProtectedRoute>
-                  <CreateChallenge />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/explore" 
-              element={
-                <ProtectedRoute>
-                  <ExploreChallenges challenges={challenges} />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/campaign/:id" 
-              element={
-                <ProtectedRoute>
-                  <CampaignDetails user={userData} />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/campaign/:campaignId/post/:postId" 
-              element={
-                <ProtectedRoute>
-                  <PostDetails user={user} />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/" 
-              element={
-                <ProtectedRoute>
-                  <HomePage />
-                </ProtectedRoute>
-              } 
-            />
-          </Routes>
-        </Layout>
-      </Router>
-    </ThemeProvider>
+    <Router>
+      {/* Show complete profile modal if needed */}
+      {showCompleteProfile && user && (
+        <CompleteProfileModal 
+          user={user}
+          onComplete={handleProfileComplete}
+          onCancel={() => {
+            setShowCompleteProfile(false);
+            auth.signOut();
+          }}
+        />
+      )}
+      
+      {/* Main app layout */}
+      <Layout>
+        <Routes>
+          {/* Authentication */}
+          <Route path="/auth" element={
+            <AuthRoute>
+              <Auth />
+            </AuthRoute>
+          } />
+          
+          {/* Protected Routes */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <HomePage user={user} userData={userData} />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile user={user} userData={userData} />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/rewards" element={
+            <ProtectedRoute requireAgeVerification>
+              <Rewards user={user} userData={userData} />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/create-challenge" element={
+            <ProtectedRoute requireAgeVerification>
+              <CreateChallenge user={user} />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/not-allowed" element={<NotAllowed />} />
+          
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
+    </Router>
   );
 }
 
