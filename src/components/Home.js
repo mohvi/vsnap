@@ -393,22 +393,6 @@ const ParticipateModal = () => {
           Saiba mais para marcas <ChevronRight className="inline ml-2" />
         </button>
       </section>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 text-center">
-        <div className="p-6 bg-white rounded-xl shadow-sm">
-          <div className="text-4xl font-bold text-purple-600 mb-2">+200</div>
-          <div className="text-gray-500 font-medium">Desafios ativos</div>
-        </div>
-        <div className="p-6 bg-white rounded-xl shadow-sm">
-          <div className="text-4xl font-bold text-blue-600 mb-2">+50K</div>
-          <div className="text-gray-500 font-medium">Criadores</div>
-        </div>
-        <div className="p-6 bg-white rounded-xl shadow-sm">
-          <div className="text-4xl font-bold text-pink-600 mb-2">+100</div>
-          <div className="text-gray-500 font-medium">Marcas parceiras</div>
-        </div>
-      </div>
-      
       <ParticipateModal />
     </div>
   );

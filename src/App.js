@@ -10,11 +10,11 @@ import HomePage from './components/Home';
 import Profile from './components/Profile';
 import Rewards from './components/Rewards';
 import NotAllowed from './components/NotAllowed';
-import CreateChallenge from './components/CreateChallenge';
 import Header from './components/Header';
 import BottomMenu from './components/Bottom';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import logo from './img/logo.png';
+import CreateChallengeForm from './components/CreateChallengeForm';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -242,14 +242,11 @@ function App() {
             </ProtectedRoute>
           } />
           
-          <Route path="/create-challenge" element={
-            <ProtectedRoute requireAgeVerification>
-              <CreateChallenge user={user} />
-            </ProtectedRoute>
-          } />
-          
           <Route path="/not-allowed" element={<NotAllowed />} />
           
+          <Route path="/cc" element={<CreateChallengeForm />} />
+
+
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
