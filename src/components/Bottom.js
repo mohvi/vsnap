@@ -8,6 +8,8 @@ import {
   FaUser,
   FaCompass 
 } from 'react-icons/fa';
+import { Users } from 'lucide-react';
+import { Explore } from '@mui/icons-material';
 
 function BottomMenu() {
   const location = useLocation();
@@ -15,6 +17,7 @@ function BottomMenu() {
   const menuItems = [
     { path: '/', icon: <FaHome size={20} />, label: 'Início' },
     { path: '/rewards', icon: <FaGift size={20} />, label: 'Prêmios' },
+    { path: '/explore', icon: <Explore size={20} />, label: 'Explore' },
     { path: '/profile', icon: <FaUser size={20} />, label: 'Perfil' },
   ];
 

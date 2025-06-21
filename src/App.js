@@ -15,6 +15,7 @@ import BottomMenu from './components/Bottom';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import logo from './img/logo.png';
 import CreateChallengeForm from './components/CreateChallengeForm';
+import ParticipationsPage from './components/ParticipationsPage';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -245,7 +246,8 @@ function App() {
           <Route path="/not-allowed" element={<NotAllowed />} />
           
           <Route path="/cc" element={<CreateChallengeForm />} />
-
+          <Route path="/explore" element={<ParticipationsPage />} />
+          <Route path="/challenges/:challengeId/participations" element={<ParticipationsPage />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
