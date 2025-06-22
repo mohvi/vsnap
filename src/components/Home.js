@@ -7,7 +7,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { Link } from 'react-router-dom';
 import InviteFriendCard from './InviteFriendCard';
 
-const HomePage = () => {
+const HomePage = ({userData}) => {
   const [activeTab, setActiveTab] = useState('destaques');
   const [showParticipateModal, setShowParticipateModal] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
@@ -422,7 +422,7 @@ const HomePage = () => {
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
-        <InviteFriendCard/>
+        <InviteFriendCard userData={userData}/>
       <div className="flex border-b mb-8 bg-white rounded-t-lg shadow-sm">
         <button 
           onClick={() => setActiveTab('destaques')}

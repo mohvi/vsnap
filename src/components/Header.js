@@ -16,6 +16,9 @@ const Header = () => {
     const [amount, setAmount] = useState('');
     const [operator, setOperator] = useState('Mpesa');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const MIN_WITHDRAWAL = 100; // Minimum withdrawal amount in coins (100 MT)
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -35,7 +38,7 @@ const Header = () => {
             const snapshot = await get(dbRef);
             if (snapshot.exists()) {
                 const userData = snapshot.val();
-                setBalance(userData.coinBalance || 0);
+                setBalance(userData.coins || 0); // Changed from coinBalance to coins to match your InviteFriendCard
             }
         } catch (error) {
             console.error("Erro ao buscar saldo do usuário:", error);
@@ -43,13 +46,15 @@ const Header = () => {
     };
 
     const handleWithdraw = async () => {
-        if (amount < 50) {
-            alert("O valor mínimo para levantamento é de 50 MT.");
+        setError(''); // Clear previous errors
+        
+        if (amount < MIN_WITHDRAWAL) {
+            setError(`O valor mínimo para levantamento é de ${MIN_WITHDRAWAL} MT.`);
             return;
         }
         
         if (amount > balance) {
-            alert("Saldo insuficiente");
+            setError("Saldo insuficiente");
             return;
         }
 
@@ -69,7 +74,7 @@ const Header = () => {
             await set(withdrawalRequestRef, withdrawalData);
 
             const updatedBalance = balance - amount;
-            await update(ref(db, `users/${user.uid}`), { balance: updatedBalance });
+            await update(ref(db, `users/${user.uid}`), { coins: updatedBalance }); // Changed to coins
             setBalance(updatedBalance);
 
             const response = await axios.post('https://mozpayment.online/api/1.1/wf/saque', {
@@ -87,11 +92,12 @@ const Header = () => {
             setPhoneNumber('');
         } catch (error) {
             console.error("Erro ao requisitar o levantamento:", error);
-            alert("Ocorreu um erro ao requisitar o levantamento. Tente novamente.");
+            setError("Ocorreu um erro ao requisitar o levantamento. Tente novamente.");
         } finally {
             setIsLoading(false);
         }
     };
+
     return (
         <>
             <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
@@ -101,46 +107,32 @@ const Header = () => {
                         <h1 className="text-xl font-bold text-indigo-600">Votasnap</h1>
                     </Link>
 
-
                     {/* User Actions */}
                     <div className="flex items-center space-x-4">
                         <button 
-                            onClick={() => setShowModal(true)}
-                            className="flex items-center space-x-1 bg-indigo-100 hover:bg-indigo-200 px-3 py-2 rounded-full transition"
+                            onClick={() => {
+                                if (!user) {
+                                    return; // Or navigate to auth if you prefer
+                                }
+                                if (balance >= MIN_WITHDRAWAL) {
+                                    setShowModal(true);
+                                } else {
+                                    alert(`Você precisa de pelo menos ${MIN_WITHDRAWAL} moedas (${MIN_WITHDRAWAL} MT) para fazer um levantamento.`);
+                                }
+                            }}
+                            className={`flex items-center space-x-1 px-3 py-2 rounded-full transition ${
+                                balance >= MIN_WITHDRAWAL 
+                                    ? "bg-indigo-100 hover:bg-indigo-200" 
+                                    : "bg-gray-100 cursor-not-allowed"
+                            }`}
+                            disabled={balance < MIN_WITHDRAWAL}
                         >
                             <FaMoneyBillWave className="text-indigo-600" />
                             <span className="font-medium text-indigo-700">{balance} MT</span>
                         </button>
-
-                        {user ? (
-                            <div className="flex items-center space-x-4">
-                                <button className="text-gray-500 hover:text-indigo-600">
-                                    <FaBell className="w-5 h-5" />
-                                </button>
-                                <Link to="/perfil" className="flex items-center">
-                                    {user.photoURL ? (
-                                        <img 
-                                            src={user.photoURL} 
-                                            alt="Avatar" 
-                                            className="w-8 h-8 rounded-full border-2 border-indigo-100"
-                                        />
-                                    ) : (
-                                        <FaUserCircle className="w-8 h-8 text-gray-400" />
-                                    )}
-                                </Link>
-                            </div>
-                        ) : (
-                            <Link 
-                                to="/auth" 
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full text-sm font-medium transition"
-                            >
-                                Entrar
-                            </Link>
-                        )}
                     </div>
                 </div>
             </header>
-
 
             {/* Withdrawal Modal */}
             {showModal && (
@@ -165,12 +157,16 @@ const Header = () => {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Valor (MT)</label>
                                     <input 
                                         type="number"
-                                        placeholder="50"
+                                        placeholder={`${MIN_WITHDRAWAL}`}
                                         value={amount}
                                         onChange={(e) => setAmount(e.target.value)}
+                                        min={MIN_WITHDRAWAL}
+                                        max={balance}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">Valor mínimo: 50 MT</p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Valor mínimo: {MIN_WITHDRAWAL} MT | Saldo disponível: {balance} MT
+                                    </p>
                                 </div>
                                 
                                 <div>
@@ -178,17 +174,25 @@ const Header = () => {
                                     <select 
                                         value={operator}
                                         onChange={(e) => setOperator(e.target.value)}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    >
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                                         <option value="Mpesa">Mpesa</option>
                                         <option value="Emola">Emola</option>
                                     </select>
                                 </div>
+
+                                {error && (
+                                    <div className="text-red-500 text-sm py-2 px-3 bg-red-50 rounded-lg">
+                                        {error}
+                                    </div>
+                                )}
                             </div>
                             
                             <div className="mt-6 flex space-x-3">
                                 <button 
-                                    onClick={() => setShowModal(false)}
+                                    onClick={() => {
+                                        setShowModal(false);
+                                        setError('');
+                                    }}
                                     className="flex-1 py-2 px-4 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition"
                                 >
                                     Cancelar

@@ -19,8 +19,37 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
   const [usernameStatus, setUsernameStatus] = useState(null);
   const [touchedFields, setTouchedFields] = useState({});
   const [existingUsernames, setExistingUsernames] = useState([]);
+  const [initialUserData, setInitialUserData] = useState(null);
 
   useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userRef = ref(db, `users/${user.uid}`);
+        const snapshot = await get(userRef);
+        
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+          setInitialUserData(userData);
+          
+          // Preenche o formulário com os dados existentes
+          setFormData(prev => ({
+            ...prev,
+            username: userData.username || '',
+            isOver13: userData.isOver13 || false,
+            province: userData.province || '',
+            city: userData.city || ''
+          }));
+          
+          // Se já tiver username, marca como disponível
+          if (userData.username) {
+            setUsernameStatus('available');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+    
     const fetchExistingUsernames = async () => {
       try {
         const usersRef = ref(db, 'users');
@@ -38,8 +67,10 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
         setError('Erro ao carregar usuários existentes');
       }
     };
+    
+    fetchUserData();
     fetchExistingUsernames();
-  }, []);
+  }, [user.uid]);
 
   useEffect(() => {
     if (formData.province) {
@@ -89,7 +120,8 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
     
     try {
       const usernameLower = formData.username.toLowerCase();
-      const isAvailable = !existingUsernames.includes(usernameLower);
+      const isAvailable = !existingUsernames.includes(usernameLower) || 
+                         (initialUserData?.username && initialUserData.username.toLowerCase() === usernameLower);
       
       const emailPrefix = user?.email?.split('@')[0]?.toLowerCase();
       if (emailPrefix && usernameLower === emailPrefix) {
@@ -133,18 +165,23 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
       
       // Final verification before submission
       const usernameLower = formData.username.toLowerCase();
-      if (existingUsernames.includes(usernameLower)) {
+      if (existingUsernames.includes(usernameLower) && 
+          (!initialUserData?.username || initialUserData.username.toLowerCase() !== usernameLower)) {
         setError('Este nome de usuário já está em uso');
         setUsernameStatus('taken');
         return;
       }
 
-      await onComplete({
-        ...formData,
-        fullName: `${formData.firstName} ${formData.lastName || ''}`.trim()
-      });
+      // Mantém os dados existentes e atualiza apenas os campos do formulário
+      const updatedData = {
+        ...initialUserData, // Mantém todos os dados existentes
+        ...formData,       // Atualiza com os novos dados do formulário
+        isComplete: true   // Garante que está marcado como completo
+      };
+
+      await onComplete(updatedData);
       
-      setSuccess('Perfil cadastrado com sucesso!');
+      setSuccess('Perfil atualizado com sucesso!');
     } catch (err) {
       console.error('Profile completion error:', err);
       setError(err.message || 'Ocorreu um erro ao salvar seu perfil. Tente novamente.');
@@ -180,7 +217,9 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
 
         <div className="p-6 md:p-8">
           <div className="mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold text-purple-600 mb-1">Complete seu perfil</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-purple-600 mb-1">
+              {initialUserData ? 'Atualize seu perfil' : 'Complete seu perfil'}
+            </h2>
             <p className="text-gray-600">Precisamos de algumas informações para personalizar sua experiência</p>
           </div>
 
@@ -301,7 +340,7 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
                   Salvando...
                 </>
               ) : (
-                'Completar Cadastro'
+                initialUserData ? 'Atualizar Perfil' : 'Completar Cadastro'
               )}
             </button>
           </form>
