@@ -21,6 +21,8 @@ const HomePage = ({userData}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [currentChallenge, setCurrentChallenge] = useState(null);
 
   // Verificar estado de autenticação
   useEffect(() => {
@@ -69,6 +71,23 @@ const HomePage = ({userData}) => {
     return () => unsubscribe();
   }, []);
 
+  const handleShareChallenge = (challenge) => {
+    const shareData = {
+      title: challenge.title,
+      text: challenge.description,
+      url: `https://votasnap.vercel.app/challenges/${challenge.id}`,
+    };
+
+    if (navigator.share) {
+      navigator.share(shareData)
+        .then(() => console.log('Compartilhado com sucesso'))
+        .catch((error) => console.log('Erro ao compartilhar:', error));
+    } else {
+      setShowShareModal(true);
+      setCurrentChallenge(challenge);
+    }
+  };
+
   const handleParticipateClick = (challenge) => {
     if (!user) {
       alert('Você precisa fazer login para participar de desafios!');
@@ -110,11 +129,9 @@ const HomePage = ({userData}) => {
         brandLogo: selectedChallenge.brand.logo
       };
 
-      // Salvar participação
       const participationRef = ref(db, `participations/${participationId}`);
       await set(participationRef, participationData);
 
-      // Atualizar contador de participantes
       const challengeRef = ref(db, `challenges/${challengeId}`);
       const challengeSnapshot = await get(challengeRef);
       if (challengeSnapshot.exists()) {
@@ -124,7 +141,6 @@ const HomePage = ({userData}) => {
         });
       }
 
-      // Adicionar à lista de participações do usuário
       const userParticipationsRef = ref(db, `users/${userId}/participations/${participationId}`);
       await set(userParticipationsRef, {
         challengeId: challengeId,
@@ -150,18 +166,15 @@ const HomePage = ({userData}) => {
     const fileRef = storageRef(storage, `${fileType}/${user.uid}/${Date.now()}_${file.name}`);
     
     try {
-      // Verificar tamanho do arquivo
       const maxSize = selectedChallenge.type === 'photo' ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
       if (file.size > maxSize) {
         alert(`Arquivo muito grande. Tamanho máximo: ${selectedChallenge.type === 'photo' ? '10MB' : '50MB'}`);
         return;
       }
 
-      // Mostrar preview
       const previewUrl = URL.createObjectURL(file);
       setSubmission({ ...submission, image: previewUrl, uploadProgress: 0 });
       
-      // Fazer upload
       const uploadTask = uploadBytesResumable(fileRef, file);
       
       uploadTask.on('state_changed',
@@ -193,86 +206,88 @@ const HomePage = ({userData}) => {
 
   const ChallengeCard = ({ challenge }) => {
     return (
-  <div className="border rounded-2xl overflow-hidden hover:shadow-lg transition duration-300 bg-white">
-  <div className="relative h-48 bg-gradient-to-br from-pink-100 to-blue-100">
-    <img 
-      src={challenge.coverImage} 
-      alt={challenge.title}
-      className="w-full h-full object-cover"
-    />
-    <div className="absolute top-4 left-4 flex items-center">
-      <img 
-        src={challenge.brand.logo} 
-        alt={challenge.brand.name} 
-        className="w-10 h-10 rounded-full border-2 border-white bg-white shadow-md"
-      />
-      <span className="ml-2 font-medium text-white bg-gradient-to-r from-pink-500 to-blue-500 px-3 py-1 rounded-full text-sm flex items-center">
-        {challenge.brand.name}
-        {challenge.brand.verified && (
-          <svg className="w-4 h-4 inline ml-1 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82 1.89 3.2L12 21.04l3.4 1.47 1.89-3.2 3.61-.82-.34-3.7L23 12zm-12.91 4.72l-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z"/>
-          </svg>
-        )}
-      </span>
-    </div>
-    <div className="absolute top-4 right-4 bg-white/90 rounded-full px-3 py-1 text-sm font-medium flex items-center shadow-sm">
-      {challenge.type === 'photo' ? (
-        <>
-          <Image className="w-4 h-4 mr-1 text-pink-500" /> Foto
-        </>
-      ) : (
-        <>
-          <Video className="w-4 h-4 mr-1 text-blue-500" /> Vídeo
-        </>
-      )}
-    </div>
-  </div>
-  
-  <div className="p-5">
-    <h3 className="text-xl font-bold mb-2 text-gray-800">{challenge.title}</h3>
-    <p className="text-gray-600 mb-4">{challenge.description}</p>
-    
-    <div className="flex justify-between items-center mb-4">
-      <div className="bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium flex items-center">
-        <Award className="w-4 h-4 mr-1" /> {challenge.prize}
-      </div>
-      <div className="text-gray-500 text-sm flex items-center">
-        <Zap className="w-4 h-4 mr-1" /> {challenge.deadlineDays} dias restantes
-      </div>
-    </div>
-    
-    <div className="flex justify-between items-center mb-4 text-sm">
-      <div className="text-gray-500 flex items-center">
-        <Users className="w-4 h-4 mr-1" /> {challenge.participants} participantes
-      </div>
-      <div className="flex space-x-3">
-        <span className="flex items-center text-gray-500">
-          <Heart className="w-4 h-4 mr-1 text-pink-500" /> {challenge.interaction.split(' ')[0]}
-        </span>
-      </div>
-    </div>
-    
-    <div className="flex space-x-3 mb-3">
-      <button 
-        onClick={() => handleParticipateClick(challenge)}
-        className="bg-gradient-to-r from-pink-500 to-blue-500 text-white px-4 py-2 rounded-lg flex-1 hover:from-pink-600 hover:to-blue-600 transition flex items-center justify-center shadow-md hover:shadow-lg"
-      >
-        Participar Agora
-      </button>
-      <button className="border border-gray-200 bg-white text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center justify-center shadow-sm">
-        <Share2 className="w-5 h-5 mr-2" /> Compartilhar
-      </button>
-    </div>
+      <div className="border rounded-2xl overflow-hidden hover:shadow-lg transition duration-300 bg-white">
+        <div className="relative h-48 bg-gradient-to-br from-pink-100 to-blue-100">
+          <img 
+            src={challenge.coverImage} 
+            alt={challenge.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute top-4 left-4 flex items-center">
+            <img 
+              src={challenge.brand.logo} 
+              alt={challenge.brand.name} 
+              className="w-10 h-10 rounded-full border-2 border-white bg-white shadow-md"
+            />
+            <span className="ml-2 font-medium text-white bg-gradient-to-r from-pink-500 to-blue-500 px-3 py-1 rounded-full text-sm flex items-center">
+              {challenge.brand.name}
+              {challenge.brand.verified && (
+                <svg className="w-4 h-4 inline ml-1 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82 1.89 3.2L12 21.04l3.4 1.47 1.89-3.2 3.61-.82-.34-3.7L23 12zm-12.91 4.72l-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z"/>
+                </svg>
+              )}
+            </span>
+          </div>
+          <div className="absolute top-4 right-4 bg-white/90 rounded-full px-3 py-1 text-sm font-medium flex items-center shadow-sm">
+            {challenge.type === 'photo' ? (
+              <>
+                <Image className="w-4 h-4 mr-1 text-pink-500" /> Foto
+              </>
+            ) : (
+              <>
+                <Video className="w-4 h-4 mr-1 text-blue-500" /> Vídeo
+              </>
+            )}
+          </div>
+        </div>
+        
+        <div className="p-5">
+          <h3 className="text-xl font-bold mb-2 text-gray-800">{challenge.title}</h3>
+          <p className="text-gray-600 mb-4">{challenge.description}</p>
+          
+          <div className="flex justify-between items-center mb-4">
+            <div className="bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium flex items-center">
+              <Award className="w-4 h-4 mr-1" /> {challenge.prize}
+            </div>
+            <div className="text-gray-500 text-sm flex items-center">
+              <Zap className="w-4 h-4 mr-1" /> {challenge.deadlineDays} dias restantes
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-center mb-4 text-sm">
+            <div className="text-gray-500 flex items-center">
+              <Users className="w-4 h-4 mr-1" /> {challenge.participants} participantes
+            </div>
+            <div className="flex space-x-3">
+              <span className="flex items-center text-gray-500">
+                <Heart className="w-4 h-4 mr-1 text-pink-500" /> {challenge.interaction.split(' ')[0]}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex space-x-3 mb-3">
+            <button 
+              onClick={() => handleParticipateClick(challenge)}
+              className="bg-gradient-to-r from-pink-500 to-blue-500 text-white px-4 py-2 rounded-lg flex-1 hover:from-pink-600 hover:to-blue-600 transition flex items-center justify-center shadow-md hover:shadow-lg"
+            >
+              Participar Agora
+            </button>
+            <button 
+              onClick={() => handleShareChallenge(challenge)}
+              className="border border-gray-200 bg-white text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center justify-center shadow-sm"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+          </div>
 
-    {/* Novo botão para ver participações */}
-    <Link
-      to={`/challenges/${challenge.id}/participations`}
-      className="w-full py-2 text-center bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition flex items-center justify-center"
-    >
-      <Users className="w-4 h-4 mr-2" /> Ver Participações
-    </Link>
-  </div>
-</div>
+          <Link
+            to={`/challenges/${challenge.id}/participations`}
+            className="w-full py-2 text-center bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition flex items-center justify-center"
+          >
+            <Users className="w-4 h-4 mr-2" /> Ver Participações
+          </Link>
+        </div>
+      </div>
     );
   };
 
@@ -420,9 +435,80 @@ const HomePage = ({userData}) => {
     );
   };
 
+  const ShareModal = () => {
+    if (!showShareModal || !currentChallenge) return null;
+
+    const shareUrl = `https://votasnap.vercel.app/challenges/${currentChallenge.id}`;
+    const shareText = `${currentChallenge.title} - ${currentChallenge.description}`;
+    const encodedText = encodeURIComponent(shareText);
+    const encodedUrl = encodeURIComponent(shareUrl);
+
+    const shareOptions = [
+      {
+        name: 'WhatsApp',
+        icon: <MessageSquare className="w-6 h-6 text-green-500" />,
+        url: `https://wa.me/?text=${encodedText}%20${encodedUrl}`
+      },
+      {
+        name: 'Facebook',
+        icon: <TrendingUp className="w-6 h-6 text-blue-600" />,
+        url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
+      },
+      {
+        name: 'Twitter',
+        icon: <Sparkles className="w-6 h-6 text-blue-400" />,
+        url: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`
+      },
+      {
+        name: 'Copiar Link',
+        icon: <Link className="w-6 h-6 text-gray-500" />,
+        action: () => {
+          navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+          alert('Link copiado para a área de transferência!');
+          setShowShareModal(false);
+        }
+      }
+    ];
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Compartilhar desafio</h3>
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              {shareOptions.map((option) => (
+                <button
+                  key={option.name}
+                  onClick={() => option.url 
+                    ? window.open(option.url, '_blank') 
+                    : option.action?.()}
+                  className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-gray-50 transition"
+                >
+                  <div className="mb-2">
+                    {option.icon}
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">{option.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
-        <InviteFriendCard userData={userData}/>
+      <InviteFriendCard userData={userData}/>
       <div className="flex border-b mb-8 bg-white rounded-t-lg shadow-sm">
         <button 
           onClick={() => setActiveTab('destaques')}
@@ -461,6 +547,7 @@ const HomePage = ({userData}) => {
       </div>
 
       <ParticipateModal />
+      <ShareModal />
     </div>
   );
 };

@@ -176,13 +176,10 @@ const Profile = ({ user }) => {
                     </button>
                 </div>
             </div>
-            
-            {/* Informações do usuário */}
             <div className="mt-16 px-6">
                 <div className="flex justify-between items-start">
                     <div>
                         <h1 className="text-2xl font-bold flex items-center">
-                            {userData?.displayName || 'Usuário'}
                             {userData?.verified && <VerifiedRounded style={{ color: 'green', marginLeft: '4px' }} />}
                         </h1>
                         <p className="text-gray-600">@{userData?.username || 'usuário'}</p>
@@ -191,12 +188,8 @@ const Profile = ({ user }) => {
                         <MoreHoriz />
                     </button>
                 </div>
-                
                 <p className="mt-2 text-gray-600">{userData?.bio || 'Sem biografia'}</p>
-                
-              
             </div>
-            
             {/* Abas de navegação */}
             <div className="border-b mt-6">
                 <div className="flex justify-around">
@@ -217,8 +210,6 @@ const Profile = ({ user }) => {
                     ))}
                 </div>
             </div>
-            
-            {/* Conteúdo das abas */}
             <div className="px-4 py-6">
                 {renderContent()}
             </div>
