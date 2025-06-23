@@ -23,11 +23,11 @@ function BottomMenu() {
 
   return (
     <>
-      {/* Spacer div that matches the height of the bottom menu */}
-      <div className="h-16" /> {/* This prevents content from being hidden behind the menu */}
+      {/* Spacer div com altura fixa para compensar o menu fixo */}
+      <div className="h-16" />
       
-      {/* Actual bottom menu */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+      {/* Menu fixo na parte inferior */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40">
         <div className="flex justify-around items-center py-2 max-w-md mx-auto">
           {menuItems.map((item) => (
             <Link

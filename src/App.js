@@ -16,6 +16,7 @@ import CompleteProfileModal from './components/CompleteProfileModal';
 import logo from './img/logo.png';
 import CreateChallengeForm from './components/CreateChallengeForm';
 import ParticipationsPage from './components/ParticipationsPage';
+import PostDetail from './components/PostDetail';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -230,6 +231,8 @@ function App() {
               <HomePage user={user} userData={userData} />
             </ProtectedRoute>
           } />
+
+          
           
           <Route path="/profile" element={
             <ProtectedRoute>
@@ -242,11 +245,13 @@ function App() {
               <Rewards user={user} userData={userData} />
             </ProtectedRoute>
           } />
+
           
           <Route path="/not-allowed" element={<NotAllowed />} />
           
           <Route path="/cc" element={<CreateChallengeForm />} />
           <Route path="/explore" element={<ParticipationsPage />} />
+          <Route path="/p/:id" element={<PostDetail />} />
           <Route path="/challenges/:challengeId/participations" element={<ParticipationsPage />} />
 
           {/* Fallback */}

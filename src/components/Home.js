@@ -206,7 +206,7 @@ const HomePage = ({userData}) => {
 
   const ChallengeCard = ({ challenge }) => {
     return (
-      <div className="border rounded-2xl overflow-hidden hover:shadow-lg transition duration-300 bg-white">
+      <div className="border pb-20 bg-gray-50 min-h-screen rounded-2xl overflow-hidden hover:shadow-lg transition duration-300 bg-white">
         <div className="relative h-48 bg-gradient-to-br from-pink-100 to-blue-100">
           <img 
             src={challenge.coverImage} 
@@ -290,151 +290,134 @@ const HomePage = ({userData}) => {
       </div>
     );
   };
+const ParticipateModal = () => {
+  
+  if (!showParticipateModal || !selectedChallenge) return null;
 
-  const ParticipateModal = () => {
-    if (!showParticipateModal || !selectedChallenge) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-xl flex flex-col">
-          <div className="flex justify-between items-center p-4 border-b">
-            <h3 className="text-xl font-bold text-gray-800">Participar no desafio</h3>
-            <button 
-              onClick={() => setShowParticipateModal(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-xl flex flex-col">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="text-xl font-bold text-gray-800">Participar no desafio</h3>
+          <button 
+            onClick={() => setShowParticipateModal(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        
+        <div className="overflow-y-auto flex-1 p-6">
           
-          <div className="overflow-y-auto flex-1">
-            <div className="p-6">
-              <div className="flex items-center mb-6">
-                <img 
-                  src={selectedChallenge.brand.logo} 
-                  alt={selectedChallenge.brand.name} 
-                  className="w-12 h-12 rounded-full border-2 border-white bg-white shadow-md mr-3"
-                />
-                <div>
-                  <h4 className="font-bold text-gray-800">{selectedChallenge.brand.name}</h4>
-                  <p className="text-sm text-gray-500">{selectedChallenge.title}</p>
-                </div>
-              </div>
-              
-              <form onSubmit={handleSubmit}>
-                <div className="mb-4">
-                  <label className="block text-gray-700 mb-2 font-medium">
-                    {selectedChallenge.type === 'photo' ? 'Envie sua foto' : 'Envie seu vídeo'}
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition bg-gray-50">
-                    {submission.image ? (
-                      <div className="relative">
-                        {selectedChallenge.type === 'photo' ? (
-                          <img src={submission.image} alt="Preview" className="w-full h-48 object-contain mx-auto" />
-                        ) : (
-                          <video controls className="w-full h-48 object-contain mx-auto">
-                            <source src={submission.image} type="video/mp4" />
-                            Seu navegador não suporta vídeos.
-                          </video>
-                        )}
-                        <button 
-                          type="button"
-                          onClick={() => setSubmission({...submission, image: null, uploadProgress: 0})}
-                          className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100"
-                        >
-                          <X className="w-5 h-5 text-gray-600" />
-                        </button>
-                        {submission.uploadProgress > 0 && submission.uploadProgress < 100 && (
-                          <div className="absolute bottom-2 left-2 right-2 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-500 h-2 rounded-full" 
-                              style={{ width: `${submission.uploadProgress}%` }}
-                            ></div>
-                          </div>
-                        )}
-                      </div>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label className="block text-gray-700 mb-2 font-medium">
+                {selectedChallenge.type === 'photo' ? 'Envie sua foto' : 'Envie seu vídeo'}
+              </label>
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition bg-gray-50">
+                {submission.image ? (
+                  <div className="relative">
+                    {selectedChallenge.type === 'photo' ? (
+                      <img src={submission.image} alt="Preview" className="w-full h-48 object-contain mx-auto" />
                     ) : (
-                      <div>
-                        <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                          {selectedChallenge.type === 'photo' ? (
-                            <Image className="w-6 h-6 text-blue-500" />
-                          ) : (
-                            <Video className="w-6 h-6 text-blue-500" />
-                          )}
-                        </div>
-                        <p className="text-gray-500 mb-1">Clique para enviar ou arraste arquivos</p>
-                        <p className="text-sm text-gray-400">
-                          {selectedChallenge.type === 'photo' 
-                            ? "Formatos: JPG, PNG (até 10MB)" 
-                            : "Formatos: MP4 (15-60 segundos, até 50MB)"}
-                        </p>
-                        <input 
-                          type="file" 
-                          accept={selectedChallenge.type === 'photo' ? "image/*" : "video/*"}
-                          onChange={handleImageChange}
-                          className="hidden"
-                          id="media-upload"
-                          required
-                        />
-                        <label 
-                          htmlFor="media-upload"
-                          className="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
-                        >
-                          Selecionar arquivo
-                        </label>
+                      <video controls className="w-full h-48 object-contain mx-auto">
+                        <source src={submission.image} type="video/mp4" />
+                        Seu navegador não suporta vídeos.
+                      </video>
+                    )}
+                    <button 
+                      type="button"
+                      onClick={() => setSubmission({...submission, image: null, uploadProgress: 0})}
+                      className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100"
+                    >
+                      <X className="w-5 h-5 text-gray-600" />
+                    </button>
+                    {submission.uploadProgress > 0 && submission.uploadProgress < 100 && (
+                      <div className="absolute bottom-2 left-2 right-2 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full" 
+                          style={{ width: `${submission.uploadProgress}%` }}
+                        ></div>
                       </div>
                     )}
                   </div>
-                </div>
-                
-                <div className="mb-4">
-                  <label className="block text-gray-700 mb-2 font-medium">Legenda</label>
-                  <textarea 
-                    value={submission.caption}
-                    onChange={(e) => setSubmission({...submission, caption: e.target.value})}
-                    placeholder={`Escreva uma legenda criativa para sua ${selectedChallenge.type === 'photo' ? 'foto' : 'vídeo'}...`}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows="3"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Não esqueça de incluir a hashtag #{selectedChallenge.brand.name.replace(/\s+/g, '')} e outras relevantes
-                  </p>
-                </div>
-                
-                <div className="mb-6">
-                  <label className="flex items-start">
+                ) : (
+                  <div>
+                    <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                      {selectedChallenge.type === 'photo' ? (
+                        <Image className="w-6 h-6 text-blue-500" />
+                      ) : (
+                        <Video className="w-6 h-6 text-blue-500" />
+                      )}
+                    </div>
+                    <p className="text-gray-500 mb-1">Clique para enviar ou arraste arquivos</p>
+                    <p className="text-sm text-gray-400">
+                      {selectedChallenge.type === 'photo' 
+                        ? "Formatos: JPG, PNG (até 10MB)" 
+                        : "Formatos: MP4 (15-60 segundos, até 50MB)"}
+                    </p>
                     <input 
-                      type="checkbox" 
-                      checked={submission.termsAccepted}
-                      onChange={(e) => setSubmission({...submission, termsAccepted: e.target.checked})}
-                      className="mt-1 mr-2"
+                      type="file" 
+                      accept={selectedChallenge.type === 'photo' ? "image/*" : "video/*"}
+                      onChange={handleImageChange}
+                      className="hidden"
+                      id="media-upload"
                       required
                     />
-                    <span className="text-sm text-gray-600">
-                      Concordo com os termos do desafio e confirmo que este conteúdo é original e foi criado por mim.
-                    </span>
-                  </label>
-                </div>
-                
-                <button 
-                  type="submit"
-                  className={`w-full py-3 rounded-lg font-bold flex items-center justify-center ${
-                    !submission.image || !submission.termsAccepted || submission.uploadProgress < 100 
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-pink-500 to-blue-500 text-white hover:from-pink-600 hover:to-blue-600 shadow-md'
-                  }`}
-                >
-                  <Check className="w-5 h-5 mr-2" /> Enviar Participação
-                </button>
-              </form>
+                    <label 
+                      htmlFor="media-upload"
+                      className="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
+                    >
+                      Selecionar arquivo
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 mb-2 font-medium">Legenda</label>
+              <textarea 
+                value={submission.caption}
+                onChange={(e) => setSubmission({...submission, caption: e.target.value})}
+                placeholder={`Escreva uma legenda criativa para sua ${selectedChallenge.type === 'photo' ? 'foto' : 'vídeo'}...`}
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows="3"
+                required
+              />
+            </div>
+            
+            <div className="mb-6">
+              <label className="flex items-start">
+                <input 
+                  type="checkbox" 
+                  checked={submission.termsAccepted}
+                  onChange={(e) => setSubmission({...submission, termsAccepted: e.target.checked})}
+                  className="mt-1 mr-2"
+                  required
+                />
+                <span className="text-sm text-gray-600">
+                Confirmo que este conteúdo é original e foi criado por mim.
+                </span>
+              </label>
+            </div>
+            
+            <button 
+              type="submit"
+              className={`w-full py-3 rounded-lg font-bold flex items-center justify-center ${
+                !submission.image || !submission.termsAccepted || submission.uploadProgress < 100 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-pink-500 to-blue-500 text-white hover:from-pink-600 hover:to-blue-600 shadow-md'
+              }`}
+            >
+              <Check className="w-5 h-5 mr-2" /> Enviar Participação
+            </button>
+          </form>
         </div>
       </div>
-    );
-  };
-
+    </div>
+  );
+};
   const ShareModal = () => {
     if (!showShareModal || !currentChallenge) return null;
 
