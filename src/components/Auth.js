@@ -263,27 +263,6 @@ const Auth = () => {
             )}
           </button>
 
-          <button
-            onClick={() => handleSignIn(facebookProvider, 'Facebook')}
-            disabled={isLoading}
-            className={`flex items-center justify-center w-full py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 ${
-              isLoading && activeProvider === 'Facebook' 
-                ? 'bg-gray-300 cursor-not-allowed' 
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl'
-            }`}
-          >
-            {isLoading && activeProvider === 'Facebook' ? (
-              <div className="flex items-center text-white">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                Carregando...
-              </div>
-            ) : (
-              <>
-                <Facebook className="mr-3 text-white text-2xl" />
-                <span className="text-white font-bold text-lg">Continuar com Facebook</span>
-              </>
-            )}
-          </button>
         </div>
 
         <div className="text-center text-sm text-gray-500 font-medium">

@@ -156,13 +156,7 @@ const handleSubmit = async (e) => {
       return;
     }
 
-    // Verificar se o upload foi concluído
-    if (submission.uploadProgress < 100) {
-      alert('Aguarde o upload da mídia ser concluído!');
-      return;
-    }
-
-    const participationId = `${userId}_${Date.now()}`;
+    const participationId = userId
     
     // Criar dados da participação
     const participationData = {
@@ -376,7 +370,7 @@ const checkParticipationStatus = async (userId, challengeId) => {
           </div>
 
           <Link
-            to={`/challenges/${challenge.id}/participations`}
+            to={`/challenges/${challenge.id}`}
             className="w-full py-2 text-center bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition flex items-center justify-center"
           >
             <Users className="w-4 h-4 mr-2" /> Ver Participações
