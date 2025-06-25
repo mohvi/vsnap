@@ -166,7 +166,7 @@ function App() {
           
           {/* Loading text */}
           <h1 className="text-3xl font-bold text-white mb-4">
-            <span className="animate-pulse">Loading</span>
+            <span className="animate-pulse">A carregar</span>
           </h1>
           
           {/* Progress bar */}
@@ -182,7 +182,7 @@ function App() {
           
           {/* Status message */}
           <p className="text-white text-opacity-70 text-sm">
-            Preparing your experience...
+           Por favor aguarde...
           </p>
         </div>
 

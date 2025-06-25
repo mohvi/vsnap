@@ -88,75 +88,142 @@ const HomePage = ({userData}) => {
     }
   };
 
-  const handleParticipateClick = (challenge) => {
-    if (!user) {
-      alert('Você precisa fazer login para participar de desafios!');
+const handleParticipateClick = async (challenge) => {
+  if (!user) {
+    alert('Você precisa fazer login para participar de desafios!');
+    return;
+  }
+
+  // Verificar se o desafio ainda está ativo
+  const now = new Date();
+  const challengeEndDate = new Date(challenge.createdAt);
+  challengeEndDate.setDate(challengeEndDate.getDate() + challenge.deadlineDays);
+  
+  if (now > challengeEndDate) {
+    alert('Este desafio já expirou e não aceita mais participações.');
+    return;
+  }
+
+  // Verificar se o usuário já participou deste desafio
+  try {
+    const userParticipationRef = ref(db, `users/${user.uid}/participations/${challenge.id}`);
+    const snapshot = await get(userParticipationRef);
+
+    if (snapshot.exists()) {
+      alert('Você já participou deste desafio! Cada usuário pode participar apenas uma vez.');
       return;
     }
+
+    // Se chegou aqui, o usuário pode participar
     setSelectedChallenge(challenge);
     setShowParticipateModal(true);
-    setSubmission({ image: null, caption: '', termsAccepted: false, uploadProgress: 0 });
-  };
+    setSubmission({ 
+      image: null, 
+      caption: '', 
+      termsAccepted: false, 
+      uploadProgress: 0 
+    });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      if (!user || !user.uid) {
-        alert('Você precisa estar logado para participar!');
-        return;
-      }
-
-      const userId = user.uid;
-      const challengeId = selectedChallenge.id;
-      const participationId = `${userId}_${challengeId}_${Date.now()}`;
-      
-      const participationData = {
-        id: participationId,
-        userId: userId,
-        userEmail: user.email,
-        userName: user.displayName || 'Anônimo',
-        challengeId: challengeId,
-        imageUrl: submission.image,
-        caption: submission.caption,
-        termsAccepted: submission.termsAccepted,
-        createdAt: new Date().toISOString(),
-        status: 'pending',
-        likes: 0,
-        comments: 0,
-        challengeTitle: selectedChallenge.title,
-        brandName: selectedChallenge.brand.name,
-        brandLogo: selectedChallenge.brand.logo
-      };
-
-      const participationRef = ref(db, `participations/${participationId}`);
-      await set(participationRef, participationData);
-
-      const challengeRef = ref(db, `challenges/${challengeId}`);
-      const challengeSnapshot = await get(challengeRef);
-      if (challengeSnapshot.exists()) {
-        const currentParticipants = challengeSnapshot.val().participants || 0;
-        await update(challengeRef, {
-          participants: currentParticipants + 1
-        });
-      }
-
-      const userParticipationsRef = ref(db, `users/${userId}/participations/${participationId}`);
-      await set(userParticipationsRef, {
-        challengeId: challengeId,
-        participationId: participationId,
-        createdAt: new Date().toISOString()
-      });
-
-      alert(`Participação enviada com sucesso para: ${selectedChallenge.title}`);
-      setShowParticipateModal(false);
-      setSubmission({ image: null, caption: '', termsAccepted: false, uploadProgress: 0 });
-      
-    } catch (error) {
-      console.error("Erro ao enviar participação:", error);
-      alert("Ocorreu um erro ao enviar sua participação. Por favor, tente novamente.");
+  } catch (error) {
+    console.error("Erro ao verificar participação:", error);
+    alert("Ocorreu um erro ao verificar suas participações. Por favor, tente novamente.");
+  }
+};
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  try {
+    if (!user || !user.uid) {
+      alert('Você precisa estar logado para participar!');
+      return;
     }
-  };
+
+    // Verificar novamente se o usuário já participou (para evitar race conditions)
+    const userId = user.uid;
+    const challengeId = selectedChallenge.id;
+    const userParticipationRef = ref(db, `users/${userId}/participations/${challengeId}`);
+    const snapshot = await get(userParticipationRef);
+
+    if (snapshot.exists()) {
+      alert('Você já participou deste desafio!');
+      setShowParticipateModal(false);
+      return;
+    }
+
+    // Verificar se todos os campos estão preenchidos corretamente
+    if (!submission.image || !submission.caption || !submission.termsAccepted) {
+      alert('Por favor, preencha todos os campos e aceite os termos!');
+      return;
+    }
+
+    // Verificar se o upload foi concluído
+    if (submission.uploadProgress < 100) {
+      alert('Aguarde o upload da mídia ser concluído!');
+      return;
+    }
+
+    const participationId = `${userId}_${Date.now()}`;
+    
+    // Criar dados da participação
+    const participationData = {
+      id: participationId,
+      userId: userId,
+      userEmail: user.email,
+      userName: user.displayName || 'Anônimo',
+      challengeId: challengeId,
+      imageUrl: submission.image,
+      caption: submission.caption,
+      termsAccepted: submission.termsAccepted,
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      likes: 0,
+      comments: 0,
+      challengeTitle: selectedChallenge.title,
+      brandName: selectedChallenge.brand.name,
+      brandLogo: selectedChallenge?.brand?.logo || '',
+      userAvatar: user.photoURL || ''
+    };
+
+    // Usar transaction para garantir atomicidade
+    const updates = {};
+    updates[`participations/${challengeId}/${participationId}`] = participationData;
+    updates[`users/${userId}/participations/${challengeId}`] = {
+      participationId: participationId,
+      createdAt: new Date().toISOString(),
+      challengeTitle: selectedChallenge.title
+    };
+    updates[`challenges/${challengeId}/participants`] = selectedChallenge.participants + 1;
+
+    // Executar todas as atualizações atomicamente
+    await update(ref(db), updates);
+
+    // Feedback para o usuário
+    alert(`Participação enviada com sucesso para: ${selectedChallenge.title}`);
+    setShowParticipateModal(false);
+    setSubmission({ 
+      image: null, 
+      caption: '', 
+      termsAccepted: false, 
+      uploadProgress: 0 
+    });
+    
+  } catch (error) {
+    console.error("Erro ao enviar participação:", error);
+    alert("Ocorreu um erro ao enviar sua participação. Por favor, tente novamente.");
+  }
+};
+
+
+const checkParticipationStatus = async (userId, challengeId) => {
+  try {
+    const userParticipationRef = ref(db, `users/${userId}/participations/${challengeId}`);
+    const snapshot = await get(userParticipationRef);
+    return snapshot.exists() ? 'participated' : 'can_participate';
+  } catch (error) {
+    console.error("Erro ao verificar status:", error);
+    return 'error';
+  }
+};
 
   const handleImageChange = async (e) => {
     if (!e.target.files || !e.target.files[0]) return;
@@ -205,6 +272,39 @@ const HomePage = ({userData}) => {
   };
 
   const ChallengeCard = ({ challenge }) => {
+    const [participationStatus, setParticipationStatus] = useState('loading');
+  
+  useEffect(() => {
+    if (user) {
+      checkParticipationStatus(user.uid, challenge.id)
+        .then(status => setParticipationStatus(status));
+    } else {
+      setParticipationStatus('can_participate');
+    }
+  }, [user, challenge.id]);
+
+    const renderParticipateButton = () => {
+    if (participationStatus === 'participated') {
+      return (
+        <button 
+          className="bg-green-100 text-green-800 px-4 py-2 rounded-lg flex-1 cursor-default flex items-center justify-center"
+        >
+          <Check className="w-5 h-5 mr-2" /> Participando
+        </button>
+      );
+    }
+    
+    return (
+      <button 
+        onClick={() => handleParticipateClick(challenge)}
+        className="bg-gradient-to-r from-pink-500 to-blue-500 text-white px-4 py-2 rounded-lg flex-1 hover:from-pink-600 hover:to-blue-600 transition flex items-center justify-center shadow-md hover:shadow-lg"
+      >
+        Participar Agora
+      </button>
+    );
+  };
+
+  
     return (
       <div className="border pb-20 bg-gray-50 min-h-screen rounded-2xl overflow-hidden hover:shadow-lg transition duration-300 bg-white">
         <div className="relative h-48 bg-gradient-to-br from-pink-100 to-blue-100">
@@ -215,7 +315,7 @@ const HomePage = ({userData}) => {
           />
           <div className="absolute top-4 left-4 flex items-center">
             <img 
-              src={challenge.brand.logo} 
+              src={challenge.brand?.logo || 'https://via.placeholder.com/40'} 
               alt={challenge.brand.name} 
               className="w-10 h-10 rounded-full border-2 border-white bg-white shadow-md"
             />
@@ -266,12 +366,7 @@ const HomePage = ({userData}) => {
           </div>
           
           <div className="flex space-x-3 mb-3">
-            <button 
-              onClick={() => handleParticipateClick(challenge)}
-              className="bg-gradient-to-r from-pink-500 to-blue-500 text-white px-4 py-2 rounded-lg flex-1 hover:from-pink-600 hover:to-blue-600 transition flex items-center justify-center shadow-md hover:shadow-lg"
-            >
-              Participar Agora
-            </button>
+              {renderParticipateButton()}
             <button 
               onClick={() => handleShareChallenge(challenge)}
               className="border border-gray-200 bg-white text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center justify-center shadow-sm"
@@ -491,7 +586,7 @@ const ParticipateModal = () => {
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
-      <InviteFriendCard userData={userData}/>
+      {userData && userData.showInviteCard && <InviteFriendCard userData={userData} />}
       <div className="flex border-b mb-8 bg-white rounded-t-lg shadow-sm">
         <button 
           onClick={() => setActiveTab('destaques')}

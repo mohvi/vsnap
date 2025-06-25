@@ -17,7 +17,6 @@ function BottomMenu() {
   const menuItems = [
     { path: '/', icon: <FaHome size={20} />, label: 'Início' },
     { path: '/rewards', icon: <FaGift size={20} />, label: 'Prêmios' },
-    { path: '/explore', icon: <Explore size={20} />, label: 'Explore' },
     { path: '/profile', icon: <FaUser size={20} />, label: 'Perfil' },
   ];
 
