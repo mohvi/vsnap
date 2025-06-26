@@ -73,31 +73,29 @@ const Profile = ({ user }) => {
     };
 
     const handleDeleteParticipation = async (participation) => {
-        if (!window.confirm('Tem certeza que deseja remover esta participação?')) {
-            return;
-        }
+    if (!window.confirm('Tem certeza que deseja remover esta participação?')) {
+        return;
+    }
+    try {
+        // Remove da lista de participações do usuário
+        const userParticipationRef = ref(db, `users/${user.uid}/participations/${participation.challengeId}`);
+        await remove(userParticipationRef);
+        
+        // Remove da lista geral de participações
+        const generalParticipationRef = ref(db, `participations/${participation.challengeId}/${user.uid}`);
+        await remove(generalParticipationRef);
 
-        try {
-            // Atualizações atômicas
-            const updates = {};
-            
-            // Remove da lista de participações do usuário
-            updates[`users/${user.uid}/participations/${participation.challengeId}`] = null;
-            
-            // Remove da lista geral de participações
-            updates[`participations/${participation.challengeId}/${user.uid}`] = null;
-            
-            // Atualiza contador de participantes no desafio
-            updates[`challenges/${participation.challengeId}/participants`] = participation.participants - 1;
-
-            await update(ref(db), updates);
-            
-            alert('Participação removida com sucesso!');
-        } catch (error) {
-            console.error('Erro ao remover participação:', error);
-            alert('Ocorreu um erro ao remover a participação.');
-        }
-    };
+        // Atualiza contador de participantes no desafio
+        const challengeRef = ref(db, `challenges/${participation.challengeId}/participants`);
+        await update(challengeRef, {
+            participants: participation.participants - 1
+        });
+        
+        alert('Participação removida com sucesso!');
+    } catch (error) {
+        console.error('Erro ao remover participação:', error);
+    }
+};
 
     const renderParticipations = () => {
         if (participations.length === 0) {
