@@ -198,6 +198,7 @@ const ParticipationsPage = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1 sm:gap-4">
             {sortedParticipations.slice(0, visibleCount).map((participation) => (
               <ExplorePostCard
+              challengeId={challengeId}
                 key={participation.id}
                 data={participation}
                 onLike={handleLike}
@@ -233,7 +234,7 @@ const ParticipationsPage = () => {
   );
 };
 
-const ExplorePostCard = React.memo(({ data, onLike, navigate, currentUser }) => {
+const ExplorePostCard = React.memo(({ challengeId,data, onLike, navigate, currentUser }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLiked, setIsLiked] = useState(
     currentUser && data.likesBy && data.likesBy[currentUser.uid]
@@ -250,7 +251,7 @@ const ExplorePostCard = React.memo(({ data, onLike, navigate, currentUser }) => 
   };
 
   const handleClick = () => {
-    navigate(`/p/${data.id}`, { state: { from: 'explore' } });
+    navigate(`/p/${challengeId}/${data.id}`, { state: { from: 'explore' } });
   };
 
   const isVideo = data.imageUrl?.match(/\.(mp4|mov|webm)$/i);

@@ -251,7 +251,7 @@ function App() {
           
           <Route path="/cc" element={<CreateChallengeForm />} />
           <Route path="/explore" element={<ParticipationsPage />} />
-          <Route path="/p/:id" element={<PostDetail />} />
+          <Route path="/p/:challengeId/:id" element={<PostDetail />} />
           <Route path="/challenges/:challengeId" element={<ParticipationsPage />} />
 
           {/* Fallback */}
