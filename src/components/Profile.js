@@ -143,14 +143,6 @@ const Profile = ({ user }) => {
                                 </div>
                             </div>
                             
-                            <div className={`mt-3 px-3 py-1 rounded-full text-xs font-medium inline-block ${
-                                participation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                participation.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                'bg-gray-100 text-gray-800'
-                            }`}>
-                                {participation.status === 'pending' ? 'Em análise' : 
-                                 participation.status === 'approved' ? 'Aprovado' : 'Status desconhecido'}
-                            </div>
                         </div>
                     </div>
                 ))}
