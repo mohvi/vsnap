@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { VerifiedRounded, Share, Logout, MoreHoriz } from "@mui/icons-material";
+import { VerifiedRounded, Share, Logout, MoreHoriz, Delete } from "@mui/icons-material";
 import { auth, db } from '../fb';
-import { onValue, ref } from 'firebase/database';
+import { onValue, ref, remove, update } from 'firebase/database';
 import { useNavigate } from 'react-router-dom';
 
 const Profile = ({ user }) => {
-    const [activeTab, setActiveTab] = useState('videos');
+    const [activeTab, setActiveTab] = useState('participations');
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [participations, setParticipations] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -17,13 +18,35 @@ const Profile = ({ user }) => {
         }
 
         const userRef = ref(db, `users/${user.uid}`);
-        const unsubscribe = onValue(userRef, (snapshot) => {
+        const unsubscribeUser = onValue(userRef, (snapshot) => {
             const data = snapshot.val();
             setUserData(data);
             setLoading(false);
         });
 
-        return () => unsubscribe();
+        // Carrega as participações do usuário
+        const participationsRef = ref(db, `participations`);
+        const unsubscribeParticipations = onValue(participationsRef, (snapshot) => {
+            const allParticipations = snapshot.val();
+            if (allParticipations) {
+                const userParticipations = [];
+                Object.keys(allParticipations).forEach(challengeId => {
+                    if (allParticipations[challengeId][user.uid]) {
+                        userParticipations.push({
+                            id: `${challengeId}_${user.uid}`,
+                            challengeId,
+                            ...allParticipations[challengeId][user.uid]
+                        });
+                    }
+                });
+                setParticipations(userParticipations);
+            }
+        });
+
+        return () => {
+            unsubscribeUser();
+            unsubscribeParticipations();
+        };
     }, [navigate, user]);
 
     const handleLogout = async () => {
@@ -44,89 +67,167 @@ const Profile = ({ user }) => {
             });
         } catch (err) {
             console.error('Erro ao compartilhar:', err);
-            // Fallback para copiar link
             navigator.clipboard.writeText(window.location.href);
             alert('Link do perfil copiado para a área de transferência!');
         }
     };
 
-    const renderPosts = () => {
-        if (!userData?.posts) return <div className="text-center text-gray-500 mt-6">Nenhum post publicado ainda.</div>;
-        
-        return Object.entries(userData.posts).map(([postId, post]) => (
-            <div key={postId} className="bg-white rounded-lg shadow-sm overflow-hidden mb-4 border border-gray-100">
-                <img
-                    src={post.photoUrl}
-                    alt={post.caption}
-                    className="w-full h-64 object-cover"
-                    loading="lazy"
-                />
-                <div className="p-4">
-                    <h2 className="text-lg font-semibold line-clamp-2">{post.caption}</h2>
-                    <div className="flex justify-between mt-3 text-sm text-gray-500">
-                        <span>{new Date(post.timestamp).toLocaleDateString()}</span>
-                        <div className="flex space-x-4">
-                            <span>{Object.keys(post.likes || {}).length} curtidas</span>
-                            <span>{post.comments ? Object.keys(post.comments).length : 0} comentários</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        ));
+    const handleDeleteParticipation = async (participation) => {
+        if (!window.confirm('Tem certeza que deseja remover esta participação?')) {
+            return;
+        }
+
+        try {
+            // Atualizações atômicas
+            const updates = {};
+            
+            // Remove da lista de participações do usuário
+            updates[`users/${user.uid}/participations/${participation.challengeId}`] = null;
+            
+            // Remove da lista geral de participações
+            updates[`participations/${participation.challengeId}/${user.uid}`] = null;
+            
+            // Atualiza contador de participantes no desafio
+            updates[`challenges/${participation.challengeId}/participants`] = participation.participants - 1;
+
+            await update(ref(db), updates);
+            
+            alert('Participação removida com sucesso!');
+        } catch (error) {
+            console.error('Erro ao remover participação:', error);
+            alert('Ocorreu um erro ao remover a participação.');
+        }
     };
 
-    const renderRewards = () => {
-        if (!userData?.rewards) return <div className="text-center text-gray-500 mt-6">Nenhuma recompensa ganha ainda.</div>;
-        
-        return Object.entries(userData.rewards).map(([rewardId, reward]) => (
-            <div key={rewardId} className="bg-white rounded-lg shadow-sm p-4 mb-4 border border-gray-100">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h2 className="text-lg font-semibold">{reward.campaignTitle}</h2>
-                        <p className="text-gray-600 mt-1">{reward.premio}</p>
+    const renderParticipations = () => {
+        if (participations.length === 0) {
+            return <div className="text-center text-gray-500 mt-6">Nenhuma participação em desafios ainda.</div>;
+        }
+
+        return (
+            <div className="space-y-4">
+                {participations.map(participation => (
+                    <div key={participation.id} className="bg-white rounded-lg shadow-sm overflow-hidden mb-4 border border-gray-100">
+                        <div className="p-4">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h2 className="text-lg font-semibold">{participation.challengeTitle}</h2>
+                                    <p className="text-gray-600 mt-1">Marca: {participation.brandName}</p>
+                                </div>
+                                <button 
+                                    onClick={() => handleDeleteParticipation(participation)}
+                                    className="text-red-500 hover:text-red-700"
+                                    title="Remover participação"
+                                >
+                                    <Delete />
+                                </button>
+                            </div>
+                            
+                            {participation.imageUrl && (
+                                <div className="mt-3">
+                                    <img
+                                        src={participation.imageUrl}
+                                        alt={participation.caption}
+                                        className="w-full h-48 object-contain bg-gray-100 rounded"
+                                        loading="lazy"
+                                    />
+                                </div>
+                            )}
+                            
+                            <div className="mt-3">
+                                <p className="text-gray-800">{participation.caption}</p>
+                                <div className="flex justify-between mt-3 text-sm text-gray-500">
+                                    <span>Participou em: {new Date(participation.createdAt).toLocaleDateString()}</span>
+                                    <div className="flex space-x-4">
+                                        <span>{participation.likes || 0} curtidas</span>
+                                        <span>{participation.comments || 0} comentários</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className={`mt-3 px-3 py-1 rounded-full text-xs font-medium inline-block ${
+                                participation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                participation.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                            }`}>
+                                {participation.status === 'pending' ? 'Em análise' : 
+                                 participation.status === 'approved' ? 'Aprovado' : 'Status desconhecido'}
+                            </div>
+                        </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        reward.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
-                        reward.status === 'entregue' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
-                    }`}>
-                        {reward.status}
-                    </span>
-                </div>
-                {reward.post && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                        <p className="text-sm text-gray-500">Post relacionado:</p>
-                        <p className="font-medium line-clamp-2">{reward.post.caption}</p>
-                    </div>
-                )}
+                ))}
             </div>
-        ));
+        );
     };
 
     const renderContent = () => {
         if (loading) return <div className="text-center py-8">Carregando...</div>;
 
         switch (activeTab) {
+            case 'participations':
+                return (
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold mb-4">Minhas Participações</h2>
+                        {renderParticipations()}
+                    </div>
+                );
             case 'videos':
                 return (
                     <div className="space-y-4">
                         <h2 className="text-xl font-bold mb-4">Meus Posts</h2>
-                        {renderPosts()}
+                        {userData?.posts ? Object.entries(userData.posts).map(([postId, post]) => (
+                            <div key={postId} className="bg-white rounded-lg shadow-sm overflow-hidden mb-4 border border-gray-100">
+                                <img
+                                    src={post.photoUrl}
+                                    alt={post.caption}
+                                    className="w-full h-64 object-cover"
+                                    loading="lazy"
+                                />
+                                <div className="p-4">
+                                    <h2 className="text-lg font-semibold line-clamp-2">{post.caption}</h2>
+                                    <div className="flex justify-between mt-3 text-sm text-gray-500">
+                                        <span>{new Date(post.timestamp).toLocaleDateString()}</span>
+                                        <div className="flex space-x-4">
+                                            <span>{Object.keys(post.likes || {}).length} curtidas</span>
+                                            <span>{post.comments ? Object.keys(post.comments).length : 0} comentários</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )) : <div className="text-center text-gray-500 mt-6">Nenhum post publicado ainda.</div>}
                     </div>
                 );
-            case 'liked':
-                return <div className="text-center py-8 text-gray-500">Nenhum conteúdo curtido ainda.</div>;
-            case 'private':
-                return <div className="text-center py-8 text-gray-500">Nenhum conteúdo privado ainda.</div>;
             case 'rewards':
                 return (
                     <div className="space-y-4">
                         <h2 className="text-xl font-bold mb-4">Minhas Recompensas</h2>
-                        {renderRewards()}
+                        {userData?.rewards ? Object.entries(userData.rewards).map(([rewardId, reward]) => (
+                            <div key={rewardId} className="bg-white rounded-lg shadow-sm p-4 mb-4 border border-gray-100">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h2 className="text-lg font-semibold">{reward.campaignTitle}</h2>
+                                        <p className="text-gray-600 mt-1">{reward.premio}</p>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        reward.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
+                                        reward.status === 'entregue' ? 'bg-green-100 text-green-800' :
+                                        'bg-gray-100 text-gray-800'
+                                    }`}>
+                                        {reward.status}
+                                    </span>
+                                </div>
+                                {reward.post && (
+                                    <div className="mt-3 pt-3 border-t border-gray-100">
+                                        <p className="text-sm text-gray-500">Post relacionado:</p>
+                                        <p className="font-medium line-clamp-2">{reward.post.caption}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )) : <div className="text-center text-gray-500 mt-6">Nenhuma recompensa ganha ainda.</div>}
                     </div>
                 );
             default:
-                return null;
+                return <div className="text-center py-8 text-gray-500">Nenhum conteúdo disponível.</div>;
         }
     };
 
@@ -179,9 +280,7 @@ const Profile = ({ user }) => {
             <div className="mt-16 px-6">
                 <div className="flex justify-between items-start">
                     <div>
-                        <h1 className="text-2xl font-bold flex items-center">
-                            {userData?.verified && <VerifiedRounded style={{ color: 'green', marginLeft: '4px' }} />}
-                        </h1>
+                        <h1 className="text-2xl font-bold">{userData?.displayName || 'Usuário'}</h1>
                         <p className="text-gray-600">@{userData?.username || 'usuário'}</p>
                     </div>
                     <button className="text-gray-500">
@@ -193,7 +292,7 @@ const Profile = ({ user }) => {
             {/* Abas de navegação */}
             <div className="border-b mt-6">
                 <div className="flex justify-around">
-                    {['videos', 'liked', 'private', 'rewards'].map((tab) => (
+                    {['participations', 'videos', 'rewards'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -203,9 +302,9 @@ const Profile = ({ user }) => {
                                     : 'text-gray-500 hover:text-gray-700'
                             }`}
                         >
+                            {tab === 'participations' && 'Participações'}
                             {tab === 'videos' && 'Vídeos'}
-                            {tab === 'liked' && 'Curtidos'}
-                            {tab === 'private' && 'Privados'}
+                            {tab === 'rewards' && 'Recompensas'}
                         </button>
                     ))}
                 </div>

@@ -6,7 +6,8 @@ import { uploadBytesResumable, ref as storageRef, getDownloadURL } from 'firebas
 
 const ParticipateModal = ({ challenge, user, onClose }) => {
   const [submission, setSubmission] = useState({
-    image: null,
+    previewImage: null, // URL temporária para pré-visualização
+    image: null,       // URL permanente do Firebase Storage
     caption: '',
     termsAccepted: false,
     uploadProgress: 0,
@@ -29,14 +30,13 @@ const ParticipateModal = ({ challenge, user, onClose }) => {
 
       setSubmission(prev => ({ ...prev, isSubmitting: true }));
 
-      // Criar dados da participação
       const participationData = {
         id: user.uid,
         userId: user.uid,
         userEmail: user.email,
         userName: user.displayName || 'Anônimo',
         challengeId: challenge.id,
-        imageUrl: submission.image,
+        imageUrl: submission.image, // Usa a URL permanente aqui
         caption: submission.caption,
         termsAccepted: submission.termsAccepted,
         createdAt: new Date().toISOString(),
@@ -49,7 +49,6 @@ const ParticipateModal = ({ challenge, user, onClose }) => {
         userAvatar: user.photoURL || ''
       };
 
-      // Preparar atualizações atômicas
       const updates = {};
       updates[`participations/${challenge.id}/${user.uid}`] = participationData;
       updates[`users/${user.uid}/participations/${challenge.id}`] = {
@@ -59,10 +58,8 @@ const ParticipateModal = ({ challenge, user, onClose }) => {
       };
       updates[`challenges/${challenge.id}/participants`] = challenge.participants + 1;
 
-      // Executar todas as atualizações atômicas
       await update(ref(db), updates);
 
-      // Feedback para o usuário
       alert(`Participação enviada com sucesso para: ${challenge.title}`);
       onClose();
       
@@ -88,10 +85,12 @@ const ParticipateModal = ({ challenge, user, onClose }) => {
         return;
       }
 
+      // Cria URL temporária para pré-visualização
       const previewUrl = URL.createObjectURL(file);
       setSubmission({ 
         ...submission, 
-        image: previewUrl, 
+        previewImage: previewUrl,
+        image: null, // Limpa qualquer imagem anterior
         uploadProgress: 0,
         isSubmitting: true 
       });
@@ -108,19 +107,24 @@ const ParticipateModal = ({ challenge, user, onClose }) => {
           alert("Falha no upload da mídia. Por favor, tente novamente.");
           setSubmission(prev => ({ 
             ...prev, 
+            previewImage: null,
             image: null, 
             uploadProgress: 0,
             isSubmitting: false 
           }));
+          URL.revokeObjectURL(previewUrl); // Limpa a URL temporária
         },
         async () => {
+          // Obtém URL permanente do Firebase
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           setSubmission(prev => ({ 
             ...prev, 
-            image: downloadURL,
+            previewImage: null, // Limpa a pré-visualização
+            image: downloadURL, // Armazena a URL permanente
             uploadProgress: 100,
             isSubmitting: false 
           }));
+          URL.revokeObjectURL(previewUrl); // Limpa a URL temporária
         }
       );
       
@@ -129,6 +133,7 @@ const ParticipateModal = ({ challenge, user, onClose }) => {
       alert("Erro ao processar o arquivo. Por favor, tente novamente.");
       setSubmission(prev => ({ 
         ...prev, 
+        previewImage: null,
         image: null, 
         uploadProgress: 0,
         isSubmitting: false 
@@ -157,11 +162,11 @@ const ParticipateModal = ({ challenge, user, onClose }) => {
                 {challenge.type === 'photo' ? 'Envie sua foto' : 'Envie seu vídeo'}
               </label>
               <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition bg-gray-50">
-                {submission.image ? (
+                {submission.previewImage || submission.image ? (
                   <div className="relative">
                     {challenge.type === 'photo' ? (
                       <img 
-                        src={submission.image} 
+                        src={submission.previewImage || submission.image} 
                         alt="Preview" 
                         className="w-full h-48 object-contain mx-auto" 
                       />
@@ -170,18 +175,24 @@ const ParticipateModal = ({ challenge, user, onClose }) => {
                         controls 
                         className="w-full h-48 object-contain mx-auto"
                       >
-                        <source src={submission.image} type="video/mp4" />
+                        <source src={submission.previewImage || submission.image} type="video/mp4" />
                         Seu navegador não suporta vídeos.
                       </video>
                     )}
                     {!submission.isSubmitting && (
                       <button 
                         type="button"
-                        onClick={() => setSubmission({
-                          ...submission, 
-                          image: null, 
-                          uploadProgress: 0
-                        })}
+                        onClick={() => {
+                          if (submission.previewImage) {
+                            URL.revokeObjectURL(submission.previewImage);
+                          }
+                          setSubmission({
+                            ...submission, 
+                            previewImage: null,
+                            image: null, 
+                            uploadProgress: 0
+                          })
+                        }}
                         className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100"
                       >
                         <X className="w-5 h-5 text-gray-600" />
