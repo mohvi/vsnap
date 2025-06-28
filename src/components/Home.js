@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../fb';
-import { ref, onValue, get, update } from 'firebase/database';
+import { ref, onValue, get, update, child } from 'firebase/database';
 import { onAuthStateChanged } from 'firebase/auth';
 import ChallengeList from './ChallengeList';
 import ParticipateModal from './ParticipateModal';
@@ -18,6 +18,7 @@ const HomePage = ({ userData }) => {
   const [user, setUser] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [currentChallenge, setCurrentChallenge] = useState(null);
+  const [shouldDisplayInvite, setShouldDisplayInvite] = useState(true);
 
   // Verificar estado de autenticação
   useEffect(() => {
@@ -26,6 +27,28 @@ const HomePage = ({ userData }) => {
     });
     return () => unsubscribe();
   }, []);
+
+  // Verificar se o desafio especial foi completado
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const checkChallengeCompletion = async () => {
+      try {
+        const dbRef = ref(db);
+        const challengeSnapshot = await get(child(dbRef, `specialChallenges/${user.uid}`));
+        
+        if (challengeSnapshot.exists() && challengeSnapshot.val().completed) {
+          setShouldDisplayInvite(false);
+        } else {
+          setShouldDisplayInvite(true);
+        }
+      } catch (err) {
+        console.error("Erro ao verificar desafio especial:", err);
+      }
+    };
+
+    checkChallengeCompletion();
+  }, [user?.uid]);
 
   // Buscar desafios do Firebase
   useEffect(() => {
@@ -46,7 +69,7 @@ const HomePage = ({ userData }) => {
             new Date(b.createdAt) - new Date(a.createdAt)
           );
           
-          setAllChallenges(sortedChallenges);
+          //setAllChallenges(sortedChallenges);
         } else {
           setAllChallenges([]);
         }
@@ -70,7 +93,7 @@ const HomePage = ({ userData }) => {
     const shareData = {
       title: challenge.title,
       text: challenge.description,
-      url: `https://votasnap.vercel.app/challenges/${challenge.id}`,
+      url: `https://votasnap.online/challenges/${challenge.id}`,
     };
 
     if (navigator.share) {
@@ -117,7 +140,7 @@ const HomePage = ({ userData }) => {
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
-      {userData && userData.showInviteCard && <InviteFriendCard userData={userData} />}
+      {shouldDisplayInvite && <InviteFriendCard userData={userData} />}
       <div className="flex border-b mb-8 bg-white rounded-t-lg shadow-sm">
         <button 
           onClick={() => setActiveTab('destaques')}
