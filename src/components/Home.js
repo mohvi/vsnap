@@ -7,6 +7,7 @@ import ParticipateModal from './ParticipateModal';
 import ShareModal from './ShareModal';
 import InviteFriendCard from './InviteFriendCard';
 import { Sparkles } from 'lucide-react';
+import WinnersList from './WinnersList';
 
 const HomePage = ({ userData }) => {
   const [activeTab, setActiveTab] = useState('destaques');
@@ -140,6 +141,7 @@ const HomePage = ({ userData }) => {
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
+      <WinnersList/>
       {shouldDisplayInvite && <InviteFriendCard userData={userData} />}
       <div className="flex border-b mb-8 bg-white rounded-t-lg shadow-sm">
         <button 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaWhatsapp, FaFacebook, FaEnvelope, FaSms, FaLink, FaInfoCircle, FaGift, FaUsers, FaMoneyBillWave, FaCrown, FaCheckCircle, FaCoins, FaClock } from "react-icons/fa";
+import { FaWhatsapp, FaFacebook, FaEnvelope, FaSms, FaLink, FaInfoCircle, FaGift, FaUsers, FaMoneyBillWave, FaCrown, FaCheckCircle, FaCoins, FaClock, FaTelegram, FaInstagram } from "react-icons/fa";
 import { auth } from "../fb";
 import { getDatabase, ref, get, child, set, query, orderByChild, limitToFirst, equalTo, update } from "firebase/database";
 import { useNavigate } from "react-router-dom";
@@ -318,34 +318,61 @@ const ShareModal = ({ inviteLink, onClose, onCopy }) => (
       <p className="text-center text-gray-600 text-xs mb-4">
         Cada amigo que se cadastrar conta para o desafio!
       </p>
-      
-      <div className="space-y-2">
-        <ShareButton 
-          icon={<FaWhatsapp size={20} className="text-green-500" />}
-          text="WhatsApp"
-          onClick={() => window.open(`https://wa.me/?text=Participe%20do%20Desafio%20VotaSnap!%20Use%20meu%20link:%20${inviteLink}`, '_blank')}
-        />
-        
-        <ShareButton 
-          icon={<FaFacebook size={20} className="text-blue-600" />}
-          text="Facebook"
-          onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${inviteLink}`, '_blank')}
-        />
-        
-        <ShareButton 
-          icon={<FaEnvelope size={20} className="text-red-500" />}
-          text="Email"
-          onClick={() => window.open(`mailto:?subject=Participe%20do%20Desafio%20VotaSnap!&body=Olá!%20Cadastre-se%20usando%20meu%20link:%20${inviteLink}`, '_blank')}
-        />
-        
-        <button
-          onClick={onCopy}
-          className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition duration-200 text-sm"
-        >
-          <FaLink size={18} className="text-gray-700" />
-          <span className="text-gray-700 font-medium">Copiar Link</span>
-        </button>
-      </div>
+      <div className="space-y-3">
+  <ShareButton 
+    icon={<FaWhatsapp size={20} className="text-green-500" />}
+    text="WhatsApp"
+    onClick={() => window.open(`https://wa.me/?text=🚀 *Cadastre-se no VotaSnap e pode ganhar 200MT esta semana!* %0A%0AAproveite esta oportunidade:%0A${inviteLink}`, '_blank')}
+  />
+  
+  <ShareButton 
+    icon={<FaFacebook size={20} className="text-blue-600" />}
+    text="Facebook"
+    onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${inviteLink}&quote=Cadastre-se no VotaSnap e pode ganhar 200MT esta semana! ${inviteLink}`, '_blank')}
+  />
+  
+  <ShareButton 
+    icon={<FaSms size={20} className="text-blue-400" />}
+    text="SMS"
+    onClick={() => window.open(`sms:?body=Cadastre-se no VotaSnap e pode ganhar 200MT esta semana! ${inviteLink}`, '_blank')}
+  />
+  
+  <ShareButton 
+    icon={<FaEnvelope size={20} className="text-red-500" />}
+    text="Email"
+    onClick={() => window.open(`mailto:?subject=[VotaSnap] Ganhe 200MT esta semana&body=Olá!%0A%0ACadastre-se no VotaSnap e pode ganhar 200MT esta semana!%0A%0AAcesse: ${inviteLink}`, '_blank')}
+  />
+  
+  <ShareButton 
+    icon={<FaInstagram size={20} className="text-pink-600" />}
+    text="Instagram"
+    onClick={() => {
+      if (navigator.share) {
+        navigator.share({
+          title: 'VotaSnap - Ganhe 200MT',
+          text: 'Cadastre-se e pode ganhar 200MT esta semana!',
+          url: inviteLink
+        }).catch(console.error);
+      } else {
+        window.open(`https://www.instagram.com/?url=${encodeURIComponent(inviteLink)}`, '_blank');
+      }
+    }}
+  />
+  
+  <ShareButton 
+    icon={<FaTelegram size={20} className="text-blue-500" />}
+    text="Telegram"
+    onClick={() => window.open(`https://t.me/share/url?url=${inviteLink}&text=Cadastre-se no VotaSnap e pode ganhar 200MT esta semana!`, '_blank')}
+  />
+  
+  <button
+    onClick={onCopy}
+    className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition duration-200 text-sm"
+  >
+    <FaLink size={18} className="text-gray-700" />
+    <span className="text-gray-700 font-medium">Copiar Link de Convite</span>
+  </button>
+</div>
     </div>
   </div>
 );
