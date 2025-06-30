@@ -297,9 +297,9 @@ const InviteFriendCard = ({ userData }) => {
 };
 
 const ShareModal = ({ inviteLink, onClose, onCopy, username }) => {
-  const shareMessage = ` @${username} te convidou para o VotaSnap! \n\nCadastre-se usando meu link e ganhe 200MT de bônus:\n${inviteLink}\n\nVamos juntos nessa!`;
+  const shareMessage = ` @${username} te convidou para o VotaSnap! \n\nCadastre-se usando meu link Podes ser tu a ganhar os 200MT de bônus ao cumprir o desafio especial:\n${inviteLink}\n\nVamos juntos nessa!`;
   const emailSubject = `@${username} te convidou para o VotaSnap - Ganhe 200MT`;
-  const emailBody = `Olá!\n\nVocê foi convidado(a) para participar do VotaSnap. É rápido, fácil e você ainda ganha 200MT de bônus ao se cadastrar usando meu link:\n\n${inviteLink}\n\nNão perca essa oportunidade! \n\nAtenciosamente,\n${username}`;
+  const emailBody = `Olá!\n\nVocê foi convidado(a) para participar do VotaSnap. Podes ganhar 200MT de bônus ao cumprir o desafio. Cadastrar usando meu link:\n\n${inviteLink}\n\nNão perca essa oportunidade! \n\nAtenciosamente,\n${username}`;
 
   const handleNativeShare = () => {
     const shareData = {
