@@ -31,14 +31,13 @@ const Auth = () => {
     }
   }, [location]);
 
-
   const saveUserData = async (user) => {
     try {
       const userRef = ref(db, 'users/' + user.uid);
       const snapshot = await get(userRef);
 
-
       if (snapshot.exists()) {
+        // Atualiza apenas a data de login se o usuário já existir
         await set(ref(db, `users/${user.uid}/loginDate`), new Date().toISOString());
         return;
       }
@@ -50,7 +49,8 @@ const Auth = () => {
         joinDate: new Date().toISOString(),
         loginDate: new Date().toISOString(),
         referrer: referrerUid || null,
-        isComplete: false
+        isComplete: false,
+        coins: 0 // Adicionado campo coins padrão
       };
 
       await set(userRef, userData);
@@ -59,7 +59,8 @@ const Auth = () => {
         const referralRef = ref(db, `referrals/${referrerUid}/${user.uid}`);
         await set(referralRef, {
           date: new Date().toISOString(),
-          newUserEmail: user.email
+          newUserEmail: user.email,
+          status: 'pending' // Adicionado status para rastreamento
         });
       }
     } catch (error) {
@@ -82,36 +83,41 @@ const Auth = () => {
       
       let errorTitle = 'Erro no login';
       let errorMessage = `Ocorreu um erro ao tentar entrar com ${providerName}. Por favor, tente novamente.`;
+      let errorIcon = <ErrorOutline className="mr-2" />;
 
-      if (error.code === 'auth/account-exists-with-different-credential') {
-        errorTitle = 'Conta já registrada';
-        errorMessage = 'Este e-mail já está associado a outra conta com outro método.';
-      } 
-      else if (error.code === 'auth/popup-closed-by-user') {
-        errorTitle = 'Janela fechada';
-        errorMessage = 'Você fechou a janela de login antes de concluir. Tente novamente.';
-      }
-      else if (error.code === 'auth/user-disabled') {
-        errorTitle = 'Conta desativada';
-        errorMessage = 'Sua conta foi desativada. Entre em contato com o suporte por suporte@votasnap.com ou 840237100 para mais informações.';
-      }
-      else if (error.code === 'auth/network-request-failed') {
-        errorTitle = 'Problema de conexão';
-        errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
-      }
-      else if (error.message === 'multi_device') {
-        errorTitle = 'Sessão ativa';
-        errorMessage = 'Você já está logado em outro dispositivo. Por segurança, permitimos apenas um login por vez.';
-      }
-      else if (error.code === 'auth/too-many-requests') {
-        errorTitle = 'Acesso temporariamente bloqueado';
-        errorMessage = 'Muitas tentativas de login em um curto período. Tente novamente mais tarde.';
+      switch (error.code) {
+        case 'auth/account-exists-with-different-credential':
+          errorTitle = 'Conta já registrada';
+          errorMessage = 'Este e-mail já está associado a outra conta com outro método.';
+          break;
+        case 'auth/popup-closed-by-user':
+          errorTitle = 'Janela fechada';
+          errorMessage = 'Você fechou a janela de login antes de concluir. Tente novamente.';
+          break;
+        case 'auth/user-disabled':
+          errorTitle = 'Conta desativada';
+          errorMessage = 'Sua conta foi desativada. Entre em contato com o suporte.';
+          break;
+        case 'auth/network-request-failed':
+          errorTitle = 'Problema de conexão';
+          errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão.';
+          break;
+        case 'auth/too-many-requests':
+          errorTitle = 'Acesso temporariamente bloqueado';
+          errorMessage = 'Muitas tentativas de login. Tente novamente mais tarde.';
+          break;
+        default:
+          if (error.message === 'multi_device') {
+            errorTitle = 'Sessão ativa';
+            errorMessage = 'Você já está logado em outro dispositivo.';
+            errorIcon = <Devices className="mr-2" />;
+          }
       }
 
       setError({
         title: errorTitle,
         message: errorMessage,
-        icon: error.message === 'multi_device' ? <Devices className="mr-2" /> : <ErrorOutline className="mr-2" />
+        icon: errorIcon
       });
     } finally {
       setIsLoading(false);
@@ -196,7 +202,7 @@ const Auth = () => {
       </div>
 
       <div 
-        className=" p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transition-all duration-500 hover:shadow-2xl relative z-10 border-4 border-transparent hover:border-purple-200"
+        className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transition-all duration-500 hover:shadow-2xl relative z-10 border-4 border-transparent hover:border-purple-200"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -247,18 +253,18 @@ const Auth = () => {
             className={`flex items-center justify-center w-full py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 ${
               isLoading && activeProvider === 'Google' 
                 ? 'bg-gray-300 cursor-not-allowed' 
-                : 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-lg hover:shadow-xl'
+                : 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-lg hover:shadow-xl text-white'
             }`}
           >
             {isLoading && activeProvider === 'Google' ? (
-              <div className="flex items-center text-white">
+              <div className="flex items-center">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                 Carregando...
               </div>
             ) : (
               <>
                 <Google className="mr-3 text-white text-2xl" />
-                <span className="text-white font-bold text-lg">Continuar com Google</span>
+                <span className="font-bold text-lg">Continuar com Google</span>
               </>
             )}
           </button>
@@ -267,8 +273,8 @@ const Auth = () => {
 
         <div className="text-center text-sm text-gray-500 font-medium">
           Ao continuar, você concorda com nossos{' '}
-          <a href="#" className="text-blue-500 hover:underline font-bold">Termos</a> e{' '}
-          <a href="#" className="text-blue-500 hover:underline font-bold">Privacidade</a>.
+          <a href="/terms" className="text-blue-500 hover:underline font-bold">Termos</a> e{' '}
+          <a href="/privacy" className="text-blue-500 hover:underline font-bold">Privacidade</a>.
           <div className="mt-2 text-xs text-gray-400">
             ✨ Diversão garantida! 🚀
           </div>

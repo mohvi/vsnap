@@ -31,7 +31,6 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
           const userData = snapshot.val();
           setInitialUserData(userData);
           
-          // Preenche o formulário com os dados existentes
           setFormData(prev => ({
             ...prev,
             username: userData.username || '',
@@ -40,7 +39,6 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
             city: userData.city || ''
           }));
           
-          // Se já tiver username, marca como disponível
           if (userData.username) {
             setUsernameStatus('available');
           }
@@ -58,7 +56,7 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
         if (snapshot.exists()) {
           const usersData = snapshot.val();
           const usernames = Object.values(usersData)
-            .map(user => user.username?.toLowerCase())
+            .map(user => user.username)
             .filter(Boolean);
           setExistingUsernames(usernames);
         }
@@ -76,12 +74,60 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
     if (formData.province) {
       const selectedProvince = provinces.find(p => p.code === formData.province);
       setCities(selectedProvince?.cities || []);
-      // Reset city only if the new province doesn't have the currently selected city
       if (!selectedProvince?.cities.includes(formData.city)) {
         setFormData(prev => ({ ...prev, city: '' }));
       }
     }
   }, [formData.province]);
+
+  const normalizeUsername = (username) => {
+    return username.toLowerCase().replace(/\s+/g, ' ').trim();
+  };
+
+  const checkUsername = async () => {
+    const username = formData.username.trim();
+    
+    if (!username) {
+      setUsernameStatus('invalid');
+      setError('Nome de usuário é obrigatório');
+      return;
+    }
+    
+    const usernameRegex = /^[\w ]{3,20}$/; // Allows letters, numbers, underscore and spaces
+    if (!usernameRegex.test(username)) {
+      setUsernameStatus('invalid');
+      setError('Nome de usuário deve ter 3-20 caracteres (letras, números, _ e espaços)');
+      return;
+    }
+    
+    setUsernameStatus('checking');
+    setError(null);
+    
+    try {
+      const normalizedUsername = normalizeUsername(username);
+      const normalizedExisting = existingUsernames.map(u => normalizeUsername(u));
+      
+      const isAvailable = !normalizedExisting.includes(normalizedUsername) || 
+                         (initialUserData?.username && 
+                          normalizeUsername(initialUserData.username) === normalizedUsername);
+      
+      const emailPrefix = user?.email?.split('@')[0];
+      if (emailPrefix && normalizedUsername === normalizeUsername(emailPrefix)) {
+        setUsernameStatus('taken');
+        setError('Este nome de usuário não está disponível');
+        return;
+      }
+      
+      setUsernameStatus(isAvailable ? 'available' : 'taken');
+      if (!isAvailable) {
+        setError('Este nome de usuário já está em uso');
+      }
+    } catch (error) {
+      console.error('Error checking username:', error);
+      setUsernameStatus('error');
+      setError('Erro ao verificar nome de usuário');
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -101,52 +147,11 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
     }
   };
 
-  const checkUsername = async () => {
-    if (!formData.username.trim()) {
-      setUsernameStatus('invalid');
-      setError('Nome de usuário é obrigatório');
-      return;
-    }
-    
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-    if (!usernameRegex.test(formData.username)) {
-      setUsernameStatus('invalid');
-      setError('Nome de usuário deve ter 3-20 caracteres (letras, números, _)');
-      return;
-    }
-    
-    setUsernameStatus('checking');
-    setError(null);
-    
-    try {
-      const usernameLower = formData.username.toLowerCase();
-      const isAvailable = !existingUsernames.includes(usernameLower) || 
-                         (initialUserData?.username && initialUserData.username.toLowerCase() === usernameLower);
-      
-      const emailPrefix = user?.email?.split('@')[0]?.toLowerCase();
-      if (emailPrefix && usernameLower === emailPrefix) {
-        setUsernameStatus('taken');
-        setError('Este nome de usuário não está disponível');
-        return;
-      }
-      
-      setUsernameStatus(isAvailable ? 'available' : 'taken');
-      if (!isAvailable) {
-        setError('Este nome de usuário já está em uso');
-      }
-    } catch (error) {
-      console.error('Error checking username:', error);
-      setUsernameStatus('error');
-      setError('Erro ao verificar nome de usuário');
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    // Validate all required fields
     const requiredFields = ['username', 'province', 'city', 'isOver13'];
     const missingFields = requiredFields.filter(field => !formData[field]);
     
@@ -163,20 +168,21 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
     try {
       setLoading(true);
       
-      // Final verification before submission
-      const usernameLower = formData.username.toLowerCase();
-      if (existingUsernames.includes(usernameLower) && 
-          (!initialUserData?.username || initialUserData.username.toLowerCase() !== usernameLower)) {
+      const normalizedUsername = normalizeUsername(formData.username);
+      const normalizedExisting = existingUsernames.map(u => normalizeUsername(u));
+      
+      if (normalizedExisting.includes(normalizedUsername) && 
+          (!initialUserData?.username || 
+           normalizeUsername(initialUserData.username) !== normalizedUsername)) {
         setError('Este nome de usuário já está em uso');
         setUsernameStatus('taken');
         return;
       }
 
-      // Mantém os dados existentes e atualiza apenas os campos do formulário
       const updatedData = {
-        ...initialUserData, // Mantém todos os dados existentes
-        ...formData,       // Atualiza com os novos dados do formulário
-        isComplete: true   // Garante que está marcado como completo
+        ...initialUserData,
+        ...formData,
+        isComplete: true
       };
 
       await onComplete(updatedData);
@@ -200,7 +206,7 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
       case 'invalid':
         return <span className="flex items-center text-red-500"><XCircle size={14} className="mr-1" /> {usernameStatus === 'taken' ? 'Indisponível' : 'Inválido'}</span>;
       default:
-        return <span className="text-gray-500">3-20 caracteres (letras, números, _)</span>;
+        return <span className="text-gray-500">3-20 caracteres (letras, números, _ e espaços)</span>;
     }
   };
 
@@ -240,7 +246,7 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
                   value={formData.username}
                   onChange={handleChange}
                   onBlur={checkUsername}
-                  placeholder="ex: joao_silva"
+                  placeholder="ex: joao silva"
                   className={`w-full px-4 py-2 rounded-lg border-2 ${usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-red-300' : usernameStatus === 'available' ? 'border-green-300' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-20`}
                   required
                 />
