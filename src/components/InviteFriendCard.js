@@ -9,7 +9,7 @@ import confetti from "canvas-confetti";
 const InviteFriendCard = ({ userData }) => {
   // Challenge configuration
   const CHALLENGE_DURATION_DAYS = 14;
-  const MIN_FRIENDS_REQUIRED = 1000;
+  const MIN_FRIENDS_REQUIRED = 50; // Changed from 1000 to 50
   const SPECIAL_REWARD_AMOUNT = 200;
 
   // State management
@@ -25,6 +25,7 @@ const InviteFriendCard = ({ userData }) => {
   const [shouldDisplay, setShouldDisplay] = useState(true);
   const [daysRemaining, setDaysRemaining] = useState(CHALLENGE_DURATION_DAYS);
   const [challengeStartDate, setChallengeStartDate] = useState(null);
+  const [isChallengeAvailable, setIsChallengeAvailable] = useState(true);
   const navigate = useNavigate();
 
   // Calculate days remaining
@@ -76,15 +77,30 @@ const InviteFriendCard = ({ userData }) => {
 
   const markChallengeAsCompleted = async (uid, count) => {
     const db = getDatabase();
-    const challengeRef = ref(db, `specialChallenges/${uid}`);
+    const challengeRef = ref(db, `specialChallenges`);
     
     try {
-      await set(challengeRef, {
+      // Check if someone already completed the challenge
+      const snapshot = await get(challengeRef);
+      if (snapshot.exists()) {
+        const challenges = snapshot.val();
+        const completedChallenge = Object.values(challenges).find(c => c.completed);
+        
+        if (completedChallenge) {
+          // Someone already completed before
+          setIsChallengeAvailable(false);
+          setShouldDisplay(false);
+          return;
+        }
+      }
+      
+      // If no one completed yet, mark as completed for this user
+      await set(ref(db, `specialChallenges/${uid}`), {
         completed: true,
         completedDate: new Date().toISOString(),
         invitedCount: count,
         rewardAmount: SPECIAL_REWARD_AMOUNT,
-        type: "invite50Friends",
+        type: "invite50First",
         userId: uid,
       });
       
@@ -118,10 +134,20 @@ const InviteFriendCard = ({ userData }) => {
         try {
           const dbRef = ref(getDatabase());
           
-          const challengeSnapshot = await get(child(dbRef, `specialChallenges/${currentUser.uid}`));
-          if (challengeSnapshot.exists() && challengeSnapshot.val().completed) {
-            setShouldDisplay(false);
-            return;
+          // Check if challenge is still available
+          const challengeSnapshot = await get(child(dbRef, `specialChallenges`));
+          if (challengeSnapshot.exists()) {
+            const challenges = challengeSnapshot.val();
+            const completedChallenge = Object.values(challenges).find(c => c.completed);
+            if (completedChallenge) {
+              setIsChallengeAvailable(false);
+              if (completedChallenge.userId === currentUser.uid) {
+                setChallengeCompleted(true);
+                setInvitedFriendsCount(completedChallenge.invitedCount);
+              }
+              setShouldDisplay(false);
+              return;
+            }
           }
           
           const friendsCount = await countFriendsInPeriod(userData.username);
@@ -163,6 +189,7 @@ const InviteFriendCard = ({ userData }) => {
   if (challengeExpired) return null;
   if (!shouldDisplay) return null;
   if (loading) return <LoadingSkeleton />;
+  if (!isChallengeAvailable && !challengeCompleted) return null;
 
   return (
     <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-5 w-full mx-auto relative overflow-hidden shadow-lg">
@@ -171,7 +198,7 @@ const InviteFriendCard = ({ userData }) => {
           <div className="bg-gradient-to-br from-yellow-100 to-yellow-50 p-6 rounded-xl shadow-2xl text-center animate-pop-in mx-4 border-2 border-yellow-300">
             <div className="text-5xl mb-3">🎉</div>
             <h3 className="text-2xl font-bold text-yellow-700 mb-2">Parabéns!</h3>
-            <p className="text-lg text-yellow-800 mb-3">Você ganhou {SPECIAL_REWARD_AMOUNT}MT!</p>
+            <p className="text-lg text-yellow-800 mb-3">Você foi o primeiro a completar o desafio e ganhou {SPECIAL_REWARD_AMOUNT}MT!</p>
             <div className="bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm inline-block">
               Seu saldo foi atualizado
             </div>
@@ -206,13 +233,13 @@ const InviteFriendCard = ({ userData }) => {
         </h2>
         
         <p className="text-center text-gray-600 mb-4">
-          Convide <span className="font-bold text-purple-600">+ de 80 amigos</span> e ganhe{" "}
+          Seja o primeiro a convidar <span className="font-bold text-purple-600">50 amigos</span> e ganhe{" "}
           <span className="font-bold text-yellow-600">{SPECIAL_REWARD_AMOUNT}MT</span>!
         </p>
         
         <div className="mb-5">
           <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span className="font-medium">{invitedFriendsCount}/+80 amigos</span>
+            <span className="font-medium">{invitedFriendsCount}/50 amigos</span>
             <span className="font-bold text-indigo-600">{Math.floor((invitedFriendsCount / MIN_FRIENDS_REQUIRED) * 100)}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
@@ -280,6 +307,7 @@ const InviteFriendCard = ({ userData }) => {
           onClose={() => setIsModalOpen(false)}
           onCopy={handleCopyLink}
           username={userData?.username}
+          rewardAmount={SPECIAL_REWARD_AMOUNT}  // Add this line
         />
       )}
 
@@ -290,16 +318,17 @@ const InviteFriendCard = ({ userData }) => {
           rewardAmount={SPECIAL_REWARD_AMOUNT}
           daysRemaining={daysRemaining}
           challengeDuration={CHALLENGE_DURATION_DAYS}
+          isFirstToComplete={true}
         />
       )}
     </div>
   );
 };
 
-const ShareModal = ({ inviteLink, onClose, onCopy, username }) => {
-  const shareMessage = ` @${username} te convidou para o VotaSnap! \n\nCadastre-se usando meu link Podes ser tu a ganhar os 200MT de bônus ao cumprir o desafio especial:\n${inviteLink}\n\nVamos juntos nessa!`;
-  const emailSubject = `@${username} te convidou para o VotaSnap - Ganhe 200MT`;
-  const emailBody = `Olá!\n\nVocê foi convidado(a) para participar do VotaSnap. Podes ganhar 200MT de bônus ao cumprir o desafio. Cadastrar usando meu link:\n\n${inviteLink}\n\nNão perca essa oportunidade! \n\nAtenciosamente,\n${username}`;
+const ShareModal = ({ inviteLink, onClose, onCopy, username, SPECIAL_REWARD_AMOUNT }) => {
+  const shareMessage = ` @${username} te convidou para o VotaSnap! \n\nCadastre-se usando meu link e seja um dos primeiros a ganhar os 200MT de bônus ao convidar 50 amigos:\n${inviteLink}\n\nVamos juntos nessa!`;
+  const emailSubject = `@${username} te convidou para o VotaSnap - Ganhe 200MT sendo rápido!`;
+  const emailBody = `Olá!\n\nVocê foi convidado(a) para participar do VotaSnap. Seja rápido e seja o primeiro a convidar 50 amigos para ganhar 200MT de bônus. Cadastrar usando meu link:\n\n${inviteLink}\n\nNão perca essa oportunidade! \n\nAtenciosamente,\n${username}`;
 
   const handleNativeShare = () => {
     const shareData = {
@@ -366,7 +395,7 @@ const ShareModal = ({ inviteLink, onClose, onCopy, username }) => {
           </div>
           <h3 className="text-xl font-bold text-gray-800 mb-1">Compartilhe e Ganhe</h3>
           <p className="text-gray-600 text-sm">
-            Cada amigo que se cadastrar pelo seu link vale mais perto da recompensa!
+            Seja o primeiro a convidar 50 amigos e ganhe {SPECIAL_REWARD_AMOUNT}MT!
           </p>
         </div>
         
@@ -387,7 +416,7 @@ const ShareModal = ({ inviteLink, onClose, onCopy, username }) => {
         
         <div className="bg-blue-50 rounded-lg p-3 text-center">
           <p className="text-xs text-blue-700 font-medium">
-            📢 Compartilhe em todas as plataformas para aumentar suas chances!
+            📢 Compartilhe rápido para ser o primeiro a completar o desafio!
           </p>
         </div>
       </div>
@@ -395,27 +424,27 @@ const ShareModal = ({ inviteLink, onClose, onCopy, username }) => {
   );
 };
 
-const InfoModal = ({ onClose, minFriends, rewardAmount, daysRemaining }) => {
+const InfoModal = ({ onClose, minFriends, rewardAmount, daysRemaining, isFirstToComplete }) => {
   const features = [
     {
       icon: <FaUsers className="text-blue-500 text-lg" />,
       title: "Como Participar",
-      description: `Convide ${minFriends} amigos para se cadastrarem no VotaSnap usando seu link exclusivo.`
+      description: `Seja o primeiro a convidar ${minFriends} amigos para se cadastrarem no VotaSnap usando seu link exclusivo.`
     },
     {
       icon: <FaGift className="text-purple-500 text-lg" />,
       title: "Sua Recompensa",
-      description: `Ao completar o desafio, você receberá ${rewardAmount}MT diretamente na sua conta.`
+      description: `O primeiro usuário que completar o desafio receberá ${rewardAmount}MT diretamente na sua conta.`
     },
     {
       icon: <FaCheckCircle className="text-green-500 text-lg" />,
       title: "Regras",
-      description: "Apenas cadastros completos e verificados serão contabilizados."
+      description: "Apenas cadastros completos e verificados serão contabilizados. Prêmio único para o primeiro que completar."
     },
     {
       icon: <FaClock className="text-yellow-500 text-lg" />,
       title: "Prazo",
-      description: `Você tem ${daysRemaining} dias para completar este desafio. Não perca tempo!`
+      description: `Você tem ${daysRemaining} dias para tentar ser o primeiro. Não perca tempo!`
     }
   ];
 
@@ -433,9 +462,9 @@ const InfoModal = ({ onClose, minFriends, rewardAmount, daysRemaining }) => {
           <div className="mx-auto bg-gradient-to-r from-purple-500 to-blue-600 text-white p-3 rounded-full w-16 h-16 flex items-center justify-center shadow-lg mb-3">
             <FaInfoCircle size={24} />
           </div>
-          <h3 className="text-xl font-bold text-gray-800 mb-1">Detalhes do Desafio</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-1">Desafio Especial</h3>
           <p className="text-gray-600 text-sm">
-            Tudo que você precisa saber sobre esta promoção especial
+            Seja o primeiro a completar e ganhe o prêmio!
           </p>
         </div>
         
