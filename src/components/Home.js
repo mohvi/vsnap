@@ -39,7 +39,7 @@ const HomePage = ({ userData }) => {
         const challengeSnapshot = await get(child(dbRef, `specialChallenges/${user.uid}`));
         
         if (challengeSnapshot.exists() && challengeSnapshot.val().completed) {
-          setShouldDisplayInvite(false);
+          setShouldDisplayInvite(true);
         } else {
           setShouldDisplayInvite(true);
         }

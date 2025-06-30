@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 const InviteFriendCard = ({ userData }) => {
   // Challenge configuration
   const CHALLENGE_DURATION_DAYS = 14; // 2 weeks
-  const MIN_FRIENDS_REQUIRED = 50;
+  const MIN_FRIENDS_REQUIRED = 1000;
   const SPECIAL_REWARD_AMOUNT = 200; // 200MT
 
   // State management
@@ -199,13 +199,12 @@ const countFriendsInPeriod = async (username) => {
         </h2>
         
         <p className="text-center text-sm text-gray-600 mb-3">
-          Convide {MIN_FRIENDS_REQUIRED} amigos em {CHALLENGE_DURATION_DAYS} dias e ganhe {SPECIAL_REWARD_AMOUNT}MT!
+          Convide + de 80 amigos até o dia 12 dias e ganhe {SPECIAL_REWARD_AMOUNT}MT!
         </p>
-        
         {/* Progress bar */}
         <div className="mb-4">
           <div className="flex justify-between text-xs text-gray-600 mb-1">
-            <span>{invitedFriendsCount}/{MIN_FRIENDS_REQUIRED} amigos</span>
+            <span>{invitedFriendsCount}/ + de 80 amigos</span>
             <span>{Math.floor((invitedFriendsCount / MIN_FRIENDS_REQUIRED) * 100)}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -383,7 +382,6 @@ const InfoModal = ({ onClose, minFriends, rewardAmount, daysRemaining }) => (
       <h3 className="text-lg font-bold text-gray-800 mb-3 text-center flex items-center justify-center">
         <FaInfoCircle className="mr-2 text-blue-500" /> Como Funciona
       </h3>
-      
       <div className="space-y-3 text-gray-700 text-xs">
         <div className="flex items-start">
           <div className="bg-blue-100 p-1 rounded-lg mr-2">
@@ -391,10 +389,9 @@ const InfoModal = ({ onClose, minFriends, rewardAmount, daysRemaining }) => (
           </div>
           <div>
             <h4 className="font-semibold">Desafio Especial</h4>
-            <p>Convide {minFriends} amigos em 14 dias e ganhe {rewardAmount}MT.</p>
+            <p>Convide {minFriends} amigos até o dia 12 de Julho e ganhe {rewardAmount}MT.</p>
           </div>
         </div>
-        
         <div className="flex items-start">
           <div className="bg-purple-100 p-1 rounded-lg mr-2">
             <FaGift className="text-purple-500 text-sm" />
@@ -415,11 +412,9 @@ const InfoModal = ({ onClose, minFriends, rewardAmount, daysRemaining }) => (
           </div>
         </div>
       </div>
-      
       <button
         onClick={onClose}
-        className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300 shadow-md text-sm"
-      >
+        className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300 shadow-md text-sm">
         Entendi
       </button>
     </div>
