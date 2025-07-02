@@ -208,11 +208,6 @@ const ActiveParticipantsRanking = () => {
           <FaChevronRight className="text-gray-400" />
         </div>
       )}
-      
-      {/* Legenda */}
-      <div className="text-center mt-3 text-xs text-gray-500">
-        <p>Atualizações a cada 5 minutos</p>
-      </div>
     </div>
   );
 };
