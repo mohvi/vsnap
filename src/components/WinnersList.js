@@ -12,79 +12,122 @@ const ActiveParticipantsRanking = () => {
   const [winner, setWinner] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
 
-  useEffect(() => {
-    const fetchActiveParticipants = async () => {
-      try {
-        const db = getDatabase();
+ useEffect(() => {
+  const fetchActiveParticipants = async () => {
+    try {
+      const db = getDatabase();
+      
+      // Buscar referências e usuários
+      const [referralsSnapshot, usersSnapshot] = await Promise.all([
+        get(ref(db, 'referrals')),
+        get(ref(db, 'users'))
+      ]);
+      
+      const referralsData = referralsSnapshot.val() || {};
+      const usersData = usersSnapshot.val() || {};
+
+      console.log("Dados completos de referrals:", referralsData);
+      console.log("Dados completos de users:", usersData);
+
+      // Processar participantes
+      const participantsList = [];
+      
+      // Iterar sobre todos os usuários no nó referrals
+      for (const username in referralsData) {
+        const referrals = referralsData[username];
         
-        // Buscar referências e usuários
-        const [referralsSnapshot, usersSnapshot] = await Promise.all([
-          get(ref(db, 'referrals')),
-          get(ref(db, 'users'))
-        ]);
+        // Verificar se há convites (considerando diferentes estruturas possíveis)
+        let referralCount = 0;
         
-        const referralsData = referralsSnapshot.val() || {};
-        const usersData = usersSnapshot.val() || {};
+        if (referrals) {
+          // Se for um objeto (a estrutura esperada)
+          if (typeof referrals === 'object' && !Array.isArray(referrals)) {
+            referralCount = Object.keys(referrals).length;
+          } 
+          // Se for um array (estrutura alternativa)
+          else if (Array.isArray(referrals)) {
+            referralCount = referrals.length;
+          }
+          // Se for um número direto (estrutura simplificada)
+          else if (typeof referrals === 'number') {
+            referralCount = referrals;
+          }
+        }
         
-        // Processar participantes
-        const participantsList = Object.keys(referralsData)
-          .filter(username => {
-            const referrals = referralsData[username];
-            return Object.keys(referrals || {}).length > 0;
-          })
-          .map(username => {
-            const user = Object.values(usersData).find(u => u.username === username);
-            return {
-              uid: user?.uid || '',
+        // Se tiver pelo menos 1 convite, adicionar à lista
+        if (referralCount > 0) {
+          // Encontrar o usuário correspondente
+          const user = Object.values(usersData).find(u => u.username === username);
+          
+          if (user) {
+            participantsList.push({
+              uid: user.uid,
               username,
-              name: user?.name || 'Usuário',
-              photoURL: user?.photoURL || '',
-              referralCount: Object.keys(referralsData[username]).length
-            };
-          })
-          .filter(p => p.uid);
-
-        // Ordenar por referências
-        participantsList.sort((a, b) => b.referralCount - a.referralCount);
-        
-        setActiveParticipants(participantsList);
-        
-        // Definir vencedor (1º lugar)
-        if (participantsList.length > 0) {
-          setWinner(participantsList[0]);
-          // Mostrar confetti apenas se for o usuário atual
-          if (auth.currentUser?.uid === participantsList[0].uid) {
-            setShowCelebration(true);
-            setTimeout(() => setShowCelebration(false), 5000);
-            confetti({
-              particleCount: 150,
-              spread: 70,
-              origin: { y: 0.6 }
+              name: user.name || 'Usuário',
+              photoURL: user.photoURL || '',
+              referralCount
+            });
+          } else {
+            console.warn(`Usuário ${username} encontrado em referrals mas não em users`);
+            // Adicionar mesmo sem dados completos do usuário
+            participantsList.push({
+              uid: `missing-${username}`,
+              username,
+              name: username,
+              photoURL: '',
+              referralCount
             });
           }
         }
-        
-        // Verificar usuário atual
-        if (auth.currentUser) {
-          const current = participantsList.find(p => p.uid === auth.currentUser.uid);
-          if (current) {
-            setCurrentUser({
-              ...current,
-              position: participantsList.findIndex(p => p.uid === auth.currentUser.uid) + 1
-            });
-          }
-        }
-        
-      } catch (err) {
-        console.error("Error fetching active participants:", err);
-        setError("Não foi possível carregar o ranking");
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchActiveParticipants();
-  }, []);
+      console.log("Lista de participantes antes da ordenação:", participantsList);
+
+      // Ordenar por referências
+      participantsList.sort((a, b) => b.referralCount - a.referralCount);
+      
+      console.log("Participantes ativos ordenados:", participantsList);
+
+      setActiveParticipants(participantsList);
+      
+      // Definir vencedor (1º lugar)
+      if (participantsList.length > 0) {
+        setWinner(participantsList[0]);
+        // Mostrar confetti apenas se for o usuário atual
+        if (auth.currentUser?.uid === participantsList[0].uid) {
+          setShowCelebration(true);
+          setTimeout(() => setShowCelebration(false), 5000);
+          confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }
+      }
+      
+      // Verificar usuário atual
+      if (auth.currentUser) {
+        const current = participantsList.find(p => p.uid === auth.currentUser.uid);
+        if (current) {
+          setCurrentUser({
+            ...current,
+            position: participantsList.findIndex(p => p.uid === auth.currentUser.uid) + 1
+          });
+        } else {
+          console.log("Usuário atual não encontrado na lista de participantes ativos");
+        }
+      }
+      
+    } catch (err) {
+      console.error("Error fetching active participants:", err);
+      setError("Não foi possível carregar o ranking");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchActiveParticipants();
+}, []);
 
   if (loading) {
     return <LoadingSkeleton />;
