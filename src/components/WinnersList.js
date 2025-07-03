@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaTrophy, FaCrown, FaUser, FaChevronRight, FaStar, FaMedal, FaFire } from "react-icons/fa";
+import { FaTrophy, FaCrown, FaUser, FaChevronRight, FaStar, FaMedal, FaFire, FaUserPlus } from "react-icons/fa";
 import { getDatabase, ref, get } from "firebase/database";
 import { auth } from "../fb";
 import confetti from "canvas-confetti";
@@ -25,9 +25,6 @@ const ActiveParticipantsRanking = () => {
       
       const referralsData = referralsSnapshot.val() || {};
       const usersData = usersSnapshot.val() || {};
-
-      console.log("Dados completos de referrals:", referralsData);
-      console.log("Dados completos de users:", usersData);
 
       // Processar participantes
       const participantsList = [];
@@ -68,7 +65,6 @@ const ActiveParticipantsRanking = () => {
               referralCount
             });
           } else {
-            console.warn(`Usuário ${username} encontrado em referrals mas não em users`);
             // Adicionar mesmo sem dados completos do usuário
             participantsList.push({
               uid: `missing-${username}`,
@@ -81,12 +77,10 @@ const ActiveParticipantsRanking = () => {
         }
       }
 
-      console.log("Lista de participantes antes da ordenação:", participantsList);
 
       // Ordenar por referências
       participantsList.sort((a, b) => b.referralCount - a.referralCount);
       
-      console.log("Participantes ativos ordenados:", participantsList);
 
       setActiveParticipants(participantsList);
       
@@ -104,20 +98,15 @@ const ActiveParticipantsRanking = () => {
           });
         }
       }
-      
-      // Verificar usuário atual
-      if (auth.currentUser) {
+            if (auth.currentUser) {
         const current = participantsList.find(p => p.uid === auth.currentUser.uid);
         if (current) {
           setCurrentUser({
             ...current,
             position: participantsList.findIndex(p => p.uid === auth.currentUser.uid) + 1
           });
-        } else {
-          console.log("Usuário atual não encontrado na lista de participantes ativos");
-        }
+        } 
       }
-      
     } catch (err) {
       console.error("Error fetching active participants:", err);
       setError("Não foi possível carregar o ranking");
@@ -160,19 +149,25 @@ const ActiveParticipantsRanking = () => {
         </div>
       )}
 
-      {/* Cabeçalho */}
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-lg font-bold flex items-center">
-          <FaTrophy className="mr-2 text-yellow-500" /> #AGANHAR
-        </h2>
-        {currentUser && (
-          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-            Você: #{currentUser.position}
-          </div>
-        )}
+<div className="flex justify-between items-center mb-3">
+  <h2 className="text-lg font-bold flex items-center">
+    <FaTrophy className="mr-2 text-yellow-500" /> #AGANHAR
+  </h2>
+  {currentUser && (
+    <div className="flex items-center space-x-2">
+      <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+        Você: #{currentUser.position}
       </div>
+      <a href="/invites"
+        className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full flex items-center hover:bg-red-200 transition-colors"
+      >
+        <FaUserPlus className="mr-1" size={10} />
+        Ver convites
+      </a>
+    </div>
+  )}
+</div>
 
-      {/* Destaque do Vencedor */}
       {winner && (
         <div className="mb-4 relative">
           <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-xl p-4 shadow-lg overflow-hidden">

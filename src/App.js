@@ -17,6 +17,7 @@ import logo from './img/logo.png';
 import CreateChallengeForm from './components/CreateChallengeForm';
 import ParticipationsPage from './components/ParticipationsPage';
 import PostDetail from './components/PostDetail';
+import InvitedFriends from './components/InvitedFriends';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -245,16 +246,17 @@ function App() {
               <Rewards user={user} userData={userData} />
             </ProtectedRoute>
           } />
-
+          <Route path="/invites" element={
+            <ProtectedRoute requireAgeVerification>
+              <InvitedFriends user={user} userData={userData} />
+            </ProtectedRoute>
+          } />
           
           <Route path="/not-allowed" element={<NotAllowed />} />
-          
           <Route path="/cc" element={<CreateChallengeForm />} />
           <Route path="/explore" element={<ParticipationsPage />} />
           <Route path="/p/:challengeId/:id" element={<PostDetail />} />
           <Route path="/challenges/:challengeId" element={<ParticipationsPage />} />
-
-          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
