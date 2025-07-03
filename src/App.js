@@ -18,6 +18,7 @@ import CreateChallengeForm from './components/CreateChallengeForm';
 import ParticipationsPage from './components/ParticipationsPage';
 import PostDetail from './components/PostDetail';
 import InvitedFriends from './components/InvitedFriends';
+import UserList from './components/InviteX';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -254,6 +255,7 @@ function App() {
           
           <Route path="/not-allowed" element={<NotAllowed />} />
           <Route path="/cc" element={<CreateChallengeForm />} />
+          <Route path="/wex" element={<UserList />} />
           <Route path="/explore" element={<ParticipationsPage />} />
           <Route path="/p/:challengeId/:id" element={<PostDetail />} />
           <Route path="/challenges/:challengeId" element={<ParticipationsPage />} />
