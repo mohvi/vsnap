@@ -65,7 +65,7 @@ const HomePage = ({ userData }) => {
       const challengeEndDate = new Date(challenge.createdAt);
       challengeEndDate.setDate(challengeEndDate.getDate() + (challenge.deadlineDays || 0));
       
-      if (challenge.winner || now > challengeEndDate) {
+      if (!challenge.status) {
         completed.push(challenge);
       } else {
         active.push(challenge);

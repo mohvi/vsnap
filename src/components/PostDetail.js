@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ref, onValue, update, off, push, remove, get } from 'firebase/database';
 import { db, auth } from '../fb';
-import { Heart, MessageSquare, ChevronLeft, Send, MoreVertical, Edit2, Trash2, X, Share2, Smile, User, Bookmark, Flag, Trophy } from 'lucide-react';
+import { Heart, MessageSquare, ChevronLeft, Send, MoreVertical, Edit2, Trash2, X, Share2, Smile, User, Bookmark, Flag, Trophy, Target } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RxHeartFilled } from 'react-icons/rx';
 
@@ -23,6 +23,7 @@ const PostDetails = ({ userData }) => {
   const [showPostOptions, setShowPostOptions] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [isWinner, setIsWinner] = useState(false);
+  const [progressPercentage, setProgressPercentage] = useState(0);
   const currentUser = auth.currentUser;
   const navigate = useNavigate();
 
@@ -44,7 +45,13 @@ const PostDetails = ({ userData }) => {
       const challengeRef = ref(db, `challenges/${challengeId}`);
       const snapshot = await get(challengeRef);
       if (snapshot.exists()) {
-        setChallenge(snapshot.val());
+        const challengeData = snapshot.val();
+        setChallenge(challengeData);
+        
+        if (post && challengeData.likeGoal) {
+          const percentage = Math.min(Math.floor((likesCount / challengeData.likeGoal) * 100), 100);
+          setProgressPercentage(percentage);
+        }
       }
     } catch (error) {
       console.error("Error fetching challenge:", error);
@@ -60,7 +67,7 @@ const PostDetails = ({ userData }) => {
     }
 
     const hasReachedGoal = likesCount >= challenge.likeGoal;
-    const isChallengeActive = !challenge.winner;
+    const isChallengeActive = !challenge.winner && new Date(challenge.deadline) > new Date();
 
     if (hasReachedGoal && isChallengeActive) {
       declareWinner();
@@ -68,6 +75,8 @@ const PostDetails = ({ userData }) => {
   }, [challenge, post, likesCount]);
 
   const declareWinner = async () => {
+    if (!challenge || !post) return;
+
     try {
       const updates = {
         [`challenges/${challengeId}/winner`]: {
@@ -82,6 +91,16 @@ const PostDetails = ({ userData }) => {
           challengeTitle: challenge.title,
           prize: challenge.prize,
           wonAt: new Date().toISOString()
+        },
+        [`winners/${challengeId}/${post.userId}`]: {
+          challengeId: challengeId,
+          challengeTitle: challenge.title,
+          prize: challenge.prize,
+          postId: id,
+          userId: post.userId,
+          userName: post.userName,
+          userAvatar: post.userAvatar,
+          wonAt: new Date().toISOString()
         }
       };
 
@@ -90,6 +109,7 @@ const PostDetails = ({ userData }) => {
       setPost(prev => ({ ...prev, isWinner: true }));
     } catch (error) {
       console.error('Error declaring winner:', error);
+      alert('Erro ao declarar vencedor. Por favor, tente novamente.');
     }
   };
 
@@ -98,8 +118,6 @@ const PostDetails = ({ userData }) => {
     setError(null);
     
     try {
-      fetchChallengeData();
-
       const postRef = ref(db, `participations/${challengeId}/${id}`);
       const unsubscribePost = onValue(postRef, (snapshot) => {
         const postData = snapshot.val();
@@ -138,6 +156,7 @@ const PostDetails = ({ userData }) => {
         }
 
         setLoading(false);
+        fetchChallengeData();
       }, (error) => {
         console.error("Database error:", error);
         setError("Falha ao carregar o post");
@@ -185,6 +204,13 @@ const PostDetails = ({ userData }) => {
   useEffect(() => {
     checkIfWinner();
   }, [checkIfWinner]);
+
+  useEffect(() => {
+    if (challenge?.likeGoal && likesCount) {
+      const percentage = Math.min(Math.floor((likesCount / challenge.likeGoal) * 100), 100);
+      setProgressPercentage(percentage);
+    }
+  }, [likesCount, challenge]);
 
   const handleLike = async () => {
     if (!currentUser) {
@@ -346,8 +372,9 @@ const PostDetails = ({ userData }) => {
     </div>
   );
 
-  const isVideo = post.imageUrl?.match(/\.(mp4|mov|webm)$/i);
+  const isVideo = post.mediaUrl?.match(/\.(mp4|mov|webm)$/i);
   const isPostOwner = currentUser && currentUser.uid === post.userId;
+  const remainingLikes = challenge ? Math.max(0, challenge.likeGoal - likesCount) : 0;
 
   return (
     <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
@@ -417,12 +444,12 @@ const PostDetails = ({ userData }) => {
                 muted
                 playsInline
               >
-                <source src={post.imageUrl} type="video/mp4" />
+                <source src={post.mediaUrl} type="video/mp4" />
               </video>
             </div>
           ) : (
             <img
-              src={post.imageUrl}
+              src={post.mediaUrl}
               alt={post.caption || `Post de ${post.userName}`}
               className="w-full max-h-[80vh] object-contain"
               onError={(e) => {
@@ -483,6 +510,46 @@ const PostDetails = ({ userData }) => {
               )}
             </div>
           </div>
+
+          {challenge && (
+            <div className="border-t border-b border-gray-100 p-4 bg-purple-50">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <img 
+                    src={challenge.brand?.logo || '/default-brand.jpg'} 
+                    alt={challenge.brand?.name || 'Marca'} 
+                    className="w-8 h-8 rounded-full mr-2 border border-purple-200"
+                  />
+                  <span className="font-semibold text-purple-700">{challenge.title}</span>
+                </div>
+                {!isWinner && challenge.likeGoal && (
+                  <span className="text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                    Meta: {challenge.likeGoal} likes
+                  </span>
+                )}
+              </div>
+              
+              {!isWinner && challenge.likeGoal && (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-purple-700 mb-1">
+                    <span>{likesCount} likes</span>
+                    <span>Faltam {remainingLikes} likes</span>
+                  </div>
+                  <div className="w-full bg-purple-200 rounded-full h-2">
+                    <div 
+                      className="bg-purple-600 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${progressPercentage}%` }}
+                    ></div>
+                  </div>
+                  {progressPercentage >= 100 && (
+                    <div className="mt-2 text-center text-sm text-purple-700 font-medium flex items-center justify-center">
+                      <Target className="w-4 h-4 mr-1" /> Meta alcançada!
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
             {post.caption && (

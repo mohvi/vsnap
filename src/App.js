@@ -19,6 +19,7 @@ import ParticipationsPage from './components/ParticipationsPage';
 import PostDetail from './components/PostDetail';
 import InvitedFriends from './components/InvitedFriends';
 import UserList from './components/InviteX';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -260,6 +261,10 @@ function App() {
           <Route path="/p/:challengeId/:id" element={<PostDetail userData={userData}/>} />
           <Route path="/challenges/:challengeId" element={<ParticipationsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
+
+          <Route path="/admin">
+          <Route index element={<AdminDashboard />} />
+        </Route>
         </Routes>
       </Layout>
     </Router>

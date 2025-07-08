@@ -178,24 +178,13 @@ const ActiveParticipantsRanking = () => {
           </div>
         </div>
       </div>
-
-      {/* Mensagem de encerramento */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 text-center">
-        <h3 className="font-medium text-gray-700 mb-2">Desafio Encerrado</h3>
-        <p className="text-sm text-gray-600">
-          O desafio de convites foi finalizado. Parabéns ao nosso vencedor!
-        </p>
-      </div>
     </div>
   );
 };
 
 const LoadingSkeleton = () => (
   <div className="px-4 pb-4">
-    {/* Skeleton do vencedor */}
     <div className="mb-4 bg-gray-200 rounded-xl h-24 animate-pulse"></div>
-    
-    {/* Skeleton da mensagem */}
     <div className="bg-gray-200 rounded-lg h-20 animate-pulse"></div>
   </div>
 );

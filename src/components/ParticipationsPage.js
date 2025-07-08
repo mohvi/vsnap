@@ -272,11 +272,11 @@ const ExplorePostCard = React.memo(({ challengeId,data, onLike, navigate, curren
           loop
           playsInline
         >
-          <source src={data.imageUrl} type="video/mp4" />
+          <source src={data.mediaUrl} type="video/mp4" />
         </video>
       ) : (
         <img
-          src={data.imageUrl}
+          src={data.mediaUrl}
           alt={data.caption || `Post de ${data.userName}`}
           className="w-full h-full object-cover"
           loading="lazy"

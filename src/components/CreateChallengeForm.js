@@ -5,7 +5,7 @@ import { db, storage } from '../fb';
 import { FaHeart, FaImage, FaPlus, FaUpload, FaSpinner, FaCheck, FaMapMarkerAlt } from 'react-icons/fa';
 
 const AdminChallengeForm = () => {
-  // Lista de províncias
+  // List of provinces
   const [provinces] = useState([
     { id: 'maputo', name: 'Maputo' },
     { id: 'gaza', name: 'Gaza' },
@@ -19,8 +19,8 @@ const AdminChallengeForm = () => {
     { id: 'cabo_delgado', name: 'Cabo Delgado' }
   ]);
 
-  // Estado do formulário simplificado
-  const [form, setForm] = useState({
+  // Initial form state
+  const initialFormState = {
     title: '',
     description: '',
     prize: '',
@@ -34,14 +34,23 @@ const AdminChallengeForm = () => {
     terms: '',
     likeGoal: 100,
     participants: 0,
-    province: '', // Adicionado campo de província
+    province: '',
     isNational: false
-  });
+  };
 
+  const [form, setForm] = useState(initialFormState);
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
+
+  // Clean up object URLs
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
+    };
+  }, [imagePreview, logoPreview]);
 
   // Handlers
   const handleInputChange = (e) => {
@@ -63,6 +72,14 @@ const AdminChallengeForm = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.match('image.*')) {
+        alert('Por favor, selecione um arquivo de imagem');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A imagem deve ter menos de 5MB');
+        return;
+      }
       setForm({ ...form, imageFile: file });
       setImagePreview(URL.createObjectURL(file));
     }
@@ -71,6 +88,14 @@ const AdminChallengeForm = () => {
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.match('image.*')) {
+        alert('Por favor, selecione um arquivo de imagem');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        alert('O logo deve ter menos de 2MB');
+        return;
+      }
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
     }
@@ -85,11 +110,53 @@ const AdminChallengeForm = () => {
     }));
   };
 
+  // Form validation
+  const validateForm = () => {
+    if (!form.title || form.title.length < 5) {
+      return { valid: false, message: 'O título deve ter pelo menos 5 caracteres' };
+    }
+    
+    if (!form.description || form.description.length < 20) {
+      return { valid: false, message: 'A descrição deve ter pelo menos 20 caracteres' };
+    }
+    
+    if (!form.prize) {
+      return { valid: false, message: 'Por favor, insira o prêmio' };
+    }
+    
+    if (!form.deadline) {
+      return { valid: false, message: 'Por favor, insira a data limite' };
+    }
+    
+    if (new Date(form.deadline) < new Date()) {
+      return { valid: false, message: 'A data limite deve ser no futuro' };
+    }
+    
+    if (!form.imageFile) {
+      return { valid: false, message: 'Por favor, adicione a imagem do desafio' };
+    }
+    
+    if (!logoFile) {
+      return { valid: false, message: 'Por favor, adicione o logo da marca' };
+    }
+    
+    if (!form.brand.name) {
+      return { valid: false, message: 'Por favor, insira o nome da marca' };
+    }
+    
+    if (!form.terms) {
+      return { valid: false, message: 'Por favor, insira os termos do desafio' };
+    }
+    
+    return { valid: true };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!form.imageFile || !logoFile) {
-      alert('Por favor, adicione a imagem do desafio e o logo da marca');
+    const validation = validateForm();
+    if (!validation.valid) {
+      alert(validation.message);
       return;
     }
 
@@ -121,12 +188,10 @@ const AdminChallengeForm = () => {
         status: 'active',
         createdAt: Date.now(),
         coverImage: bannerURL,
-        // Localização
         location: {
           isNational: form.isNational,
           province: form.isNational ? '' : form.province
         },
-        // Engagement metrics
         totalLikes: 0,
         topParticipants: []
       };
@@ -135,25 +200,13 @@ const AdminChallengeForm = () => {
       alert("Desafio criado com sucesso!");
       
       // Reset form
-      setForm({
-        title: '',
-        description: '',
-        prize: '',
-        deadline: '',
-        type: 'photo',
-        imageFile: null,
-        brand: { name: '', logo: '' },
-        terms: '',
-        likeGoal: 100,
-        province: '',
-        isNational: false
-      });
+      setForm(initialFormState);
       setLogoFile(null);
       setImagePreview(null);
       setLogoPreview(null);
     } catch (error) {
       console.error("Erro ao criar desafio:", error);
-      alert("Erro ao criar desafio. Por favor, tente novamente.");
+      alert(`Erro ao criar desafio: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -208,7 +261,7 @@ const AdminChallengeForm = () => {
           />
         </div>
 
-        {/* Prize and Goals Section */}
+        {/* Prize, Deadline and Goals Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Prêmio*</label>
@@ -221,6 +274,26 @@ const AdminChallengeForm = () => {
               required 
             />
           </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Data Limite*
+              <span className="text-xs text-gray-500 ml-1">(para encerramento do desafio)</span>
+            </label>
+            <input
+              type="datetime-local"
+              name="deadline"
+              className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500"
+              value={form.deadline}
+              onChange={handleInputChange}
+              min={new Date().toISOString().slice(0, 16)}
+              required
+            />
+            {form.deadline && new Date(form.deadline) < new Date() && (
+              <p className="text-red-500 text-xs mt-1">A data limite deve ser no futuro</p>
+            )}
+          </div>
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Meta de Likes*
@@ -320,6 +393,7 @@ const AdminChallengeForm = () => {
                     accept="image/*" 
                     onChange={handleLogoChange} 
                     className="hidden"
+                    required
                   />
                 </label>
               </div>
