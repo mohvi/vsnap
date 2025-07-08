@@ -94,8 +94,7 @@ const HomePage = ({ userData }) => {
           const sortedChallenges = challengesArray.sort((a, b) => 
             new Date(b.createdAt) - new Date(a.createdAt)
           );
-          
-          setAllChallenges(sortedChallenges);
+          //setAllChallenges(sortedChallenges);
         } else {
           setAllChallenges([]);
         }
