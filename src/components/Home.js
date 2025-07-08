@@ -6,14 +6,16 @@ import ChallengeList from './ChallengeList';
 import ParticipateModal from './ParticipateModal';
 import ShareModal from './ShareModal';
 import InviteFriendCard from './InviteFriendCard';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Trophy } from 'lucide-react';
 import WinnersList from './WinnersList';
 
 const HomePage = ({ userData }) => {
-  const [activeTab, setActiveTab] = useState('destaques');
+  const [activeTab, setActiveTab] = useState('active');
   const [showParticipateModal, setShowParticipateModal] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [allChallenges, setAllChallenges] = useState([]);
+  const [activeChallenges, setActiveChallenges] = useState([]);
+  const [completedChallenges, setCompletedChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -51,6 +53,29 @@ const HomePage = ({ userData }) => {
     checkChallengeCompletion();
   }, [user?.uid]);
 
+  // Classificar desafios em ativos e encerrados
+  useEffect(() => {
+    if (allChallenges.length === 0) return;
+
+    const now = new Date();
+    const active = [];
+    const completed = [];
+
+    allChallenges.forEach(challenge => {
+      const challengeEndDate = new Date(challenge.createdAt);
+      challengeEndDate.setDate(challengeEndDate.getDate() + (challenge.deadlineDays || 0));
+      
+      if (challenge.winner || now > challengeEndDate) {
+        completed.push(challenge);
+      } else {
+        active.push(challenge);
+      }
+    });
+
+    setActiveChallenges(active);
+    setCompletedChallenges(completed);
+  }, [allChallenges]);
+
   // Buscar desafios do Firebase
   useEffect(() => {
     const challengesRef = ref(db, 'challenges');
@@ -70,7 +95,7 @@ const HomePage = ({ userData }) => {
             new Date(b.createdAt) - new Date(a.createdAt)
           );
           
-          //setAllChallenges(sortedChallenges);
+          setAllChallenges(sortedChallenges);
         } else {
           setAllChallenges([]);
         }
@@ -103,7 +128,7 @@ const HomePage = ({ userData }) => {
         .catch((error) => console.log('Erro ao compartilhar:', error));
     } else {
       setShowShareModal(true);
-      setCurrentChallenge(challenge);
+      setCurrentChallenge(challenge); 
     }
   };
 
@@ -142,33 +167,50 @@ const HomePage = ({ userData }) => {
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
       <WinnersList/>
-      {shouldDisplayInvite && <InviteFriendCard userData={userData} />}
       <div className="flex border-b mb-8 bg-white rounded-t-lg shadow-sm">
         <button 
-          onClick={() => setActiveTab('destaques')}
-          className={`px-6 py-3 flex items-center ${activeTab === 'destaques' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          onClick={() => setActiveTab('active')}
+          className={`px-6 py-3 flex items-center ${activeTab === 'active' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          <Sparkles className="mr-2" /> Desafios
+          <Sparkles className="mr-2" /> Desafios Ativos
+        </button>
+        <button 
+          onClick={() => setActiveTab('completed')}
+          className={`px-6 py-3 flex items-center ${activeTab === 'completed' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <Trophy className="mr-2" /> Encerrados
         </button>
       </div>
 
-      <ChallengeList 
-        loading={loading}
-        error={error}
-        challenges={allChallenges}
-        user={user}
-        onParticipateClick={handleParticipateClick}
-        onShareClick={handleShareChallenge}
-      />
+      {activeTab === 'active' ? (
+        <ChallengeList 
+          loading={loading}
+          error={error}
+          challenges={activeChallenges}
+          user={user}
+          onParticipateClick={handleParticipateClick}
+          onShareClick={handleShareChallenge}
+        />
+      ) : (
+        <ChallengeList 
+          loading={loading}
+          error={error}
+          challenges={completedChallenges}
+          user={user}
+          onParticipateClick={handleParticipateClick}
+          onShareClick={handleShareChallenge}
+          hideCompleted={false}
+        />
+      )}
 
       {showParticipateModal && selectedChallenge && (
         <ParticipateModal 
           challenge={selectedChallenge}
           user={user}
+          userData={userData}
           onClose={() => setShowParticipateModal(false)}
         />
       )}
-
       {showShareModal && currentChallenge && (
         <ShareModal 
           challenge={currentChallenge}

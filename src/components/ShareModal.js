@@ -4,7 +4,7 @@ import { X, MessageSquare, TrendingUp, Sparkles, Link as LinkIcon } from 'lucide
 const ShareModal = ({ challenge, onClose }) => {
   if (!challenge) return null;
 
-  const shareUrl = `https://votasnap.vercel.app/challenges/${challenge.id}`;
+  const shareUrl = `https://votasnap.online/challenges/${challenge.id}`;
   const shareText = `${challenge.title} - ${challenge.description}`;
   const encodedText = encodeURIComponent(shareText);
   const encodedUrl = encodeURIComponent(shareUrl);

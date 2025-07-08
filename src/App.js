@@ -257,7 +257,7 @@ function App() {
           <Route path="/cc" element={<CreateChallengeForm />} />
           <Route path="/wex" element={<UserList />} />
           <Route path="/explore" element={<ParticipationsPage />} />
-          <Route path="/p/:challengeId/:id" element={<PostDetail />} />
+          <Route path="/p/:challengeId/:id" element={<PostDetail userData={userData}/>} />
           <Route path="/challenges/:challengeId" element={<ParticipationsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

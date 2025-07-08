@@ -1,13 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { Share2, Zap, Award, Heart, Users, Image, Video, Check } from 'lucide-react';
+import { Share2, Zap, Award, Heart, Users, Image, Video, Check, Trophy, Crown } from 'lucide-react';
 import { db } from '../fb';
 import { ref, get } from 'firebase/database';
 import { Link } from 'react-router-dom';
 
-const ChallengeCard = ({ challenge, user, onParticipateClick, onShareClick }) => {
+const ChallengeCard = ({ challenge, user, onParticipateClick, onShareClick, hideCompleted = false }) => {
   const [participationStatus, setParticipationStatus] = useState('loading');
+  const [winnerInfo, setWinnerInfo] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const fetchChallengeData = async () => {
+      try {
+        const challengeRef = ref(db, `challenges/${challenge.id}`);
+        const snapshot = await get(challengeRef);
+        
+        if (!snapshot.exists()) {
+          setIsLoading(false);
+          return;
+        }
+
+        const challengeData = snapshot.val();
+        if (challengeData.winner) {
+          setWinnerInfo({
+            username: challengeData.winner.userName,
+            userId: challengeData.winner.userId
+          });
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Erro ao buscar dados do desafio:", error);
+        setIsLoading(false);
+      }
+    };
+
     const checkParticipationStatus = async () => {
       if (user) {
         try {
@@ -23,10 +50,33 @@ const ChallengeCard = ({ challenge, user, onParticipateClick, onShareClick }) =>
       }
     };
 
+    fetchChallengeData();
     checkParticipationStatus();
   }, [user, challenge.id]);
 
+  if (isLoading) return null;
+
+  // Se o desafio tem vencedor e hideCompleted é true, não renderiza
+  if (winnerInfo && hideCompleted) return null;
+
+  const interactionCount = challenge.interaction 
+    ? (typeof challenge.interaction === 'string' 
+        ? challenge.interaction.split(' ')[0] 
+        : challenge.interaction)
+    : '0';
+
   const renderParticipateButton = () => {
+    if (winnerInfo) {
+      return (
+        <button 
+          className="bg-gray-200 text-gray-600 px-4 py-2 rounded-lg flex-1 cursor-default flex items-center justify-center"
+          disabled
+        >
+          <Trophy className="w-5 h-5 mr-2 text-yellow-600" /> Desafio encerrado
+        </button>
+      );
+    }
+
     if (participationStatus === 'participated') {
       return (
         <button 
@@ -41,6 +91,7 @@ const ChallengeCard = ({ challenge, user, onParticipateClick, onShareClick }) =>
       <button 
         onClick={() => onParticipateClick(challenge)}
         className="bg-gradient-to-r from-pink-500 to-blue-500 text-white px-4 py-2 rounded-lg flex-1 hover:from-pink-600 hover:to-blue-600 transition flex items-center justify-center shadow-md hover:shadow-lg"
+        disabled={winnerInfo}
       >
         Participar Agora
       </button>
@@ -48,7 +99,13 @@ const ChallengeCard = ({ challenge, user, onParticipateClick, onShareClick }) =>
   };
 
   return (
-    <div className="border pb-20 bg-gray-50 min-h-screen rounded-2xl overflow-hidden hover:shadow-lg transition duration-300 bg-white">
+    <div className={`border pb-20 bg-gray-50 min-h-screen rounded-2xl overflow-hidden hover:shadow-lg transition duration-300 bg-white ${winnerInfo ? 'border-yellow-400 border-2' : ''}`}>
+      {winnerInfo && (
+        <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold flex items-center z-10">
+          <Crown className="w-3 h-3 mr-1" /> VENCEDOR
+        </div>
+      )}
+      
       <div className="relative h-48 bg-gradient-to-br from-pink-100 to-blue-100">
         <img 
           src={challenge.coverImage} 
@@ -58,12 +115,12 @@ const ChallengeCard = ({ challenge, user, onParticipateClick, onShareClick }) =>
         <div className="absolute top-4 left-4 flex items-center">
           <img 
             src={challenge.brand?.logo || 'https://via.placeholder.com/40'} 
-            alt={challenge.brand.name} 
+            alt={challenge.brand?.name || 'Marca'} 
             className="w-10 h-10 rounded-full border-2 border-white bg-white shadow-md"
           />
           <span className="ml-2 font-medium text-white bg-gradient-to-r from-pink-500 to-blue-500 px-3 py-1 rounded-full text-sm flex items-center">
-            {challenge.brand.name}
-            {challenge.brand.verified && (
+            {challenge.brand?.name || 'Marca'}
+            {challenge.brand?.verified && (
               <svg className="w-4 h-4 inline ml-1 text-white" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82 1.89 3.2L12 21.04l3.4 1.47 1.89-3.2 3.61-.82-.34-3.7L23 12zm-12.91 4.72l-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z"/>
               </svg>
@@ -84,25 +141,44 @@ const ChallengeCard = ({ challenge, user, onParticipateClick, onShareClick }) =>
       </div>
       
       <div className="p-5">
-        <h3 className="text-xl font-bold mb-2 text-gray-800">{challenge.title}</h3>
+        <h3 className="text-xl font-bold mb-2 text-gray-800 flex items-center">
+          {challenge.title}
+          {winnerInfo && (
+            <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full flex items-center">
+              <Trophy className="w-3 h-3 mr-1" /> Encerrado
+            </span>
+          )}
+        </h3>
+        
+        {winnerInfo && (
+          <div className="mb-3 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r-lg">
+            <div className="flex items-center">
+              <Crown className="w-5 h-5 text-yellow-600 mr-2" />
+              <span className="font-medium text-yellow-800">
+                Vencedor: <span className="text-blue-600">@{winnerInfo.username}</span>
+              </span>
+            </div>
+          </div>
+        )}
+        
         <p className="text-gray-600 mb-4">{challenge.description}</p>
         
         <div className="flex justify-between items-center mb-4">
           <div className="bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium flex items-center">
-            <Award className="w-4 h-4 mr-1" /> {challenge.prize}
+            <Award className="w-4 h-4 mr-1" /> {challenge.prize || 'Sem prêmio definido'}
           </div>
           <div className="text-gray-500 text-sm flex items-center">
-            <Zap className="w-4 h-4 mr-1" /> {challenge.deadlineDays} dias restantes
+            <Zap className="w-4 h-4 mr-1" /> {winnerInfo ? 'Concluído' : `${challenge.deadlineDays || '?'} dias restantes`}
           </div>
         </div>
         
         <div className="flex justify-between items-center mb-4 text-sm">
           <div className="text-gray-500 flex items-center">
-            <Users className="w-4 h-4 mr-1" /> {challenge.participants} participantes
+            <Users className="w-4 h-4 mr-1" /> {challenge.participants || 0} participantes
           </div>
           <div className="flex space-x-3">
             <span className="flex items-center text-gray-500">
-              <Heart className="w-4 h-4 mr-1 text-pink-500" /> {challenge.interaction.split(' ')[0]}
+              <Heart className="w-4 h-4 mr-1 text-pink-500" /> {interactionCount}
             </span>
           </div>
         </div>
@@ -119,7 +195,7 @@ const ChallengeCard = ({ challenge, user, onParticipateClick, onShareClick }) =>
 
         <Link
           to={`/challenges/${challenge.id}`}
-          className="w-full py-2 text-center bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition flex items-center justify-center"
+          className={`w-full py-2 text-center ${winnerInfo ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} rounded-lg transition flex items-center justify-center`}
         >
           <Users className="w-4 h-4 mr-2" /> Ver Participações
         </Link>

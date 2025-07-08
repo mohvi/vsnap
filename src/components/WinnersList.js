@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaTrophy, FaCrown, FaUser, FaChevronRight, FaStar, FaMedal, FaFire, FaUserPlus } from "react-icons/fa";
+import { FaTrophy, FaCrown, FaUser, FaUserPlus, FaMedal } from "react-icons/fa";
 import { getDatabase, ref, get } from "firebase/database";
 import { auth } from "../fb";
 import confetti from "canvas-confetti";
@@ -8,115 +8,96 @@ const ActiveParticipantsRanking = () => {
   const [activeParticipants, setActiveParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
   const [winner, setWinner] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
 
- useEffect(() => {
-  const fetchActiveParticipants = async () => {
-    try {
-      const db = getDatabase();
-      
-      // Buscar referências e usuários
-      const [referralsSnapshot, usersSnapshot] = await Promise.all([
-        get(ref(db, 'referrals')),
-        get(ref(db, 'users'))
-      ]);
-      
-      const referralsData = referralsSnapshot.val() || {};
-      const usersData = usersSnapshot.val() || {};
+  useEffect(() => {
+    const fetchActiveParticipants = async () => {
+      try {
+        const db = getDatabase();
+        
+        // Buscar referências e usuários
+        const [referralsSnapshot, usersSnapshot] = await Promise.all([
+          get(ref(db, 'referrals')),
+          get(ref(db, 'users'))
+        ]);
+        
+        const referralsData = referralsSnapshot.val() || {};
+        const usersData = usersSnapshot.val() || {};
 
-      // Processar participantes
-      const participantsList = [];
-      
-      // Iterar sobre todos os usuários no nó referrals
-      for (const username in referralsData) {
-        const referrals = referralsData[username];
-        
-        // Verificar se há convites (considerando diferentes estruturas possíveis)
-        let referralCount = 0;
-        
-        if (referrals) {
-          // Se for um objeto (a estrutura esperada)
-          if (typeof referrals === 'object' && !Array.isArray(referrals)) {
-            referralCount = Object.keys(referrals).length;
-          } 
-          // Se for um array (estrutura alternativa)
-          else if (Array.isArray(referrals)) {
-            referralCount = referrals.length;
-          }
-          // Se for um número direto (estrutura simplificada)
-          else if (typeof referrals === 'number') {
-            referralCount = referrals;
-          }
-        }
-        
-        // Se tiver pelo menos 1 convite, adicionar à lista
-        if (referralCount > 0) {
-          // Encontrar o usuário correspondente
-          const user = Object.values(usersData).find(u => u.username === username);
+        // Processar participantes e contar convites válidos
+        const participantsMap = new Map();
+
+        // Processar cada usuário que fez convites
+        for (const username in referralsData) {
+          const referrals = referralsData[username];
           
-          if (user) {
-            participantsList.push({
-              uid: user.uid,
-              username,
-              name: user.name || 'Usuário',
-              photoURL: user.photoURL || '',
-              referralCount
-            });
-          } else {
-            // Adicionar mesmo sem dados completos do usuário
-            participantsList.push({
-              uid: `missing-${username}`,
-              username,
-              name: username,
-              photoURL: '',
-              referralCount
-            });
+          // Contar convites válidos (com status pending ou sem status definido)
+          let referralCount = 0;
+          if (referrals && typeof referrals === 'object') {
+            referralCount = Object.keys(referrals).filter(key => {
+              const referral = referrals[key];
+              return !referral.status || referral.status === 'pending';
+            }).length;
+          }
+
+          if (referralCount > 0) {
+            // Encontrar o usuário correspondente
+            const user = Object.values(usersData).find(u => u.username === username);
+            
+            if (user) {
+              participantsMap.set(user.uid, {
+                uid: user.uid,
+                username,
+                name: user.name || username,
+                photoURL: user.photoURL || '',
+                referralCount
+              });
+            } else {
+              // Adicionar mesmo sem dados completos do usuário
+              participantsMap.set(`missing-${username}`, {
+                uid: `missing-${username}`,
+                username,
+                name: username,
+                photoURL: '',
+                referralCount
+              });
+            }
           }
         }
-      }
 
+        // Converter para array e ordenar por número de convites (decrescente)
+        const participantsList = Array.from(participantsMap.values()).sort((a, b) => b.referralCount - a.referralCount);
 
-      // Ordenar por referências
-      participantsList.sort((a, b) => b.referralCount - a.referralCount);
-      
-
-      setActiveParticipants(participantsList);
-      
-      // Definir vencedor (1º lugar)
-      if (participantsList.length > 0) {
-        setWinner(participantsList[0]);
-        // Mostrar confetti apenas se for o usuário atual
-        if (auth.currentUser?.uid === participantsList[0].uid) {
-          setShowCelebration(true);
-          setTimeout(() => setShowCelebration(false), 5000);
-          confetti({
-            particleCount: 150,
-            spread: 70,
-            origin: { y: 0.6 }
-          });
+        // Definir o vencedor (participante com mais convites)
+        if (participantsList.length > 0) {
+          const topParticipant = participantsList[0];
+          setWinner(topParticipant);
+          
+          // Verificar se o usuário atual é o vencedor
+          if (auth.currentUser?.uid === topParticipant.uid) {
+            setShowCelebration(true);
+            confetti({
+              particleCount: 150,
+              spread: 70,
+              origin: { y: 0.6 }
+            });
+            setTimeout(() => setShowCelebration(false), 5000);
+          }
         }
-      }
-            if (auth.currentUser) {
-        const current = participantsList.find(p => p.uid === auth.currentUser.uid);
-        if (current) {
-          setCurrentUser({
-            ...current,
-            position: participantsList.findIndex(p => p.uid === auth.currentUser.uid) + 1
-          });
-        } 
-      }
-    } catch (err) {
-      console.error("Error fetching active participants:", err);
-      setError("Não foi possível carregar o ranking");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  fetchActiveParticipants();
-}, []);
+        setActiveParticipants(participantsList);
+
+      } catch (err) {
+        console.error("Error fetching active participants:", err);
+        setError("Não foi possível carregar o ranking");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActiveParticipants();
+  }, []);
 
   if (loading) {
     return <LoadingSkeleton />;
@@ -126,11 +107,11 @@ const ActiveParticipantsRanking = () => {
     return <div className="p-4 text-red-500 text-center">{error}</div>;
   }
 
-  if (activeParticipants.length === 0) {
+  if (!winner) {
     return (
       <div className="p-4 text-center text-gray-500">
-        <FaUser className="mx-auto mb-2 text-2xl" />
-        <p>Ainda não há participantes ativos no desafio</p>
+        <FaUserPlus className="mx-auto mb-2 text-2xl" />
+        <p>O desafio foi encerrado sem participantes</p>
       </div>
     );
   }
@@ -143,180 +124,67 @@ const ActiveParticipantsRanking = () => {
           <div className="bg-gradient-to-br from-yellow-100 to-yellow-50 p-6 rounded-xl shadow-2xl text-center animate-bounce-in mx-4 border-2 border-yellow-300 max-w-md">
             <div className="text-5xl mb-3">🏆</div>
             <h3 className="text-2xl font-bold text-yellow-700 mb-2">PARABÉNS!</h3>
-            <p className="text-lg text-yellow-800 mb-3">Você está em 1º lugar no ranking!</p>
-            <p className="text-sm text-yellow-600">Continue convidando para manter sua posição!</p>
+            <p className="text-lg text-yellow-800 mb-3">Você venceu o desafio com {winner?.referralCount} convites!</p>
+            <p className="text-sm text-yellow-600">O desafio foi encerrado e você é o grande vencedor!</p>
           </div>
         </div>
       )}
 
-<div className="flex justify-between items-center mb-3">
-  <h2 className="text-lg font-bold flex items-center">
-    <FaTrophy className="mr-2 text-yellow-500" /> #AGANHAR
-  </h2>
-  {currentUser && (
-    <div className="flex items-center space-x-2">
-      <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-        Você: #{currentUser.position}
+      {/* Cabeçalho do resultado final */}
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-lg font-bold flex items-center">
+          <FaTrophy className="mr-2 text-yellow-500" /> Resultado Final
+        </h2>
+        <div className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
+          Desafio encerrado
+        </div>
       </div>
-      <a href="/invites"
-        className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full flex items-center hover:bg-red-200 transition-colors"
-      >
-        <FaUserPlus className="mr-1" size={10} />
-        Ver convites
-      </a>
-    </div>
-  )}
-</div>
 
-      {winner && (
-        <div className="mb-4 relative">
-          <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-xl p-4 shadow-lg overflow-hidden">
-            <div className="absolute top-0 right-0 bg-yellow-600 text-white px-2 py-1 text-xs font-bold rounded-bl-lg">
-              <FaCrown className="inline mr-1" /> LÍDER
-            </div>
-            
-            <div className="flex items-center">
-              <div className="relative mr-3">
-                {winner.photoURL ? (
-                  <img 
-                    src={winner.photoURL} 
-                    alt={winner.username} 
-                    className="w-14 h-14 rounded-full border-2 border-white shadow-md"
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-yellow-200 border-2 border-white shadow-md flex items-center justify-center">
-                    <FaUser className="text-yellow-600 text-xl" />
-                  </div>
-                )}
-                <div className="absolute -bottom-1 -right-1 bg-yellow-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white">
-                  1
-                </div>
-              </div>
-              
-              <div className="flex-1">
-                <h3 className="font-bold text-white">{winner.name}</h3>
-                <p className="text-yellow-100 text-sm">@{winner.username}</p>
-                <div className="flex items-center mt-1">
-                  <FaFire className="text-yellow-200 mr-1" />
-                  <span className="text-yellow-200 text-xs font-bold">
-                    {winner.referralCount} convites
-                  </span>
-                </div>
-              </div>
-            </div>
+      {/* Card do vencedor */}
+      <div className="mb-4 relative">
+        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-xl p-4 shadow-lg overflow-hidden">
+          <div className="absolute top-0 right-0 bg-yellow-600 text-white px-2 py-1 text-xs font-bold rounded-bl-lg">
+            <FaCrown className="inline mr-1" /> VENCEDOR
           </div>
           
-          {/* Barra de progresso do líder */}
-          <div className="mt-2 bg-yellow-100 rounded-full h-2">
-            <div 
-              className="bg-yellow-600 h-2 rounded-full" 
-              style={{ width: `${Math.min(100, (winner.referralCount / (winner.referralCount + 10)) * 100)}%` }}
-            ></div>
+          <div className="flex items-center">
+            <div className="relative mr-3">
+              {winner.photoURL ? (
+                <img 
+                  src={winner.photoURL} 
+                  alt={winner.username} 
+                  className="w-14 h-14 rounded-full border-2 border-white shadow-md"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-yellow-200 border-2 border-white shadow-md flex items-center justify-center">
+                  <FaUser className="text-yellow-600 text-xl" />
+                </div>
+              )}
+              <div className="absolute -bottom-1 -right-1 bg-yellow-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white">
+                1º
+              </div>
+            </div>
+            
+            <div className="flex-1">
+              <h3 className="font-bold text-white">{winner.name}</h3>
+              <p className="text-yellow-100 text-sm">@{winner.username}</p>
+              <div className="flex items-center mt-1">
+                <FaUserPlus className="text-yellow-200 mr-1" />
+                <span className="text-yellow-200 text-sm font-bold">
+                  {winner.referralCount} convites
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Ranking horizontal */}
-      <div className="relative">
-        <div className="flex space-x-3 overflow-x-auto pb-4 hide-scrollbar">
-          {activeParticipants.map((participant, index) => (
-            <ParticipantCard 
-              key={participant.uid}
-              position={index + 1}
-              username={participant.username}
-              photoURL={participant.photoURL}
-              referralCount={participant.referralCount}
-              isCurrentUser={currentUser?.uid === participant.uid}
-              isWinner={index === 0}
-            />
-          ))}
         </div>
       </div>
 
-      {/* Seção do usuário atual (se não estiver visível no ranking) */}
-      {currentUser && currentUser.position > 3 && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center border border-blue-100">
-          <div className="bg-blue-100 text-blue-800 w-8 h-8 rounded-full flex items-center justify-center font-bold mr-3">
-            #{currentUser.position}
-          </div>
-          <div className="flex-1">
-            <p className="font-medium">@{currentUser.username}</p>
-            <p className="text-xs text-gray-600">{currentUser.referralCount} convites</p>
-          </div>
-          <FaChevronRight className="text-gray-400" />
-        </div>
-      )}
-    </div>
-  );
-};
-
-const ParticipantCard = ({ position, username, photoURL, referralCount, isCurrentUser, isWinner }) => {
-  const getCardStyle = () => {
-    if (isCurrentUser) return 'border-blue-400 bg-blue-50 shadow-md';
-    if (isWinner) return 'border-yellow-400 bg-gradient-to-br from-yellow-50 to-yellow-100 shadow-lg';
-    
-    switch(position) {
-      case 2: return 'border-gray-300 bg-gray-50 shadow-sm';
-      case 3: return 'border-yellow-600 bg-yellow-50 shadow-sm';
-      default: return 'border-gray-200 bg-white';
-    }
-  };
-
-  const getPositionBadge = () => {
-    if (isWinner) {
-      return (
-        <div className="absolute -top-2 -right-2 bg-yellow-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md z-10">
-          <FaCrown size={10} />
-        </div>
-      );
-    }
-    
-    switch(position) {
-      case 2:
-        return (
-          <div className="absolute -top-2 -right-2 bg-gray-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md z-10">
-            <FaMedal size={10} />
-          </div>
-        );
-      case 3:
-        return (
-          <div className="absolute -top-2 -right-2 bg-yellow-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md z-10">
-            <FaMedal size={10} />
-          </div>
-        );
-      default:
-        return (
-          <div className="absolute -top-2 -right-2 bg-gray-200 text-gray-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md z-10">
-            {position}
-          </div>
-        );
-    }
-  };
-
-  return (
-    <div className={`flex-shrink-0 w-24 relative ${getCardStyle()} rounded-lg overflow-hidden border-2 transition-all transform hover:scale-105`}>
-      {getPositionBadge()}
-      
-      <div className="h-16 flex items-center justify-center bg-white">
-        {photoURL ? (
-          <img 
-            src={photoURL} 
-            alt={username} 
-            className="w-12 h-12 rounded-full object-cover border"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-            <FaUser className="text-gray-500" />
-          </div>
-        )}
-      </div>
-      
-      <div className="p-2 text-center">
-        <p className="text-xs font-medium truncate">@{username}</p>
-        <div className="flex items-center justify-center mt-1 space-x-1">
-          <FaUser className="text-gray-400 text-xs" />
-          <span className="text-xs text-gray-500">{referralCount}</span>
-        </div>
+      {/* Mensagem de encerramento */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 text-center">
+        <h3 className="font-medium text-gray-700 mb-2">Desafio Encerrado</h3>
+        <p className="text-sm text-gray-600">
+          O desafio de convites foi finalizado. Parabéns ao nosso vencedor!
+        </p>
       </div>
     </div>
   );
@@ -327,12 +195,8 @@ const LoadingSkeleton = () => (
     {/* Skeleton do vencedor */}
     <div className="mb-4 bg-gray-200 rounded-xl h-24 animate-pulse"></div>
     
-    {/* Skeleton do ranking */}
-    <div className="flex space-x-3 overflow-x-auto py-2">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex-shrink-0 w-24 h-32 bg-gray-200 rounded-lg animate-pulse"></div>
-      ))}
-    </div>
+    {/* Skeleton da mensagem */}
+    <div className="bg-gray-200 rounded-lg h-20 animate-pulse"></div>
   </div>
 );
 
