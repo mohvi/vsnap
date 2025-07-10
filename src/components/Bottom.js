@@ -18,7 +18,6 @@ function BottomMenu() {
 
   const menuItems = [
     { path: '/', icon: <FaHome size={20} />, label: 'Início' },
-    { path: '/explore', icon: <FaShopify size={20} />, label: 'Marcas' },
     { path: '/profile', icon: <FaUser size={20} />, label: 'Perfil' },
   ];
   
