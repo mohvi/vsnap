@@ -6,7 +6,9 @@ import {
   FaPlusCircle, 
   FaGift, 
   FaUser,
-  FaCompass 
+  FaCompass, 
+  FaShopify,
+  FaUsers
 } from 'react-icons/fa';
 import { Star, Users } from 'lucide-react';
 import { Explore, Shop } from '@mui/icons-material';
@@ -16,12 +18,27 @@ function BottomMenu() {
 
   const menuItems = [
     { path: '/', icon: <FaHome size={20} />, label: 'Início' },
-    { path: '/explore', icon: <Star size={20} />, label: 'Desafios' },
+    { path: '/explore', icon: <FaShopify size={20} />, label: 'Marcas' },
     { path: '/profile', icon: <FaUser size={20} />, label: 'Perfil' },
   ];
+  
   return (
     <>
-      {/* Spacer div com altura fixa para compensar o menu fixo */}
+      <a
+        href="https://chat.whatsapp.com/CuEd2CalQj4GUypRrT16IJ"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-20 right-4 z-50 bg-green-500 hover:bg-green-600 text-white p-3 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center animate-bounce"
+        style={{
+          width: '56px',
+          height: '56px',
+          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.5)'
+        }}
+      >
+        <FaUsers size={24} />
+        <span className="sr-only">Povo no Poder</span>
+      </a>
+
       <div className="h-16" />
       
       {/* Menu fixo na parte inferior */}
@@ -51,6 +68,20 @@ function BottomMenu() {
           ))}
         </div>
       </nav>
+
+      <style jsx>{`
+        @keyframes bounce {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+        .animate-bounce {
+          animation: bounce 2s infinite;
+        }
+      `}</style>
     </>
   );
 }

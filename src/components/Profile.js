@@ -10,15 +10,18 @@ import {
   Facebook, 
   Twitter, 
   CameraAlt, 
-  Close, 
+  Close,
+  CheckCircle,
+  Payment,
+  LocalAtm
 } from '@mui/icons-material';
 import { auth, db, storage } from '../fb';
-import { onValue, ref, remove, update } from 'firebase/database';
+import { onValue, ref, remove, update, push } from 'firebase/database';
 import { useNavigate } from 'react-router-dom';
 import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { FaTiktok } from 'react-icons/fa';
-import { Trophy } from 'lucide-react';
+import { Trophy, Gift, CreditCard, Banknote } from 'lucide-react';
 
 const Profile = ({ user }) => {
   const [activeTab, setActiveTab] = useState('participations');
@@ -41,18 +44,18 @@ const Profile = ({ user }) => {
     coverPhoto: false
   });
   const [showSocialInputs, setShowSocialInputs] = useState(false);
-  const [redeemForm, setRedeemForm] = useState({ achievementId: null, contact: '' });
+  const [redeemModalOpen, setRedeemModalOpen] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentDetails, setPaymentDetails] = useState({
+    contact: '',
+    accountNumber: '',
+    mpesaName: ''
+  });
   const [redeemLoading, setRedeemLoading] = useState(false);
   const fileInputRef = useRef(null);
   const coverInputRef = useRef(null);
   const navigate = useNavigate();
-
-  // Validate email or phone format
-  const validateContact = (contact) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^\+?\d{9,15}$/;
-    return emailRegex.test(contact) || phoneRegex.test(contact);
-  };
 
   // Load user data, participations, and achievements
   useEffect(() => {
@@ -247,36 +250,76 @@ const Profile = ({ user }) => {
     }
   };
 
-  // Handle redeem achievement
-  const handleRedeemAchievement = async (achievementId) => {
-    if (!redeemForm.contact.trim()) {
-      alert('Por favor, insira seu contato para resgatar a recompensa.');
+  // Handle redeem prize
+  const handleRedeemPrize = async () => {
+    if (!selectedAchievement) return;
+    
+    // Basic validation
+    if (!paymentMethod) {
+      alert('Por favor, selecione um método de pagamento');
       return;
     }
-
-    if (!validateContact(redeemForm.contact)) {
-      alert('Por favor, insira um e-mail ou número de telefone válido.');
+    
+    if (!paymentDetails.contact.trim()) {
+      alert('Por favor, informe seu contato');
+      return;
+    }
+    
+    if (paymentMethod === 'bank' && !paymentDetails.accountNumber.trim()) {
+      alert('Por favor, informe o número da conta bancária');
+      return;
+    }
+    
+    if (paymentMethod === 'mpesa' && !paymentDetails.mpesaName.trim()) {
+      alert('Por favor, informe o nome associado ao M-Pesa');
       return;
     }
 
     try {
       setRedeemLoading(true);
-      await update(ref(db, `users/${user.uid}/achievements/${achievementId}`), {
-        redeemContact: redeemForm.contact,
-        redeemRequestedAt: new Date().toISOString(),
-        status: 'pending'
+      
+      // Extract numeric value from prize
+      const prizeValue = selectedAchievement.prize.match(/\d+/)?.[0] || '0';
+      
+      // Create payment record
+      const paymentRef = push(ref(db, 'payments'));
+      await update(paymentRef, {
+        userId: user.uid,
+        achievementId: selectedAchievement.id,
+        amount: parseInt(prizeValue),
+        method: paymentMethod,
+        contact: paymentDetails.contact,
+        accountNumber: paymentMethod === 'bank' ? paymentDetails.accountNumber : null,
+        mpesaName: paymentMethod === 'mpesa' ? paymentDetails.mpesaName : null,
+        status: 'pending',
+        createdAt: new Date().toISOString()
       });
-      alert('Solicitação de resgate enviada com sucesso!');
-      setRedeemForm({ achievementId: null, contact: '' });
+      
+      // Update achievement status
+      await update(ref(db, `users/${user.uid}/achievements/${selectedAchievement.id}`), {
+        redeemStatus: 'payment_pending',
+        redeemRequestedAt: new Date().toISOString(),
+        paymentId: paymentRef.key
+      });
+      
+      alert('Solicitação de resgate enviada com sucesso! Aguarde o processamento.');
+      setRedeemModalOpen(false);
+      setSelectedAchievement(null);
+      setPaymentMethod('');
+      setPaymentDetails({
+        contact: '',
+        accountNumber: '',
+        mpesaName: ''
+      });
     } catch (error) {
-      console.error('Error redeeming achievement:', error);
+      console.error('Erro ao solicitar resgate:', error);
       alert('Erro ao solicitar resgate. Tente novamente.');
     } finally {
       setRedeemLoading(false);
     }
   };
 
-  // Components
+  // Social Icon Component
   const SocialIcon = ({ platform, username }) => {
     if (!username) return null;
 
@@ -308,6 +351,7 @@ const Profile = ({ user }) => {
     );
   };
 
+  // Participation Status Component
   const ParticipationStatus = ({ status }) => {
     const statusStyles = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -330,6 +374,96 @@ const Profile = ({ user }) => {
     );
   };
 
+  // Achievement Card Component
+  const AchievementCard = ({ achievement }) => {
+    const getStatusInfo = () => {
+      switch(achievement.redeemStatus || achievement.status) {
+        case 'payment_pending':
+          return {
+            text: 'Pagamento Pendente',
+            color: 'bg-blue-100 text-blue-800',
+            icon: <Payment className="text-blue-500" />
+          };
+        case 'paid':
+          return {
+            text: 'Prêmio Pago',
+            color: 'bg-green-100 text-green-800',
+            icon: <CheckCircle className="text-green-500" />
+          };
+        case 'delivered':
+          return {
+            text: 'Entregue',
+            color: 'bg-purple-100 text-purple-800',
+            icon: <Gift className="text-purple-500" />
+          };
+        default:
+          return {
+            text: 'Não Resgatado',
+            color: 'bg-gray-100 text-gray-800',
+            icon: <Trophy className="text-gray-500" />
+          };
+      }
+    };
+
+    const statusInfo = getStatusInfo();
+
+    return (
+      <div key={achievement.id} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition">
+        <div className="flex items-start space-x-4">
+          <div className="flex-shrink-0 p-3 bg-yellow-50 rounded-full">
+            <Trophy className="w-6 h-6 text-yellow-500" />
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-start">
+              <h3 className="text-lg font-semibold text-gray-900 truncate">
+                {achievement.challengeTitle}
+              </h3>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                {statusInfo.icon}
+                <span className="ml-1">{statusInfo.text}</span>
+              </span>
+            </div>
+            
+            <div className="mt-2 flex items-center">
+              <Banknote className="w-4 h-4 text-gray-400 mr-1" />
+              <p className="text-sm font-medium text-gray-600">
+                Prêmio: <span className="text-green-600">{achievement.prize}</span>
+              </p>
+            </div>
+            
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <p className="text-sm text-gray-500">
+                <span className="font-medium">Conquistado em:</span> {new Date(achievement.wonAt).toLocaleDateString('pt-BR')}
+              </p>
+              
+              {achievement.redeemRequestedAt && (
+                <p className="text-sm text-gray-500 mt-1">
+                  <span className="font-medium">Solicitado em:</span> {new Date(achievement.redeemRequestedAt).toLocaleDateString('pt-BR')}
+                </p>
+              )}
+            </div>
+            
+            {achievement.redeemStatus !== 'paid' && achievement.redeemStatus !== 'delivered' && (
+              <button
+                onClick={() => {
+                  setSelectedAchievement(achievement);
+                  setRedeemModalOpen(true);
+                }}
+                className="mt-4 w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2 px-4 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition flex items-center justify-center"
+                disabled={achievement.redeemStatus === 'payment_pending'}
+              >
+                <CreditCard className="w-5 h-5 mr-2" />
+                {achievement.redeemStatus === 'payment_pending' ? 'Pagamento em Processo' : 'Resgatar Prêmio'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Profile Header Component
   const ProfileHeader = () => (
     <div className="relative">
       <div
@@ -423,6 +557,7 @@ const Profile = ({ user }) => {
     </div>
   );
 
+  // Profile Info Component
   const ProfileInfo = () => (
     <div className="mt-16 px-4 md:px-8">
       {isEditingProfile ? (
@@ -546,13 +681,38 @@ const Profile = ({ user }) => {
           {userData?.bio && (
             <p className="mt-3 text-gray-600">{userData.bio}</p>
           )}
-          <div className="mt-3 text-sm text-gray-500">
-            <p><strong>Cidade:</strong> {userData?.city || 'Não informado'}</p>
-            <p><strong>Província:</strong> {userData?.province || 'Não informado'}</p>
-            <p><strong>Data de Inscrição:</strong> {userData?.joinDate ? new Date(userData.joinDate).toLocaleDateString('pt-BR') : 'Não informado'}</p>
-            <p><strong>Nível:</strong> {userData?.level || 1}</p>
-            <p><strong>Pontos:</strong> {userData?.points || 0}</p>
-            <p><strong>Moedas:</strong> {userData?.coins || 0}</p>
+          <div className="mt-6 space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 h-5 w-5 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-900">Localização</p>
+                <p className="text-sm text-gray-500">
+                  {userData?.city || 'Cidade não informada'}, {userData?.province || 'Província não informada'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <div className="flex-shrink-0 h-5 w-5 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-900">Data de Inscrição</p>
+                <p className="text-sm text-gray-500">
+                  {userData?.joinDate ? new Date(userData.joinDate).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                  }) : 'Data não informada'}
+                </p>
+              </div>
+            </div>
           </div>
           {(profileForm.instagram || profileForm.tiktok || profileForm.facebook || profileForm.twitter) && (
             <div className="flex space-x-4 mt-4">
@@ -567,6 +727,7 @@ const Profile = ({ user }) => {
     </div>
   );
 
+  // Participations Tab Component
   const ParticipationsTab = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {participations.map(participation => (
@@ -623,118 +784,185 @@ const Profile = ({ user }) => {
     </div>
   );
 
+  // Achievements Tab Component
   const AchievementsTab = () => (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold">Minhas Vitórias</h2>
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl">
+        <div className="flex items-center">
+          <Trophy className="w-8 h-8 text-yellow-500 mr-3" />
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">Minhas Vitórias</h2>
+            <p className="text-gray-600">Aqui estão todos os prêmios que você conquistou</p>
+          </div>
+        </div>
+      </div>
+      
       {achievements.length > 0 ? (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {achievements.map(achievement => (
-            <div key={achievement.id} className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-              <div className="flex items-start space-x-4">
-                {userData?.profilepic && (
-                  <img
-                    src={userData.profilepic}
-                    alt="Avatar do usuário"
-                    className="w-16 h-16 rounded-full object-cover border border-purple-200"
-                  />
-                )}
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold flex items-center">
-                        <Trophy className="w-5 h-5 mr-2 text-yellow-500" />
-                        {achievement.challengeTitle}
-                      </h3>
-                      <p className="text-gray-600">Prêmio: {achievement.prize}</p>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      achievement.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      achievement.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {achievement.status === 'pending' ? 'Pendente' :
-                       achievement.status === 'delivered' ? 'Entregue' : 'Não Resgatado'}
-                    </span>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <p className="text-sm text-gray-500">
-                      Vencido em: {new Date(achievement.wonAt).toLocaleDateString('pt-BR')}
-                    </p>
-                    {achievement.participationId && (
-                      <p className="text-sm mt-1">
-                        Post ID: <a
-                          href={`/challenges/${achievement.id}/${achievement.participationId}`}
-                          className="text-purple-600 hover:underline"
-                          aria-label={`Ver post ${achievement.participationId}`}
-                        >
-                          {achievement.participationId}
-                        </a>
-                      </p>
-                    )}
-                  </div>
-                  {achievement.status !== 'delivered' && (
-                    <div className="mt-3">
-                      {redeemForm.achievementId === achievement.id ? (
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={redeemForm.contact}
-                            onChange={(e) => setRedeemForm(prev => ({ ...prev, contact: e.target.value }))}
-                            placeholder="Digite seu e-mail ou telefone"
-                            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            aria-label="Contato para resgate"
-                          />
-                          <div className="flex justify-end space-x-2">
-                            <button
-                              onClick={() => setRedeemForm({ achievementId: null, contact: '' })}
-                              className="px-3 py-1 text-gray-600 hover:text-gray-800 rounded hover:bg-gray-100 transition"
-                              aria-label="Cancelar resgate"
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              onClick={() => handleRedeemAchievement(achievement.id)}
-                              className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition disabled:opacity-50"
-                              disabled={redeemLoading || !redeemForm.contact.trim()}
-                              aria-label="Confirmar resgate"
-                            >
-                              {redeemLoading ? (
-                                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                              ) : (
-                                'Confirmar'
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setRedeemForm({ achievementId: achievement.id, contact: userData?.email || '' })}
-                          className="mt-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
-                          aria-label={`Resgatar prêmio de ${achievement.challengeTitle}`}
-                        >
-                          Resgatar Prêmio
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <AchievementCard key={achievement.id} achievement={achievement} />
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
+        <div className="text-center py-12 bg-white rounded-xl shadow-sm">
           <Trophy className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-          <div className="text-gray-500 text-lg mb-4">Nenhuma vitória ainda</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma vitória ainda</h3>
+          <p className="text-gray-500 mb-6">Participe de desafios e apareça aqui quando vencer!</p>
           <button
             onClick={() => navigate('/challenges')}
-            className="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition"
-            aria-label="Procurar desafios"
+            className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-blue-700 transition shadow-md"
           >
-            Procurar Desafios
+            Explorar Desafios
           </button>
         </div>
       )}
+    </div>
+  );
+
+  // Redeem Modal Component
+  const RedeemModal = () => (
+    <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 ${redeemModalOpen ? 'block' : 'hidden'}`}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md transform transition-all">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-900">
+              Resgatar Prêmio
+            </h3>
+            <button
+              onClick={() => {
+                setRedeemModalOpen(false);
+                setSelectedAchievement(null);
+              }}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <Close />
+            </button>
+          </div>
+          
+          {selectedAchievement && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center">
+                <Trophy className="w-5 h-5 text-yellow-500 mr-2" />
+                <h4 className="font-medium">{selectedAchievement.challengeTitle}</h4>
+              </div>
+              <div className="mt-2 flex items-center">
+                <Banknote className="w-5 h-5 text-green-500 mr-2" />
+                <span className="font-semibold text-green-600">{selectedAchievement.prize}</span>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Método de Pagamento
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setPaymentMethod('mpesa')}
+                  className={`p-3 border rounded-lg flex flex-col items-center ${
+                    paymentMethod === 'mpesa' 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  <LocalAtm className="w-6 h-6 text-green-500 mb-1" />
+                  <span className="text-sm">M-Pesa</span>
+                </button>
+                <button
+                  onClick={() => setPaymentMethod('bank')}
+                  className={`p-3 border rounded-lg flex flex-col items-center ${
+                    paymentMethod === 'bank' 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  <CreditCard className="w-6 h-6 text-blue-500 mb-1" />
+                  <span className="text-sm">Transferência Bancária</span>
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="contact" className="block text-sm font-medium text-gray-700 mb-1">
+                Contato (WhatsApp/Email)
+              </label>
+              <input
+                id="contact"
+                type="text"
+                value={paymentDetails.contact}
+                onChange={(e) => setPaymentDetails({...paymentDetails, contact: e.target.value})}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="+258 84 123 4567 ou email@exemplo.com"
+              />
+            </div>
+            
+            {paymentMethod === 'bank' && (
+              <div>
+                <label htmlFor="accountNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                  Número da Conta Bancária
+                </label>
+                <input
+                  id="accountNumber"
+                  type="text"
+                  value={paymentDetails.accountNumber}
+                  onChange={(e) => setPaymentDetails({...paymentDetails, accountNumber: e.target.value})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="123456789"
+                />
+              </div>
+            )}
+            
+            {paymentMethod === 'mpesa' && (
+              <div>
+                <label htmlFor="mpesaName" className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome no M-Pesa
+                </label>
+                <input
+                  id="mpesaName"
+                  type="text"
+                  value={paymentDetails.mpesaName}
+                  onChange={(e) => setPaymentDetails({...paymentDetails, mpesaName: e.target.value})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Seu Nome"
+                />
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              onClick={() => {
+                setRedeemModalOpen(false);
+                setSelectedAchievement(null);
+              }}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleRedeemPrize}
+              disabled={redeemLoading}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center disabled:opacity-50"
+            >
+              {redeemLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-5 h-5 mr-1" />
+                  Solicitar Resgate
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -808,6 +1036,8 @@ const Profile = ({ user }) => {
           </>
         )}
       </div>
+
+      <RedeemModal />
     </div>
   );
 };

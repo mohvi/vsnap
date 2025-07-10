@@ -10,6 +10,7 @@ import {
 import { Line, Bar, Pie } from 'react-chartjs-2';
 import { Chart, registerables } from 'chart.js';
 import AdminChallengeForm from './CreateChallengeForm';
+import { Link } from 'react-router-dom';
 
 Chart.register(...registerables);
 
@@ -718,40 +719,54 @@ const AdminDashboard = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referências</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {users
-                      .filter(user => 
-                        (user.username?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         user.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-                        (statusFilter === 'all' || user.province === statusFilter)
-                      )
-                      .slice(indexOfFirstItem, indexOfLastItem)
-                      .map(user => (
-                        <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10">
-                                <img 
-                                  className="h-10 w-10 rounded-full object-cover border border-gray-200" 
-                                  src={user.profilepic || '/placeholder-user.jpg'} 
-                                  alt={user.username}
-                                  onError={(e) => { e.target.src = '/placeholder-user.jpg'; }}
-                                />
-                              </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{user.username || 'N/A'}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.province || 'N/A'}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.joinDate)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {referrals.filter(r => r.referrer === user.username).length}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
+                <tbody className="bg-white divide-y divide-gray-200">
+  {users
+    .filter(user => 
+      (user.username?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+       user.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (statusFilter === 'all' || user.province === statusFilter)
+    )
+    .slice(indexOfFirstItem, indexOfLastItem)
+    .map(user => (
+      <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 h-10 w-10">
+              <img 
+                className="h-10 w-10 rounded-full object-cover border border-gray-200" 
+                src={user.profilepic || '/placeholder-user.jpg'} 
+                alt={user.username}
+                onError={(e) => { e.target.src = '/placeholder-user.jpg'; }}
+              />
+            </div>
+            <div className="ml-4">
+              <Link 
+                to={`user/${user.uid || user.id}`} 
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+              >
+                {user.username || 'N/A'}
+              </Link>
+            </div>
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          <a href={`mailto:${user.email}`} className="hover:text-indigo-600 hover:underline">
+            {user.email}
+          </a>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.province || 'N/A'}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.joinDate)}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          <Link 
+            to={`user/${user.uid || user.id}`} 
+            className="hover:text-indigo-600 hover:underline"
+          >
+            {referrals.filter(r => r.referrer === user.username).length}
+          </Link>
+        </td>
+      </tr>
+    ))}
+</tbody>
                 </table>
               </div>
             )}
@@ -770,8 +785,8 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex">
-        <div className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out z-30`}>
-          <div className="p-4">
+        <div className={`fixed inset-y-0 left-0 w-64  shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out z-30`}>
+          <div >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-800">VotaSnap Admin</h2>
               <button className="lg:hidden" onClick={() => setIsSidebarOpen(false)}>

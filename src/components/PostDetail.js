@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ref, onValue, update, off, push, remove, get } from 'firebase/database';
 import { db, auth } from '../fb';
 import { Heart, MessageSquare, ChevronLeft, Send, MoreVertical, Edit2, Trash2, X, Share2, Smile, User, Bookmark, Flag, Trophy, Target } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { RxHeartFilled } from 'react-icons/rx';
 
 const PostDetails = ({ userData }) => {
@@ -337,10 +337,6 @@ const PostDetails = ({ userData }) => {
     setShowPostOptions(false);
   };
 
-  const savePost = () => {
-    alert('Post salvo em seus favoritos!');
-    setShowPostOptions(false);
-  };
 
   if (loading) return (
     <div className="flex justify-center items-center h-screen bg-gradient-to-br from-purple-50 to-blue-50">
@@ -495,12 +491,6 @@ const PostDetails = ({ userData }) => {
                     </>
                   )}
                   <button
-                    onClick={savePost}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm text-gray-700 transition-colors"
-                  >
-                    <Bookmark size={16} className="mr-2" /> Salvar post
-                  </button>
-                  <button
                     onClick={reportPost}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm text-red-500 transition-colors"
                   >
@@ -554,16 +544,20 @@ const PostDetails = ({ userData }) => {
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
             {post.caption && (
               <div className="flex items-start space-x-3 bg-white p-4 rounded-xl shadow-sm">
-                <img 
+                <Link to={`/profile/${post.userId}`} className="block hover:underline">
+ <img 
                   src={post.userAvatar || '/default-avatar.jpg'} 
                   alt={post.userName}
                   className="w-9 h-9 rounded-full border border-purple-200 object-cover flex-shrink-0"
-                />
+                /></Link>
+             
                 <div className="flex-1">
-                  <div className="flex items-baseline space-x-2">
+                  <a href={`/profile/${post.userId}`} className="block hover:underline">
+                       <div className="flex items-baseline space-x-2">
                     <p className="font-semibold text-purple-600">{post.userName}</p>
                     <p className="text-xs text-gray-400">{post.createdAtFormatted}</p>
                   </div>
+                  </a>
                   <p className="text-gray-700 mt-1">{post.caption}</p>
                 </div>
               </div>

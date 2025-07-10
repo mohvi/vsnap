@@ -308,7 +308,6 @@ const ExplorePostCard = React.memo(({ challengeId,data, onLike, navigate, curren
             </div>
             <div className="flex space-x-3">
               <button 
-                onClick={toggleLike}
                 className="flex items-center hover:text-red-400 transition-colors"
                 aria-label={isLiked ? 'Remover like' : 'Curtir'}
               >

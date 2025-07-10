@@ -20,6 +20,9 @@ import PostDetail from './components/PostDetail';
 import InvitedFriends from './components/InvitedFriends';
 import UserList from './components/InviteX';
 import AdminDashboard from './components/AdminDashboard';
+import ViewUser from './cc/ViewUser';
+import ProfileView from './components/ProfileView';
+import Shop from './components/Shop';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -242,7 +245,11 @@ function App() {
               <Profile user={user} userData={userData} />
             </ProtectedRoute>
           } />
-          
+          <Route path="/profile/:uid" element={
+              <ProtectedRoute>
+                <ProfileView />
+              </ProtectedRoute>
+            } />
           <Route path="/rewards" element={
             <ProtectedRoute requireAgeVerification>
               <Rewards user={user} userData={userData} />
@@ -257,13 +264,14 @@ function App() {
           <Route path="/not-allowed" element={<NotAllowed />} />
           <Route path="/cc" element={<CreateChallengeForm />} />
           <Route path="/wex" element={<UserList />} />
-          <Route path="/explore" element={<ParticipationsPage />} />
+          <Route path="/explore" element={<Shop />} />
           <Route path="/p/:challengeId/:id" element={<PostDetail userData={userData}/>} />
           <Route path="/challenges/:challengeId" element={<ParticipationsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
 
           <Route path="/admin">
           <Route index element={<AdminDashboard />} />
+          <Route path='user/:id' element={<ViewUser />} />
         </Route>
         </Routes>
       </Layout>

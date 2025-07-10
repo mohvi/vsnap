@@ -21,34 +21,45 @@ const ChallengeCard = ({
 
   // Calculate time remaining for the challenge
   useEffect(() => {
-    if (!challenge?.createdAt || challenge?.winner) return;
+    if (!challenge?.deadline || challenge?.winner) return;
 
     const calculateTimeLeft = () => {
-      const endDate = new Date(challenge.createdAt);
-      endDate.setDate(endDate.getDate() + (challenge.deadlineDays || 7));
-      const now = new Date();
-      const diff = endDate - now;
+      try {
+        // Parse the deadline - handles both timestamp (number) and ISO string
+        const endDate = typeof challenge.deadline === 'number' 
+          ? new Date(challenge.deadline)
+          : new Date(challenge.deadline);
+        
+        const now = new Date();
+        const diff = endDate - now;
 
-      if (diff <= 0) {
-        setTimeLeft('Encerrado');
-        return;
-      }
+        if (diff <= 0) {
+          setTimeLeft('Encerrado');
+          return;
+        }
 
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      
-      if (days > 0) {
-        setTimeLeft(`${days}d ${hours}h`);
-      } else {
-        setTimeLeft(`${hours}h`);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        if (days > 0) {
+          setTimeLeft(`${days}d ${hours}h`);
+        } else if (hours > 0) {
+          setTimeLeft(`${hours}h ${minutes}m`);
+        } else {
+          setTimeLeft(`${minutes}m`);
+        }
+      } catch (error) {
+        console.error("Error calculating time left:", error);
+        setTimeLeft('Data inválida');
       }
     };
 
     calculateTimeLeft();
-    const timer = setInterval(calculateTimeLeft, 3600000); // Update every hour
+    const timer = setInterval(calculateTimeLeft, 60000); // Update every minute
 
     return () => clearInterval(timer);
-  }, [challenge]);
+  }, [challenge?.deadline, challenge?.winner]);
 
   // Fetch challenge data and participation status
   useEffect(() => {
@@ -101,11 +112,11 @@ const ChallengeCard = ({
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="border rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition">
-        <Skeleton height={192} className="block" />
-        <div className="p-5">
+      <div className="border rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition max-w-full sm:max-w-md mx-auto">
+        <Skeleton height={192} className="block w-full" />
+        <div className="p-4 sm:p-5">
           <Skeleton count={3} />
-          <div className="flex justify-between mt-4">
+          <div className="flex flex-col sm:flex-row justify-between gap-2 mt-4">
             <Skeleton width={100} height={30} />
             <Skeleton width={100} height={30} />
           </div>
@@ -119,10 +130,10 @@ const ChallengeCard = ({
     if (winnerInfo || isCompletedTab) {
       return (
         <button 
-          className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg flex-1 cursor-default flex items-center justify-center"
+          className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg flex-1 cursor-default flex items-center justify-center text-sm"
           disabled
         >
-          <Trophy className="w-5 h-5 mr-2 text-yellow-600" /> 
+          <Trophy className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-yellow-600" /> 
           {winnerInfo ? 'Desafio encerrado' : 'Concluído'}
         </button>
       );
@@ -131,9 +142,9 @@ const ChallengeCard = ({
     if (participationStatus === 'participated') {
       return (
         <button 
-          className="bg-green-50 text-green-700 px-4 py-2 rounded-lg flex-1 cursor-default flex items-center justify-center border border-green-100"
+          className="bg-green-50 text-green-700 px-4 py-2 rounded-lg flex-1 cursor-default flex items-center justify-center border border-green-100 text-sm"
         >
-          <Check className="w-5 h-5 mr-2" /> Participando
+          <Check className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> Participando
         </button>
       );
     }
@@ -141,7 +152,7 @@ const ChallengeCard = ({
     return (
       <button 
         onClick={() => onParticipateClick(challenge)}
-        className="bg-gradient-to-r from-pink-500 to-blue-500 text-white px-4 py-2 rounded-lg flex-1 hover:from-pink-600 hover:to-blue-600 transition flex items-center justify-center shadow-md hover:shadow-lg active:scale-[0.98]"
+        className="bg-gradient-to-r from-pink-500 to-blue-500 text-white px-4 py-2 rounded-lg flex-1 hover:from-pink-600 hover:to-blue-600 transition flex items-center justify-center shadow-md hover:shadow-lg active:scale-[0.98] text-sm"
       >
         Participar Agora
       </button>
@@ -149,7 +160,7 @@ const ChallengeCard = ({
   };
 
   return (
-    <div className={`border rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition ${winnerInfo ? 'border-yellow-400 border-2' : ''}`}>
+    <div className={`border rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition max-w-full sm:max-w-md mx-auto ${winnerInfo ? 'border-yellow-400 border-2' : ''}`}>
       {/* Winner badge */}
       {winnerInfo && (
         <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold flex items-center z-10 shadow-sm">
@@ -158,50 +169,51 @@ const ChallengeCard = ({
       )}
       
       {/* Challenge cover image */}
-      <div className="relative h-48 bg-gradient-to-br from-pink-50 to-blue-50">
+      <div className="relative h-48 sm:h-56 bg-gradient-to-br from-pink-50 to-blue-50">
         {challenge.coverImage ? (
           <img 
             src={challenge.coverImage} 
             alt={challenge.title}
             className="w-full h-full object-cover"
             loading="lazy"
+            style={{ aspectRatio: '16/9' }}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-pink-100 to-blue-100 flex items-center justify-center">
-            <Image className="w-12 h-12 text-gray-300" />
+            <Image className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300" />
           </div>
         )}
         
         {/* Brand info */}
-        <div className="absolute top-3 left-3 flex items-center">
+        <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex items-center">
           <img 
             src={challenge.brand?.logo || '/default-brand.png'} 
             alt={challenge.brand?.name || 'Marca'} 
-            className="w-8 h-8 rounded-full border-2 border-white bg-white shadow-sm"
+            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-white bg-white shadow-sm"
           />
-          <span className="ml-2 font-medium text-white bg-black/60 px-2 py-1 rounded-full text-xs flex items-center backdrop-blur-sm">
+          <span className="ml-2 font-medium text-white bg-black/60 px-2 py-1 rounded-full text-xs sm:text-sm flex items-center backdrop-blur-sm max-w-[150px] truncate">
             {challenge.brand?.name || 'Marca'}
           </span>
         </div>
         
         {/* Challenge type badge */}
-        <div className="absolute top-3 right-3 bg-white/90 rounded-full px-2 py-1 text-xs font-medium flex items-center shadow-sm">
+        <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white/90 rounded-full px-2 py-1 text-xs sm:text-sm font-medium flex items-center shadow-sm">
           {challenge.type === 'photo' ? (
             <>
-              <Image className="w-3 h-3 mr-1 text-pink-500" /> Foto
+              <Image className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-pink-500" /> Foto
             </>
           ) : (
             <>
-              <Video className="w-3 h-3 mr-1 text-blue-500" /> Vídeo
+              <Video className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-500" /> Vídeo
             </>
           )}
         </div>
       </div>
       
       {/* Challenge content */}
-      <div className="p-4">
+      <div className="p-4 sm:p-5">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="text-lg font-bold text-gray-800 line-clamp-2">
+          <h3 className="text-base sm:text-lg font-bold text-gray-800 line-clamp-2">
             {challenge.title}
           </h3>
           {(winnerInfo || isCompletedTab) && (
@@ -223,15 +235,15 @@ const ChallengeCard = ({
           </div>
         )}
         
-        <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+        <p className="text-gray-600 text-sm sm:text-base mb-4 line-clamp-3">
           {challenge.description || 'Descrição não disponível'}
         </p>
         
         {/* Prize and deadline */}
-        <div className="flex justify-between items-center mb-3 text-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 text-xs sm:text-sm gap-2">
           <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-800 px-2 py-1 rounded-full flex items-center">
             <Award className="w-4 h-4 mr-1" /> 
-            <span className="truncate max-w-[120px]">
+            <span className="truncate max-w-[120px] sm:max-w-[150px]">
               {challenge.prize || 'Prêmio surpresa'}
             </span>
           </div>
@@ -246,26 +258,25 @@ const ChallengeCard = ({
         </div>
         
         {/* Participants and likes */}
-        <div className="flex justify-between items-center mb-4 text-xs text-gray-500">
+        <div className="flex justify-between items-center mb-4 text-xs sm:text-sm text-gray-500">
           <div className="flex items-center">
-            <Users className="w-3 h-3 mr-1" /> 
+            <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> 
             {challenge.participants || 0} participantes
           </div>
           <div className="flex items-center">
-            <Heart className="w-3 h-3 mr-1 text-pink-500" /> 
-            {formattedInteractionCount} curtidas
+            <Heart className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-pink-500" /> 
+            {challenge.likeGoal} Meta de Likes
           </div>
         </div>
-        
         {/* Action buttons */}
-        <div className="flex space-x-2 mb-2">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mb-2">
           {renderParticipateButton()}
           <button 
             onClick={() => onShareClick(challenge)}
-            className="border border-gray-200 bg-white text-gray-700 p-2 rounded-lg hover:bg-gray-50 transition flex items-center justify-center shadow-sm active:bg-gray-100"
+            className="border border-gray-200 bg-white text-gray-700 p-2 rounded-lg hover:bg-gray-50 transition flex items-center justify-center shadow-sm active:bg-gray-100 sm:w-12"
             aria-label="Compartilhar desafio"
           >
-            <Share2 className="w-5 h-5" />
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 

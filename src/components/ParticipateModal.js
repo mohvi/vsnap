@@ -29,7 +29,7 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
         throw new Error('You need to be logged in to participate!');
       }
 
-      if (!submission.mediaFile || !submission.caption || !submission.termsAccepted) {
+      if (!submission.mediaFile || !submission.caption) {
         throw new Error('Please fill all required fields!');
       }
 
@@ -120,7 +120,7 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-xl flex flex-col">
         <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="text-xl font-bold text-gray-800">Participate in Challenge</h3>
+          <h3 className="text-xl font-bold text-gray-800">#VAMOS A ISSO!</h3>
           <button 
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -134,7 +134,7 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
               <label className="block text-gray-700 mb-2 font-medium">
-                {challenge.type === 'photo' ? 'Upload your photo' : 'Upload your video'}
+                {challenge.type === 'photo' ? 'Sua foto' : 'Seu vídeo'}
               </label>
               
               {submission.mediaPreview ? (
@@ -199,7 +199,7 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                   </p>
                   <div className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center">
                     <UploadIcon className="w-4 h-4 mr-2" />
-                    Select File
+                   ESCOLHER FOTO
                   </div>
                   <input 
                     type="file" 
@@ -215,7 +215,7 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
             </div>
             
             <div className="mb-6">
-              <label className="block text-gray-700 mb-2 font-medium">Caption</label>
+              <label className="block text-gray-700 mb-2 font-medium">Descrição</label>
               <textarea 
                 value={submission.caption}
                 onChange={(e) => setSubmission(prev => ({ 
@@ -231,26 +231,6 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
               />
             </div>
             
-            <div className="mb-6">
-              <label className="flex items-start">
-                <input 
-                  type="checkbox" 
-                  checked={submission.termsAccepted}
-                  onChange={(e) => setSubmission(prev => ({ 
-                    ...prev, 
-                    termsAccepted: e.target.checked,
-                    error: null 
-                  }))}
-                  className="mt-1 mr-2"
-                  required
-                  disabled={submission.isSubmitting}
-                />
-                <span className="text-sm text-gray-600">
-                  I confirm this is my original content and I agree to the challenge terms.
-                </span>
-              </label>
-            </div>
-            
             {submission.error && (
               <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
                 {submission.error}
@@ -264,18 +244,16 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                 disabled={submission.isSubmitting}
                 className="flex-1 py-3 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition"
               >
-                Cancel
+                Cancelar
               </button>
               <button 
                 type="submit"
                 disabled={
                   !submission.mediaFile || 
-                  !submission.termsAccepted || 
                   submission.isSubmitting
                 }
                 className={`flex-1 py-3 rounded-lg font-bold flex items-center justify-center ${
                   !submission.mediaFile || 
-                  !submission.termsAccepted || 
                   submission.isSubmitting
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                     : 'bg-blue-500 text-white hover:bg-blue-600 shadow-md'
@@ -287,11 +265,11 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Submitting...
+                    A carregar...
                   </span>
                 ) : (
                   <>
-                    <CheckIcon className="w-5 h-5 mr-2" /> Submit
+                    <CheckIcon className="w-5 h-5 mr-2" /> Participar
                   </>
                 )}
               </button>
