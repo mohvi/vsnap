@@ -23,12 +23,14 @@ import AdminDashboard from './components/AdminDashboard';
 import ViewUser from './cc/ViewUser';
 import ProfileView from './components/ProfileView';
 import Shop from './components/Shop';
+import ContactModal from './components/ContactModal';
 
 function App() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCompleteProfile, setShowCompleteProfile] = useState(false);
+  const [showSetContact, setShowSetContact] = useState(false);
 
   // Check auth state and user profile completion
   useEffect(() => {
@@ -42,6 +44,10 @@ function App() {
             const userData = snapshot.val();
             setUserData(userData);
             
+            if(!userData.contacto){
+              setShowSetContact(true);
+            }
+
             // Show modal if profile is not marked as complete
             setShowCompleteProfile(userData.isComplete !== true);
           } else {
@@ -218,6 +224,12 @@ function App() {
             setShowCompleteProfile(false);
             auth.signOut();
           }}
+        />
+      )}
+       {showSetContact && user && (
+        <ContactModal 
+          user={user}
+          onComplete={handleProfileComplete}
         />
       )}
       

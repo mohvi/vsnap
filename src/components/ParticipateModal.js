@@ -124,12 +124,10 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
           <button 
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
-            disabled={submission.isSubmitting}
-          >
+            disabled={submission.isSubmitting}>
             <XIcon className="w-6 h-6" />
           </button>
         </div>
-        
         <div className="overflow-y-auto flex-1 p-6">
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
@@ -189,13 +187,8 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                   </div>
                   <p className="text-gray-500 mb-2">
                     {challenge.type === 'photo' 
-                      ? 'Click to upload a photo' 
+                      ? 'Carregue aqui' 
                       : 'Click to upload a video'}
-                  </p>
-                  <p className="text-sm text-gray-400 mb-4">
-                    {challenge.type === 'photo' 
-                      ? 'JPG, PNG (max 5MB)' 
-                      : 'MP4, MOV (max 20MB)'}
                   </p>
                   <div className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center">
                     <UploadIcon className="w-4 h-4 mr-2" />
@@ -213,7 +206,6 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                 </label>
               )}
             </div>
-            
             <div className="mb-6">
               <label className="block text-gray-700 mb-2 font-medium">Descrição</label>
               <textarea 
@@ -223,7 +215,7 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                   caption: e.target.value,
                   error: null 
                 }))}
-                placeholder={`Describe your ${challenge.type === 'photo' ? 'photo' : 'video'}...`}
+                placeholder={`descrição ${challenge.type === 'photo' ? 'photo' : 'video'}...`}
                 className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows="3"
                 required

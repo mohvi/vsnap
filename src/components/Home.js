@@ -23,7 +23,6 @@ const HomePage = ({ userData }) => {
   const [currentChallenge, setCurrentChallenge] = useState(null);
   const [shouldDisplayInvite, setShouldDisplayInvite] = useState(true);
 
-  // Verificar estado de autenticação
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
@@ -31,7 +30,6 @@ const HomePage = ({ userData }) => {
     return () => unsubscribe();
   }, []);
 
-  // Verificar se o desafio especial foi completado
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -53,7 +51,6 @@ const HomePage = ({ userData }) => {
     checkChallengeCompletion();
   }, [user?.uid]);
 
-  // Classificar desafios em ativos e encerrados
   useEffect(() => {
     if (allChallenges.length === 0) return;
 
@@ -76,7 +73,6 @@ const HomePage = ({ userData }) => {
     setCompletedChallenges(completed);
   }, [allChallenges]);
 
-  // Buscar desafios do Firebase
   useEffect(() => {
     const challengesRef = ref(db, 'challenges');
     
@@ -130,13 +126,11 @@ const HomePage = ({ userData }) => {
       setCurrentChallenge(challenge); 
     }
   };
-
   const handleParticipateClick = async (challenge) => {
     if (!user) {
       alert('Você precisa fazer login para participar de desafios!');
       return;
     }
-
     const now = new Date();
     const challengeEndDate = new Date(challenge.createdAt);
     challengeEndDate.setDate(challengeEndDate.getDate() + challenge.deadlineDays);
@@ -145,7 +139,6 @@ const HomePage = ({ userData }) => {
       alert('Este desafio já expirou e não aceita mais participações.');
       return;
     }
-
     try {
       const userParticipationRef = ref(db, `users/${user.uid}/participations/${challenge.id}`);
       const snapshot = await get(userParticipationRef);
@@ -154,7 +147,6 @@ const HomePage = ({ userData }) => {
         alert('Você já participou deste desafio! Cada usuário pode participar apenas uma vez.');
         return;
       }
-
       setSelectedChallenge(challenge);
       setShowParticipateModal(true);
     } catch (error) {
@@ -162,10 +154,8 @@ const HomePage = ({ userData }) => {
       alert("Ocorreu um erro ao verificar suas participações. Por favor, tente novamente.");
     }
   };
-
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
-      <WinnersList/>
       <div className="flex border-b mb-8 bg-white rounded-t-lg shadow-sm">
         <button 
           onClick={() => setActiveTab('active')}
@@ -180,7 +170,6 @@ const HomePage = ({ userData }) => {
           <Trophy className="mr-2" /> Encerrados
         </button>
       </div>
-
       {activeTab === 'active' ? (
         <ChallengeList 
           loading={loading}
@@ -201,7 +190,6 @@ const HomePage = ({ userData }) => {
           hideCompleted={false}
         />
       )}
-
       {showParticipateModal && selectedChallenge && (
         <ParticipateModal 
           challenge={selectedChallenge}

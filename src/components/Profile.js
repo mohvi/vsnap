@@ -1036,7 +1036,6 @@ const Profile = ({ user }) => {
           </>
         )}
       </div>
-
       <RedeemModal />
     </div>
   );
