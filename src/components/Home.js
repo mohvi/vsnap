@@ -5,9 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import ChallengeList from './ChallengeList';
 import ParticipateModal from './ParticipateModal';
 import ShareModal from './ShareModal';
-import InviteFriendCard from './InviteFriendCard';
 import { Sparkles, Trophy } from 'lucide-react';
-import WinnersList from './WinnersList';
 
 const HomePage = ({ userData }) => {
   const [activeTab, setActiveTab] = useState('active');
