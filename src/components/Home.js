@@ -5,10 +5,11 @@ import { onAuthStateChanged } from 'firebase/auth';
 import ChallengeList from './ChallengeList';
 import ParticipateModal from './ParticipateModal';
 import ShareModal from './ShareModal';
-import { Sparkles, Trophy } from 'lucide-react';
+import { Sparkles, Star, Trophy, Zap, Clock, CheckCircle } from 'lucide-react';
+import Feed from './Feed';
 
 const HomePage = ({ userData }) => {
-  const [activeTab, setActiveTab] = useState('active');
+  const [activeTab, setActiveTab] = useState('feed');
   const [showParticipateModal, setShowParticipateModal] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [allChallenges, setAllChallenges] = useState([]);
@@ -60,7 +61,7 @@ const HomePage = ({ userData }) => {
       const challengeEndDate = new Date(challenge.createdAt);
       challengeEndDate.setDate(challengeEndDate.getDate() + (challenge.deadlineDays || 0));
       
-      if (!challenge.status) {
+      if (challengeEndDate < now || challenge.status === false) {
         completed.push(challenge);
       } else {
         active.push(challenge);
@@ -124,6 +125,7 @@ const HomePage = ({ userData }) => {
       setCurrentChallenge(challenge); 
     }
   };
+
   const handleParticipateClick = async (challenge) => {
     if (!user) {
       alert('Você precisa fazer login para participar de desafios!');
@@ -152,42 +154,84 @@ const HomePage = ({ userData }) => {
       alert("Ocorreu um erro ao verificar suas participações. Por favor, tente novamente.");
     }
   };
+
   return (
-    <div className="p-4 bg-gray-50 min-h-screen">
-      <div className="flex border-b mb-8 bg-white rounded-t-lg shadow-sm">
-        <button 
-          onClick={() => setActiveTab('active')}
-          className={`px-6 py-3 flex items-center ${activeTab === 'active' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          <Sparkles className="mr-2" /> Desafios Ativos
-        </button>
-        <button 
-          onClick={() => setActiveTab('completed')}
-          className={`px-6 py-3 flex items-center ${activeTab === 'completed' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          <Trophy className="mr-2" /> Encerrados
-        </button>
+    <div className="bg-gray-50 min-h-screen pb-20">
+      {/* Tabs Aprimoradas */}
+      <div className="sticky top-0 z-10 bg-white shadow-sm">
+        <div className="flex justify-center border-b border-gray-200">
+          <div className="flex max-w-md w-full">
+            <button 
+              onClick={() => setActiveTab('feed')}
+              className={`flex-1 py-4 px-2 flex flex-col items-center justify-center transition-all ${activeTab === 'feed' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <div className={`flex items-center justify-center w-full ${activeTab === 'feed' ? 'border-b-2 border-blue-600 pb-3' : 'pb-4'}`}>
+                <Zap className={`w-5 h-5 ${activeTab === 'feed' ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className="ml-2 text-sm font-medium">Feed</span>
+              </div>
+            </button>
+            
+            <button 
+              onClick={() => setActiveTab('active')}
+              className={`flex-1 py-4 px-2 flex flex-col items-center justify-center transition-all ${activeTab === 'active' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <div className={`flex items-center justify-center w-full ${activeTab === 'active' ? 'border-b-2 border-blue-600 pb-3' : 'pb-4'}`}>
+                <Sparkles className={`w-5 h-5 ${activeTab === 'active' ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className="ml-2 text-sm font-medium">Ativos</span>
+              </div>
+            </button>
+            
+            <button 
+              onClick={() => setActiveTab('completed')}
+              className={`flex-1 py-4 px-2 flex flex-col items-center justify-center transition-all ${activeTab === 'completed' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <div className={`flex items-center justify-center w-full ${activeTab === 'completed' ? 'border-b-2 border-blue-600 pb-3' : 'pb-4'}`}>
+                <CheckCircle className={`w-5 h-5 ${activeTab === 'completed' ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className="ml-2 text-sm font-medium">Encerrados</span>
+              </div>
+            </button>
+          </div>
+        </div>
       </div>
-      {activeTab === 'active' ? (
-        <ChallengeList 
-          loading={loading}
-          error={error}
-          challenges={activeChallenges}
-          user={user}
-          onParticipateClick={handleParticipateClick}
-          onShareClick={handleShareChallenge}
-        />
-      ) : (
-        <ChallengeList 
-          loading={loading}
-          error={error}
-          challenges={completedChallenges}
-          user={user}
-          onParticipateClick={handleParticipateClick}
-          onShareClick={handleShareChallenge}
-          hideCompleted={false}
-        />
-      )}
+
+      {/* Conteúdo das Tabs */}
+      <div className="px-4 pt-4">
+        {activeTab === 'feed' && (
+          <Feed 
+            loading={loading}
+            error={error}
+            challenges={activeChallenges}
+            user={user}
+            onParticipateClick={handleParticipateClick}
+            onShareClick={handleShareChallenge}
+          />
+        )}
+        
+        {activeTab === 'active' && (
+          <ChallengeList 
+            loading={loading}
+            error={error}
+            challenges={activeChallenges}
+            user={user}
+            onParticipateClick={handleParticipateClick}
+            onShareClick={handleShareChallenge}
+          />
+        )}
+        
+        {activeTab === 'completed' && (
+          <ChallengeList 
+            loading={loading}
+            error={error}
+            challenges={completedChallenges}
+            user={user}
+            onParticipateClick={handleParticipateClick}
+            onShareClick={handleShareChallenge}
+            hideCompleted={false}
+          />
+        )}
+      </div>
+
+      {/* Modais */}
       {showParticipateModal && selectedChallenge && (
         <ParticipateModal 
           challenge={selectedChallenge}
@@ -196,6 +240,7 @@ const HomePage = ({ userData }) => {
           onClose={() => setShowParticipateModal(false)}
         />
       )}
+      
       {showShareModal && currentChallenge && (
         <ShareModal 
           challenge={currentChallenge}

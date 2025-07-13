@@ -24,6 +24,7 @@
     "react-image-crop": "^11.0.10",
     "react-loading-skeleton": "^3.5.0",
     "react-native-vector-icons": "^10.2.0",
+    "react-player": "^3.2.0",
     "react-quill": "^2.0.0",
     "react-router-dom": "^6.26.0",
     "react-scripts": "5.0.1",

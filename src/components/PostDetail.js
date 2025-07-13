@@ -1,9 +1,132 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ref, onValue, update, off, push, remove, get } from 'firebase/database';
 import { db, auth } from '../fb';
-import { Heart, MessageSquare, ChevronLeft, Send, MoreVertical, Edit2, Trash2, X, Share2, Smile, User, Bookmark, Flag, Trophy, Target } from 'lucide-react';
+import { Heart, MessageSquare, ChevronLeft, Send, MoreVertical, Edit2, Trash2, X, Share2, Smile, User, Bookmark, Flag, Trophy, Target, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { RxHeartFilled } from 'react-icons/rx';
+import ReactPlayer from 'react-player';
+import InstagramStyleVideoPlayer from './InstagramStyleVideoPlayer';
+
+const VideoPlayer = ({ url, thumbnailUrl }) => {
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [hasPlayed, setHasPlayed] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const playerRef = useRef(null);
+  const controlsTimeout = useRef(null);
+
+  useEffect(() => {
+    if (playing) {
+      controlsTimeout.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
+    return () => clearTimeout(controlsTimeout.current);
+  }, [playing, showControls]);
+
+  const togglePlay = () => {
+    setPlaying(!playing);
+    setShowControls(true);
+    if (!hasPlayed) setHasPlayed(true);
+  };
+
+  const toggleMute = () => {
+    setMuted(!muted);
+    setShowControls(true);
+  };
+
+  const handleProgress = (state) => {
+    setProgress(state.played);
+    setShowControls(true);
+  };
+
+  const handleSeek = (e) => {
+    const rect = e.target.getBoundingClientRect();
+    const pos = (e.clientX - rect.left) / rect.width;
+    playerRef.current.seekTo(pos);
+    setProgress(pos);
+    setShowControls(true);
+  };
+
+  return (
+    <div 
+      className="relative w-full h-full bg-black"
+      onClick={togglePlay}
+      onMouseMove={() => setShowControls(true)}
+    >
+      <video
+        ref={playerRef}
+        url={url}
+        playing={playing}
+        muted={muted}
+        width="100%"
+        height="100%"
+        playsinline
+        loop
+        onProgress={handleProgress}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        light={!hasPlayed && thumbnailUrl}
+        style={{ position: 'absolute', top: 0, left: 0 }}
+      />
+
+      {showControls && (
+        <div className="absolute inset-0 flex flex-col justify-between p-4 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
+          <div 
+            className="w-full h-1.5 bg-gray-600/50 rounded-full cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div 
+              className="h-full bg-white rounded-full relative"
+              style={{ width: `${progress * 100}%` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div 
+                className="absolute -right-1.5 -top-1 w-3 h-3 bg-white rounded-full"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div 
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onClick={handleSeek}
+            />
+          </div>
+          
+          <div 
+            className="flex justify-between items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={togglePlay}
+              className="p-2 text-white hover:bg-white/10 rounded-full transition-colors"
+            >
+              {playing ? <Pause size={24} /> : <Play size={24} />}
+            </button>
+            
+            <button 
+              onClick={toggleMute}
+              className="p-2 text-white hover:bg-white/10 rounded-full transition-colors"
+            >
+              {muted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!playing && !hasPlayed && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <button 
+            onClick={togglePlay}
+            className="p-4 bg-black/50 rounded-full text-white animate-pulse"
+          >
+            <Play size={48} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const PostDetails = ({ userData }) => {
   const { id, challengeId } = useParams();
@@ -337,7 +460,6 @@ const PostDetails = ({ userData }) => {
     setShowPostOptions(false);
   };
 
-
   if (loading) return (
     <div className="flex justify-center items-center h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-500"></div>
@@ -368,7 +490,7 @@ const PostDetails = ({ userData }) => {
     </div>
   );
 
-  const isVideo = post.mediaUrl?.match(/\.(mp4|mov|webm)$/i);
+  const isVideo = post.mediaUrl.includes('.mp4') || post.mediaUrl.includes('.mov');
   const isPostOwner = currentUser && currentUser.uid === post.userId;
   const remainingLikes = challenge ? Math.max(0, challenge.likeGoal - likesCount) : 0;
 
@@ -432,17 +554,10 @@ const PostDetails = ({ userData }) => {
       <div className="md:flex">
         <div className="md:w-3/5 bg-gray-900 flex items-center justify-center min-h-[60vh]">
           {isVideo ? (
-            <div className="relative w-full h-full">
-              <video 
-                className="w-full max-h-[80vh] object-contain"
-                poster={post.thumbnailUrl}
-                controls
-                muted
-                playsInline
-              >
-                <source src={post.mediaUrl} type="video/mp4" />
-              </video>
-            </div>
+             <InstagramStyleVideoPlayer 
+              url={post.mediaUrl} 
+              thumbnailUrl={post.thumbnailUrl} 
+            />
           ) : (
             <img
               src={post.mediaUrl}
@@ -493,7 +608,7 @@ const PostDetails = ({ userData }) => {
                   <button
                     onClick={reportPost}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm text-red-500 transition-colors"
-                  >
+                      >
                     <Flag size={16} className="mr-2" /> Denunciar
                   </button>
                 </div>
@@ -545,19 +660,19 @@ const PostDetails = ({ userData }) => {
             {post.caption && (
               <div className="flex items-start space-x-3 bg-white p-4 rounded-xl shadow-sm">
                 <Link to={`/profile/${post.userId}`} className="block hover:underline">
- <img 
-                  src={post.userAvatar || '/default-avatar.jpg'} 
-                  alt={post.userName}
-                  className="w-9 h-9 rounded-full border border-purple-200 object-cover flex-shrink-0"
-                /></Link>
-             
+                  <img 
+                    src={post.userAvatar || '/default-avatar.jpg'} 
+                    alt={post.userName}
+                    className="w-9 h-9 rounded-full border border-purple-200 object-cover flex-shrink-0"
+                  />
+                </Link>
                 <div className="flex-1">
-                  <a href={`/profile/${post.userId}`} className="block hover:underline">
-                       <div className="flex items-baseline space-x-2">
-                    <p className="font-semibold text-purple-600">{post.userName}</p>
-                    <p className="text-xs text-gray-400">{post.createdAtFormatted}</p>
-                  </div>
-                  </a>
+                  <Link to={`/profile/${post.userId}`} className="block hover:underline">
+                    <div className="flex items-baseline space-x-2">
+                      <p className="font-semibold text-purple-600">{post.userName}</p>
+                      <p className="text-xs text-gray-400">{post.createdAtFormatted}</p>
+                    </div>
+                  </Link>
                   <p className="text-gray-700 mt-1">{post.caption}</p>
                 </div>
               </div>
@@ -715,7 +830,8 @@ const PostDetails = ({ userData }) => {
               <button 
                 type="submit" 
                 disabled={!newComment.trim()}
-                className={`font-bold text-sm ml-2 ${newComment.trim() ? 'text-purple-600 hover:text-purple-800' : 'text-gray-400'}`}>
+                className={`font-bold text-sm ml-2 ${newComment.trim() ? 'text-purple-600 hover:text-purple-800' : 'text-gray-400'}`}
+              >
                 <Send size={20} />
               </button>
             </form>

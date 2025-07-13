@@ -4,7 +4,8 @@ import {
   Check as CheckIcon, 
   Image as ImageIcon, 
   Video as VideoIcon,
-  Upload as UploadIcon
+  Upload as UploadIcon,
+  AlertTriangle as AlertIcon
 } from 'lucide-react';
 import { db, storage } from '../fb';
 import { ref, update } from 'firebase/database';
@@ -21,19 +22,45 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
     error: null
   });
 
+  const validateFile = (file) => {
+    if (challenge.type === 'photo') {
+      // Limite de 5MB para fotos
+      if (file.size > 5 * 1024 * 1024) {
+        return 'A foto não pode exceder 5MB';
+      }
+    } else {
+      // Limite de 40MB para vídeos
+      if (file.size > 40 * 1024 * 1024) {
+        return 'O vídeo não pode exceder 40MB';
+      }
+    }
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
       if (!user || !user.uid) {
-        throw new Error('You need to be logged in to participate!');
+        throw new Error('Você precisa estar logado para participar!');
       }
 
       if (!submission.mediaFile || !submission.caption) {
-        throw new Error('Please fill all required fields!');
+        throw new Error('Preencha todos os campos obrigatórios!');
       }
 
-      setSubmission(prev => ({ ...prev, isSubmitting: true, error: null }));
+      // Validar tamanho do arquivo
+      const fileError = validateFile(submission.mediaFile);
+      if (fileError) {
+        throw new Error(fileError);
+      }
+
+      setSubmission(prev => ({ 
+        ...prev, 
+        isSubmitting: true, 
+        error: null,
+        uploadProgress: 0
+      }));
 
       // Upload media file
       const fileType = challenge.type === 'photo' ? 'images' : 'videos';
@@ -41,62 +68,77 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
       
       const uploadTask = uploadBytesResumable(fileRef, submission.mediaFile);
       
-      // Wait for upload to complete
-      await new Promise((resolve, reject) => {
-        uploadTask.on('state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setSubmission(prev => ({ ...prev, uploadProgress: progress }));
-          },
-          (error) => reject(error),
-          () => resolve()
-        );
-      });
+      // Monitorar progresso do upload
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setSubmission(prev => ({ ...prev, uploadProgress: progress }));
+        },
+        (error) => {
+          console.error("Upload error:", error);
+          setSubmission(prev => ({ 
+            ...prev, 
+            isSubmitting: false,
+            error: "Erro no upload. Tente novamente."
+          }));
+        },
+        async () => {
+          try {
+            // Upload completo - obter URL
+            const mediaUrl = await getDownloadURL(uploadTask.snapshot.ref);
 
-      // Get download URL
-      const mediaUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            // Preparar dados da participação
+            const participationData = {
+              id: user.uid,
+              userId: user.uid,
+              userEmail: user.email,
+              userName: userData?.username || user.displayName || 'Anônimo',
+              challengeId: challenge.id,
+              mediaUrl,
+              caption: submission.caption,
+              termsAccepted: submission.termsAccepted,
+              createdAt: new Date().toISOString(),
+              status: 'pending',
+              likes: 0,
+              comments: 0,
+              challengeTitle: challenge.title,
+              brandName: challenge.brand?.name || '',
+              brandLogo: challenge.brand?.logo || '',
+              userAvatar: user.photoURL || ''
+            };
 
-      // Prepare participation data
-      const participationData = {
-        id: user.uid,
-        userId: user.uid,
-        userEmail: user.email,
-        userName: userData?.username || user.displayName || 'Anonymous',
-        challengeId: challenge.id,
-        mediaUrl,
-        caption: submission.caption,
-        termsAccepted: submission.termsAccepted,
-        createdAt: new Date().toISOString(),
-        status: 'pending',
-        likes: 0,
-        comments: 0,
-        challengeTitle: challenge.title,
-        brandName: challenge.brand?.name || '',
-        brandLogo: challenge.brand?.logo || '',
-        userAvatar: user.photoURL || ''
-      };
+            // Atualizar banco de dados
+            const updates = {};
+            updates[`participations/${challenge.id}/${user.uid}`] = participationData;
+            updates[`users/${user.uid}/participations/${challenge.id}`] = {
+              participationId: user.uid,
+              createdAt: new Date().toISOString(),
+              challengeTitle: challenge.title
+            };
+            updates[`challenges/${challenge.id}/participants`] = (challenge.participants || 0) + 1;
 
-      // Update database
-      const updates = {};
-      updates[`participations/${challenge.id}/${user.uid}`] = participationData;
-      updates[`users/${user.uid}/participations/${challenge.id}`] = {
-        participationId: user.uid,
-        createdAt: new Date().toISOString(),
-        challengeTitle: challenge.title
-      };
-      updates[`challenges/${challenge.id}/participants`] = (challenge.participants || 0) + 1;
+            await update(ref(db), updates);
 
-      await update(ref(db), updates);
-
-      // Success - close modal
-      onClose();
+            // Sucesso - fechar modal
+            onClose();
+            
+          } catch (error) {
+            console.error("Error completing submission:", error);
+            setSubmission(prev => ({ 
+              ...prev, 
+              isSubmitting: false,
+              error: "Ocorreu um erro. Tente novamente."
+            }));
+          }
+        }
+      );
       
     } catch (error) {
       console.error("Error submitting participation:", error);
       setSubmission(prev => ({ 
         ...prev, 
         isSubmitting: false,
-        error: error.message || "An error occurred. Please try again."
+        error: error.message || "Ocorreu um erro. Tente novamente."
       }));
     }
   };
@@ -105,6 +147,19 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
     if (!e.target.files || !e.target.files[0]) return;
     
     const file = e.target.files[0];
+    
+    // Validar arquivo antes de definir o estado
+    const validationError = validateFile(file);
+    if (validationError) {
+      setSubmission({ 
+        ...submission, 
+        error: validationError,
+        mediaFile: null,
+        mediaPreview: null
+      });
+      return;
+    }
+
     const previewUrl = URL.createObjectURL(file);
     
     setSubmission({ 
@@ -133,6 +188,9 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
             <div className="mb-6">
               <label className="block text-gray-700 mb-2 font-medium">
                 {challenge.type === 'photo' ? 'Sua foto' : 'Seu vídeo'}
+                <span className="text-xs text-gray-500 ml-2">
+                  ({challenge.type === 'photo' ? 'Máx. 5MB' : 'Máx. 40MB'})
+                </span>
               </label>
               
               {submission.mediaPreview ? (
@@ -152,11 +210,16 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                   )}
                   
                   {submission.uploadProgress > 0 && submission.uploadProgress < 100 && (
-                    <div className="mt-2 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-500 h-2 rounded-full" 
-                        style={{ width: `${submission.uploadProgress}%` }}
-                      ></div>
+                    <div className="mt-2">
+                      <div className="text-xs text-gray-500 mb-1">
+                        Carregando: {Math.round(submission.uploadProgress)}%
+                      </div>
+                      <div className="bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full" 
+                          style={{ width: `${submission.uploadProgress}%` }}
+                        ></div>
+                      </div>
                     </div>
                   )}
                   
@@ -169,6 +232,7 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                       uploadProgress: 0 
                     }))}
                     className="absolute top-2 right-2 bg-white/90 rounded-full p-1 shadow-sm hover:bg-gray-100"
+                    disabled={submission.isSubmitting}
                   >
                     <XIcon className="w-4 h-4 text-gray-600" />
                   </button>
@@ -176,23 +240,36 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
               ) : (
                 <label 
                   htmlFor="media-upload"
-                  className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 transition bg-gray-50 flex flex-col items-center"
+                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition flex flex-col items-center ${
+                    submission.error ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-blue-500 bg-gray-50'
+                  }`}
                 >
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    {challenge.type === 'photo' ? (
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                    submission.error ? 'bg-red-100' : 'bg-blue-100'
+                  }`}>
+                    {submission.error ? (
+                      <AlertIcon className="w-8 h-8 text-red-500" />
+                    ) : challenge.type === 'photo' ? (
                       <ImageIcon className="w-8 h-8 text-blue-500" />
                     ) : (
                       <VideoIcon className="w-8 h-8 text-blue-500" />
                     )}
                   </div>
-                  <p className="text-gray-500 mb-2">
-                    {challenge.type === 'photo' 
-                      ? 'Carregue aqui' 
-                      : 'Click to upload a video'}
+                  <p className={`mb-2 ${
+                    submission.error ? 'text-red-600' : 'text-gray-500'
+                  }`}>
+                    {submission.error || 
+                      (challenge.type === 'photo' 
+                        ? 'Arraste ou clique para carregar uma foto' 
+                        : 'Arraste ou clique para carregar um vídeo')}
                   </p>
-                  <div className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center">
+                  <div className={`px-4 py-2 rounded-lg transition flex items-center ${
+                    submission.error 
+                      ? 'bg-red-500 text-white hover:bg-red-600' 
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                  }`}>
                     <UploadIcon className="w-4 h-4 mr-2" />
-                   ESCOLHER FOTO
+                    {challenge.type === 'photo' ? 'ESCOLHER FOTO' : 'ESCOLHER VÍDEO'}
                   </div>
                   <input 
                     type="file" 
@@ -215,7 +292,7 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                   caption: e.target.value,
                   error: null 
                 }))}
-                placeholder={`descrição ${challenge.type === 'photo' ? 'photo' : 'video'}...`}
+                placeholder={`Escreva uma descrição para seu ${challenge.type === 'photo' ? 'foto' : 'vídeo'}...`}
                 className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows="3"
                 required
@@ -224,8 +301,9 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
             </div>
             
             {submission.error && (
-              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                {submission.error}
+              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm flex items-start">
+                <AlertIcon className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <span>{submission.error}</span>
               </div>
             )}
             
@@ -242,10 +320,12 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                 type="submit"
                 disabled={
                   !submission.mediaFile || 
+                  !submission.caption ||
                   submission.isSubmitting
                 }
                 className={`flex-1 py-3 rounded-lg font-bold flex items-center justify-center ${
                   !submission.mediaFile || 
+                  !submission.caption ||
                   submission.isSubmitting
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                     : 'bg-blue-500 text-white hover:bg-blue-600 shadow-md'
@@ -257,7 +337,7 @@ const ParticipateModal = ({ challenge, user, onClose, userData }) => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    A carregar...
+                    Enviando...
                   </span>
                 ) : (
                   <>

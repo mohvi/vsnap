@@ -60,7 +60,6 @@ function BottomMenu() {
                     : 'text-gray-500'
                 })}
               </div>
-              <span className="text-xs mt-1 font-medium">{item.label}</span>
             </Link>
           ))}
         </div>
