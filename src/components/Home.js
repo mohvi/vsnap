@@ -112,7 +112,7 @@ const HomePage = ({ userData }) => {
     const shareData = {
       title: challenge.title,
       text: challenge.description,
-      url: `https://votasnap.online/challenges/${challenge.id}`,
+      url: `https://votasnap.online/challenge/${challenge.id}`,
     };
 
     if (navigator.share) {

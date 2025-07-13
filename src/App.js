@@ -24,6 +24,7 @@ import ViewUser from './cc/ViewUser';
 import ProfileView from './components/ProfileView';
 import Shop from './components/Shop';
 import ContactModal from './components/ContactModal';
+import ChallengeDetails from './components/ChallengeDetails';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -273,11 +274,12 @@ function App() {
             </ProtectedRoute>
           } />
           
-          <Route path="/not-allowed" element={<NotAllowed />} />
+          
           <Route path="/cc" element={<CreateChallengeForm />} />
           <Route path="/wex" element={<UserList />} />
           <Route path="/explore" element={<Shop />} />
           <Route path="/p/:challengeId/:id" element={<PostDetail userData={userData}/>} />
+          <Route path="/challenge/:id" element={<ChallengeDetails userData={userData}/>} />
           <Route path="/challenges/:challengeId" element={<ParticipationsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
 
