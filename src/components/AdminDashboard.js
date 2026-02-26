@@ -744,7 +744,7 @@ const AdminDashboard = () => {
                 to={`user/${user.uid || user.id}`} 
                 className="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
               >
-                {user.username || 'N/A'}
+                {user.username || 'N/A'}-   {user.contacto || 'N/A'}
               </Link>
             </div>
           </div>

@@ -81,6 +81,14 @@ const Auth = () => {
     } catch (error) {
       console.error(`Error signing in with ${providerName}:`, error);
       
+      // Don't show error for popup closure - it's user-initiated
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.log('User cancelled sign-in');
+        setIsLoading(false);
+        setActiveProvider(null);
+        return;
+      }
+
       let errorTitle = 'Erro no login';
       let errorMessage = `Ocorreu um erro ao tentar entrar com ${providerName}. Por favor, tente novamente.`;
       let errorIcon = <ErrorOutline className="mr-2" />;
@@ -89,10 +97,6 @@ const Auth = () => {
         case 'auth/account-exists-with-different-credential':
           errorTitle = 'Conta já registrada';
           errorMessage = 'Este e-mail já está associado a outra conta com outro método.';
-          break;
-        case 'auth/popup-closed-by-user':
-          errorTitle = 'Janela fechada';
-          errorMessage = 'Você fechou a janela de login antes de concluir. Tente novamente.';
           break;
         case 'auth/user-disabled':
           errorTitle = 'Conta desativada';
@@ -105,6 +109,14 @@ const Auth = () => {
         case 'auth/too-many-requests':
           errorTitle = 'Acesso temporariamente bloqueado';
           errorMessage = 'Muitas tentativas de login. Tente novamente mais tarde.';
+          break;
+        case 'auth/popup-blocked':
+          errorTitle = 'Popup bloqueado';
+          errorMessage = 'O popup de login foi bloqueado. Permita popups para este site.';
+          break;
+        case 'auth/unauthorized-domain':
+          errorTitle = 'Domínio não autorizado';
+          errorMessage = 'Este domínio não está autorizado para login.';
           break;
         default:
           if (error.message === 'multi_device') {
@@ -123,6 +135,12 @@ const Auth = () => {
       setIsLoading(false);
       setActiveProvider(null);
     }
+  };
+
+  // Clear error when user starts new sign-in attempt
+  const handleSignInAttempt = (provider, providerName) => {
+    setError(null);
+    handleSignIn(provider, providerName);
   };
 
   return (
@@ -248,7 +266,7 @@ const Auth = () => {
 
         <div className="space-y-4 mb-6">
           <button
-            onClick={() => handleSignIn(googleProvider, 'Google')}
+            onClick={() => handleSignInAttempt(googleProvider, 'Google')}
             disabled={isLoading}
             className={`flex items-center justify-center w-full py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 ${
               isLoading && activeProvider === 'Google' 
@@ -269,6 +287,28 @@ const Auth = () => {
             )}
           </button>
 
+          {/* Facebook Button (if needed) */}
+          {/* <button
+            onClick={() => handleSignInAttempt(facebookProvider, 'Facebook')}
+            disabled={isLoading}
+            className={`flex items-center justify-center w-full py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 ${
+              isLoading && activeProvider === 'Facebook' 
+                ? 'bg-gray-300 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 shadow-lg hover:shadow-xl text-white'
+            }`}
+          >
+            {isLoading && activeProvider === 'Facebook' ? (
+              <div className="flex items-center">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Carregando...
+              </div>
+            ) : (
+              <>
+                <Facebook className="mr-3 text-white text-2xl" />
+                <span className="font-bold text-lg">Continuar com Facebook</span>
+              </>
+            )}
+          </button> */}
         </div>
 
         <div className="text-center text-sm text-gray-500 font-medium">

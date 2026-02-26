@@ -43,6 +43,7 @@ function App() {
           
           if (snapshot.exists()) {
             const userData = snapshot.val();
+            console.log('Fetched user data:', userData);
             setUserData(userData);
             
             if(!userData.contacto){
