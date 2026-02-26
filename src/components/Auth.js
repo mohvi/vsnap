@@ -1,327 +1,337 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Google, Facebook, ErrorOutline, Devices, Celebration, EmojiEvents, Stars } from '@mui/icons-material';
-import { auth, googleProvider, facebookProvider } from '../fb';
-import { signInWithPopup, signOut } from 'firebase/auth';
-import { getDatabase, ref, set, get } from 'firebase/database';
-import { useNavigate, useLocation } from 'react-router-dom';
-import Particles from 'react-tsparticles';
-import { loadSlim } from 'tsparticles-slim'; 
-import logo from '../img/logo.png';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { ref, get, set, update } from "firebase/database";
+import { auth, db } from "../fb"; 
+import { signInWithCustomToken } from "firebase/auth";
+import logo from "../img/logo.png"; 
+import { toast } from "sonner";
 
-const Auth = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeProvider, setActiveProvider] = useState(null);
-  const [error, setError] = useState(null);
-  const [referrerUid, setReferrerUid] = useState(null);
-  const [isHovered, setIsHovered] = useState(false);
+const API_URL = process.env.NODE_ENV === 'development'
+  ? 'http://127.0.0.1:5001/efoote-abf1b/us-central1'
+  : 'https://us-central1-efoote-abf1b.cloudfunctions.net';
+
+export default function Auth() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const db = getDatabase();
-
-  // Particles initialization
-  const particlesInit = useCallback(async (engine) => {
-    await loadSlim(engine);
-  }, []);
+  const [step, setStep] = useState("phone");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const refUid = params.get('ref');
-    if (refUid) {
-      setReferrerUid(refUid);
+    if (resendTimer > 0) {
+      const interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(interval);
     }
-  }, [location]);
+  }, [resendTimer]);
 
-  const saveUserData = async (user) => {
-    try {
-      const userRef = ref(db, 'users/' + user.uid);
-      const snapshot = await get(userRef);
-
-      if (snapshot.exists()) {
-        // Atualiza apenas a data de login se o usuário já existir
-        await set(ref(db, `users/${user.uid}/loginDate`), new Date().toISOString());
-        return;
-      }
-
-      const userData = {
-        uid: user.uid,
-        email: user.email,
-        profilepic: user.photoURL,
-        joinDate: new Date().toISOString(),
-        loginDate: new Date().toISOString(),
-        referrer: referrerUid || null,
-        isComplete: false,
-        coins: 0 // Adicionado campo coins padrão
-      };
-
-      await set(userRef, userData);
-      
-      if (referrerUid) {
-        const referralRef = ref(db, `referrals/${referrerUid}/${user.uid}`);
-        await set(referralRef, {
-          date: new Date().toISOString(),
-          newUserEmail: user.email,
-          status: 'pending' // Adicionado status para rastreamento
-        });
-      }
-    } catch (error) {
-      console.error('Error saving user data:', error);
-      throw error;
-    }
+  const formatPhoneNumber = (input) => {
+    const numbers = input.replace(/\D/g, "");
+    return numbers.startsWith("258") ? numbers : "258" + numbers;
   };
 
-  const handleSignIn = async (provider, providerName) => {
-    setIsLoading(true);
-    setActiveProvider(providerName);
-    setError(null);
+  const isValidMozambiquePhone = (phoneNumber) => {
+    const clean = phoneNumber.replace(/\D/g, "");
+    return clean.length === 12 && clean.startsWith("258");
+  };
+
+  const formatPhoneDisplay = (value) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 2) return numbers;
+    if (numbers.length <= 5) return `${numbers.slice(0,2)} ${numbers.slice(2)}`;
+    if (numbers.length <= 8) return `${numbers.slice(0,2)} ${numbers.slice(2,5)} ${numbers.slice(5)}`;
+    return `${numbers.slice(0,2)} ${numbers.slice(2,5)} ${numbers.slice(5,8)} ${numbers.slice(8)}`;
+  };
+
+  const handleSendCode = async (e) => {
+    e.preventDefault();
+    if (loading || resendTimer > 0) return;
+
+    const formattedPhone = formatPhoneNumber(phone);
+    if (!isValidMozambiquePhone(formattedPhone)) {
+      toast.error("Número inválido! Use: 84 123 4567");
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      const result = await signInWithPopup(auth, provider);
-      await saveUserData(result.user);
-      navigate('/');
-    } catch (error) {
-      console.error(`Error signing in with ${providerName}:`, error);
-      
-      // Don't show error for popup closure - it's user-initiated
-      if (error.code === 'auth/popup-closed-by-user') {
-        console.log('User cancelled sign-in');
-        setIsLoading(false);
-        setActiveProvider(null);
-        return;
-      }
-
-      let errorTitle = 'Erro no login';
-      let errorMessage = `Ocorreu um erro ao tentar entrar com ${providerName}. Por favor, tente novamente.`;
-      let errorIcon = <ErrorOutline className="mr-2" />;
-
-      switch (error.code) {
-        case 'auth/account-exists-with-different-credential':
-          errorTitle = 'Conta já registrada';
-          errorMessage = 'Este e-mail já está associado a outra conta com outro método.';
-          break;
-        case 'auth/user-disabled':
-          errorTitle = 'Conta desativada';
-          errorMessage = 'Sua conta foi desativada. Entre em contato com o suporte.';
-          break;
-        case 'auth/network-request-failed':
-          errorTitle = 'Problema de conexão';
-          errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão.';
-          break;
-        case 'auth/too-many-requests':
-          errorTitle = 'Acesso temporariamente bloqueado';
-          errorMessage = 'Muitas tentativas de login. Tente novamente mais tarde.';
-          break;
-        case 'auth/popup-blocked':
-          errorTitle = 'Popup bloqueado';
-          errorMessage = 'O popup de login foi bloqueado. Permita popups para este site.';
-          break;
-        case 'auth/unauthorized-domain':
-          errorTitle = 'Domínio não autorizado';
-          errorMessage = 'Este domínio não está autorizado para login.';
-          break;
-        default:
-          if (error.message === 'multi_device') {
-            errorTitle = 'Sessão ativa';
-            errorMessage = 'Você já está logado em outro dispositivo.';
-            errorIcon = <Devices className="mr-2" />;
-          }
-      }
-
-      setError({
-        title: errorTitle,
-        message: errorMessage,
-        icon: errorIcon
+      const response = await fetch(`${API_URL}/sendVerificationCode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone })
       });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Erro ao enviar SMS');
+      }
+
+      setStep("code");
+      setResendTimer(60);
+      
+      if (process.env.NODE_ENV === 'development' && data.debug) {
+        toast.info(`Código: ${data.debug.code}`);
+      } else {
+        toast.success("Código enviado!");
+      }
+    } catch (error) {
+      toast.error(error.message || "Erro ao enviar código");
     } finally {
-      setIsLoading(false);
-      setActiveProvider(null);
+      setLoading(false);
     }
   };
 
-  // Clear error when user starts new sign-in attempt
-  const handleSignInAttempt = (provider, providerName) => {
-    setError(null);
-    handleSignIn(provider, providerName);
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    if (code.length !== 6 || loading) return;
+
+    setLoading(true);
+
+    try {
+      const formattedPhone = formatPhoneNumber(phone);
+      
+      const response = await fetch(`${API_URL}/verifyCode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone, code })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.attemptsLeft) {
+          throw new Error(`${data.attemptsLeft} tentativas restantes`);
+        }
+        throw new Error(data.error || 'Código inválido');
+      }
+
+      await signInWithCustomToken(auth, data.token);
+      
+      const userRef = ref(db, `users/${data.userId}`);
+      
+      if (data.isNewUser) {
+        await set(userRef, { 
+          uid: data.userId, 
+          phone: data.phone, 
+          createdAt: Date.now(), 
+          lastLogin: Date.now(),
+          profileComplete: false 
+        });
+        navigate("/setup-profile");
+      } else {
+        await update(userRef, { lastLogin: Date.now() });
+        const snap = await get(userRef);
+        const profileComplete = snap.val()?.profileComplete || false;
+        navigate(profileComplete ? "/" : "/setup-profile");
+      }
+    } catch (error) {
+      toast.error(error.message);
+      setCode("");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleResendCode = async () => {
+    if (loading) return;
+
+    setLoading(true);
+
+    try {
+      const formattedPhone = formatPhoneNumber(phone);
+      
+      const response = await fetch(`${API_URL}/resendCode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        if (data.waitTime) {
+          setResendTimer(data.waitTime);
+          throw new Error(`Aguarde ${data.waitTime}s`);
+        }
+        throw new Error(data.error || 'Erro ao reenviar');
+      }
+
+      setResendTimer(60);
+      toast.success("Código reenviado!");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const displayPhone = phone ? formatPhoneDisplay(phone) : "";
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 px-4 relative overflow-hidden">
-      {/* Particles Background */}
-      <div className="absolute inset-0 z-0">
-        <Particles
-          id="tsparticles"
-          init={particlesInit}
-          options={{
-            fpsLimit: 60,
-            interactivity: {
-              events: {
-                onHover: {
-                  enable: true,
-                  mode: "repulse",
-                },
-                onClick: {
-                  enable: true,
-                  mode: "push",
-                },
-              },
-              modes: {
-                repulse: {
-                  distance: 100,
-                  duration: 0.4,
-                },
-                push: {
-                  quantity: 4,
-                },
-              },
-            },
-            particles: {
-              color: {
-                value: ["#4F46E5", "#EC4899", "#10B981"],
-              },
-              links: {
-                color: "#9CA3AF",
-                distance: 150,
-                enable: true,
-                opacity: 0.3,
-                width: 1,
-              },
-              collisions: {
-                enable: true,
-              },
-              move: {
-                direction: "none",
-                enable: true,
-                outModes: {
-                  default: "bounce",
-                },
-                random: false,
-                speed: 1,
-                straight: false,
-              },
-              number: {
-                density: {
-                  enable: true,
-                  area: 800,
-                },
-                value: 60,
-              },
-              opacity: {
-                value: 0.5,
-              },
-              shape: {
-                type: "circle",
-              },
-              size: {
-                value: { min: 1, max: 5 },
-              },
-            },
-            detectRetina: true,
-          }}
-        />
-      </div>
-
-      <div 
-        className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transition-all duration-500 hover:shadow-2xl relative z-10 border-4 border-transparent hover:border-purple-200"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {/* Hover Effects */}
-        {isHovered && (
-          <>
-            <Celebration className="absolute -top-4 -left-4 text-yellow-400 animate-bounce" />
-            <Stars className="absolute -top-4 -right-4 text-pink-400 animate-pulse" />
-            <EmojiEvents className="absolute -bottom-4 -left-4 text-blue-400 animate-spin-slow" />
-          </>
-        )}
-
-        <img 
-          src={logo} 
-          alt="VotaSnap Logo" 
-          className="w-40 mx-auto mb-6 hover:scale-110 transition-transform duration-500 transform hover:rotate-6" 
-        />
-        
-        <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-3">
-          Bem-vindo ao VotaSnap!
-        </h1>
-        <p className="text-lg text-gray-600 mb-8 font-medium">
-          Entre agora e comece a ganhar recompensas incríveis! 🎉
-        </p>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg animate-shake">
-            <div className="flex items-center">
-              {error.icon}
-              <div>
-                <h3 className="font-bold">{error.title}</h3>
-                <p className="text-sm">{error.message}</p>
-              </div>
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="relative inline-block mb-4">
+            <div className="w-20 h-20 bg-gradient-to-tr from-[#ff286a] to-[#ff8c5a] rounded-2xl flex items-center justify-center shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+              <img 
+                src={logo} 
+                alt="Votansap" 
+                className="w-100 h-100 object-contain"
+              />
+            </div>
+            <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+              <span className="animate-pulse">•</span>
             </div>
           </div>
-        )}
-
-        {referrerUid && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 rounded-lg text-sm font-medium border-2 border-blue-200 animate-pulse">
-            🎁 Bônus especial! Você e seu amigo ganharão recompensas extras ao se cadastrar!
+          <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
+            Votansap
+          </h1>
+        </div>
+        <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
+          <div className="px-6 py-5 bg-gradient-to-r from-[#ff286a] to-[#ff8c5a]">
+            <h2 className="text-white font-bold text-lg">
+              {step === "phone" ? "📱 Entrar ou cadastrar" : "✅ Confirmar código"}
+            </h2>
+            {step === "code" && (
+              <p className="text-white/80 text-sm mt-1">
+                Enviamos para +258 {displayPhone}
+              </p>
+            )}
           </div>
-        )}
 
-        <div className="space-y-4 mb-6">
-          <button
-            onClick={() => handleSignInAttempt(googleProvider, 'Google')}
-            disabled={isLoading}
-            className={`flex items-center justify-center w-full py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 ${
-              isLoading && activeProvider === 'Google' 
-                ? 'bg-gray-300 cursor-not-allowed' 
-                : 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-lg hover:shadow-xl text-white'
-            }`}
-          >
-            {isLoading && activeProvider === 'Google' ? (
-              <div className="flex items-center">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                Carregando...
-              </div>
-            ) : (
-              <>
-                <Google className="mr-3 text-white text-2xl" />
-                <span className="font-bold text-lg">Continuar com Google</span>
-              </>
-            )}
-          </button>
+          <div className="p-6">
+            {step === "phone" ? (
+              <form onSubmit={handleSendCode} className="space-y-5">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <span className="text-gray-400 text-sm">+258</span>
+                  </div>
+                  <input
+                    type="tel"
+                    value={displayPhone}
+                    onChange={(e) => {
+                      const numbers = e.target.value.replace(/\D/g, "");
+                      setPhone(numbers);
+                    }}
+                    className="block w-full pl-16 pr-4 py-4 bg-[#2a2a2a] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-[#ff286a] focus:border-transparent outline-none transition text-lg"
+                    placeholder="84 123 4567"
+                    disabled={loading}
+                    autoFocus
+                  />
+                </div>
 
-          {/* Facebook Button (if needed) */}
-          {/* <button
-            onClick={() => handleSignInAttempt(facebookProvider, 'Facebook')}
-            disabled={isLoading}
-            className={`flex items-center justify-center w-full py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 ${
-              isLoading && activeProvider === 'Facebook' 
-                ? 'bg-gray-300 cursor-not-allowed' 
-                : 'bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 shadow-lg hover:shadow-xl text-white'
-            }`}
-          >
-            {isLoading && activeProvider === 'Facebook' ? (
-              <div className="flex items-center">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                Carregando...
-              </div>
+                <button
+                  type="submit"
+                  disabled={loading || !phone}
+                  className="w-full bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] text-white font-bold py-4 px-4 rounded-xl transition-all transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 text-lg shadow-lg hover:shadow-xl"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Enviando...</span>
+                    </div>
+                  ) : (
+                    "Continuar"
+                  )}
+                </button>
+
+                <p className="text-xs text-center text-gray-500 mt-4">
+                  Ao continuar, você concorda com nossos 
+                  <button className="text-[#ff286a] hover:underline mx-1">Termos</button>
+                  e
+                  <button className="text-[#ff286a] hover:underline mx-1">Política</button>
+                </p>
+              </form>
             ) : (
-              <>
-                <Facebook className="mr-3 text-white text-2xl" />
-                <span className="font-bold text-lg">Continuar com Facebook</span>
-              </>
+              <form onSubmit={handleVerifyCode} className="space-y-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("phone");
+                    setCode("");
+                  }}
+                  className="flex items-center text-[#ff286a] hover:text-[#ff8c5a] transition-colors text-sm mb-4"
+                  disabled={loading}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span>Alterar número</span>
+                </button>
+
+                <div>
+                  <div className="flex justify-center gap-2 mb-4">
+                    {[0,1,2,3,4,5].map((i) => (
+                      <div
+                        key={i}
+                        className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                          code.length > i 
+                            ? 'bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] scale-110' 
+                            : 'bg-gray-700'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => {
+                      const newCode = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setCode(newCode);
+                    }}
+                    className="block w-full px-3 py-5 text-center text-2xl tracking-[8px] font-mono bg-[#2a2a2a] border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-[#ff286a] focus:border-transparent outline-none transition"
+                    placeholder="000000"
+                    maxLength={6}
+                    disabled={loading}
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || code.length < 6}
+                  className="w-full bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] text-white font-bold py-4 px-4 rounded-xl transition-all transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 text-lg shadow-lg"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Verificando...</span>
+                    </div>
+                  ) : (
+                    "Entrar"
+                  )}
+                </button>
+
+                {resendTimer > 0 ? (
+                  <p className="text-center text-sm text-gray-500">
+                    ⏱️ Reenviar em {resendTimer}s
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={loading}
+                    className="w-full text-center text-[#ff286a] hover:text-[#ff8c5a] text-sm font-medium transition-colors disabled:text-gray-600"
+                  >
+                    📨 Não recebi o código
+                  </button>
+                )}
+              </form>
             )}
-          </button> */}
+          </div>
         </div>
 
-        <div className="text-center text-sm text-gray-500 font-medium">
-          Ao continuar, você concorda com nossos{' '}
-          <a href="/terms" className="text-blue-500 hover:underline font-bold">Termos</a> e{' '}
-          <a href="/privacy" className="text-blue-500 hover:underline font-bold">Privacidade</a>.
-          <div className="mt-2 text-xs text-gray-400">
-            ✨ Diversão garantida! 🚀
-          </div>
+        <div className="text-center mt-6">
+          <p className="text-xs text-gray-600">
+            © 2026 Votasnap • Todos os direitos reservados
+          </p>
         </div>
       </div>
     </div>
   );
-};
-
-export default Auth;
+}

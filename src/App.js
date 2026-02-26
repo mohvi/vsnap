@@ -3,8 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from './fb';
 import { ref, get, onValue, set } from 'firebase/database';
-
-// Components
+import logo from './img/logo.png';
 import Auth from './components/Auth';
 import HomePage from './components/Home';
 import Profile from './components/Profile';
@@ -13,7 +12,6 @@ import NotAllowed from './components/NotAllowed';
 import Header from './components/Header';
 import BottomMenu from './components/Bottom';
 import CompleteProfileModal from './components/CompleteProfileModal';
-import logo from './img/logo.png';
 import CreateChallengeForm from './components/CreateChallengeForm';
 import ParticipationsPage from './components/ParticipationsPage';
 import PostDetail from './components/PostDetail';
@@ -142,7 +140,8 @@ function App() {
         {!isAuthPage && <Header user={user} userData={userData} />}
         <div className="App" style={{ 
           paddingBottom: !isAuthPage && user ? '80px' : '0',
-          minHeight: '100vh'
+          minHeight: '100vh',
+          backgroundColor: '#000000'
         }}>
           {children}
         </div>
@@ -153,62 +152,81 @@ function App() {
 
   if (loading) {
     return (
-      <div className="relative flex flex-col items-center justify-center h-screen bg-gradient-to-br from-[#0f0c29] to-[#24243e] overflow-hidden">
-        {/* Animated background elements */}
+      <div className="relative flex flex-col items-center justify-center min-h-screen bg-black overflow-hidden">
+        {/* Animated background elements - TikTok style */}
         <div className="absolute inset-0 overflow-hidden">
-          {[...Array(15)].map((_, i) => (
+          {[...Array(20)].map((_, i) => (
             <div 
               key={i}
-              className="absolute rounded-full bg-white bg-opacity-10"
+              className="absolute rounded-full"
               style={{
-                width: `${Math.random() * 8 + 4}px`,
-                height: `${Math.random() * 8 + 4}px`,
+                width: `${Math.random() * 10 + 2}px`,
+                height: `${Math.random() * 10 + 2}px`,
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animation: `float ${Math.random() * 15 + 10}s linear infinite`,
-                animationDelay: `${Math.random() * 5}s`
+                background: `linear-gradient(135deg, #ff286a ${Math.random() * 100}%, #ff8c5a)`,
+                opacity: 0.15,
+                animation: `floatTikTok ${Math.random() * 20 + 10}s linear infinite`,
+                animationDelay: `${Math.random() * 5}s`,
+                filter: 'blur(1px)'
               }}
             />
           ))}
         </div>
 
-        {/* Loading content */}
+        {/* Loading content - TikTok style */}
         <div className="relative z-10 text-center px-4 max-w-md">
-          {/* Spinner */}
-          <div className="mx-auto mb-8 w-20 h-20 border-4 border-white border-opacity-20 border-t-cyan-400 rounded-full animate-spin">
+          {/* Logo animado */}
+          <div className="mx-auto mb-8 w-24 h-24 relative">
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#ff286a] to-[#ff8c5a] rounded-2xl rotate-3 animate-pulse"></div>
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#ff286a] to-[#ff8c5a] rounded-2xl -rotate-3 animate-pulse animation-delay-150"></div>
+            <div className="absolute inset-2 bg-black rounded-xl flex items-center justify-center">
+              <span className="text-3xl font-bold bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] bg-clip-text text-transparent">
+                <img src={logo} alt="Votansap Logo" className="w-12 h-12" />
+              </span>
+            </div>
           </div>
           
           {/* Loading text */}
-          <h1 className="text-3xl font-bold text-white mb-4">
-            <span className="animate-pulse">A carregar</span>
+          <h1 className="text-3xl font-bold mb-4">
+            <span className="bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] bg-clip-text text-transparent animate-pulse">
+              Votansap
+            </span>
           </h1>
           
-          {/* Progress bar */}
-          <div className="w-full bg-white bg-opacity-10 h-1.5 rounded-full overflow-hidden mb-6">
+          {/* Progress bar - TikTok style */}
+          <div className="w-full bg-[#2a2a2a] h-2 rounded-full overflow-hidden mb-6">
             <div 
-              className="bg-cyan-400 h-full rounded-full animate-progress"
+              className="h-full rounded-full animate-progressTikTok"
               style={{
-                width: '65%',
-                animation: 'progress 1.5s ease-in-out infinite alternate'
+                background: 'linear-gradient(90deg, #ff286a, #ff8c5a)',
+                animation: 'progressTikTok 1.5s ease-in-out infinite'
               }}
             />
           </div>
           
           {/* Status message */}
-          <p className="text-white text-opacity-70 text-sm">
-           Por favor aguarde...
+          <p className="text-gray-400 text-sm flex items-center justify-center gap-2">
+            <span className="w-2 h-2 bg-[#ff286a] rounded-full animate-pulse"></span>
+            A carregar...
+            <span className="w-2 h-2 bg-[#ff8c5a] rounded-full animate-pulse"></span>
           </p>
         </div>
 
         {/* Animation styles */}
         <style jsx>{`
-          @keyframes float {
-            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.6; }
-            50% { transform: translateY(-15px) translateX(5px); opacity: 1; }
+          @keyframes floatTikTok {
+            0%, 100% { transform: translateY(0) translateX(0) rotate(0deg); }
+            33% { transform: translateY(-20px) translateX(10px) rotate(120deg); }
+            66% { transform: translateY(10px) translateX(-10px) rotate(240deg); }
           }
-          @keyframes progress {
-            0% { width: 30%; }
-            100% { width: 80%; }
+          @keyframes progressTikTok {
+            0% { width: 20%; opacity: 0.5; }
+            50% { width: 80%; opacity: 1; }
+            100% { width: 20%; opacity: 0.5; }
+          }
+          .animation-delay-150 {
+            animation-delay: 150ms;
           }
         `}</style>
       </div>
@@ -228,7 +246,7 @@ function App() {
           }}
         />
       )}
-       {showSetContact && user && (
+      {showSetContact && user && (
         <ContactModal 
           user={user}
           onComplete={handleProfileComplete}
@@ -252,29 +270,29 @@ function App() {
             </ProtectedRoute>
           } />
 
-          
-          
           <Route path="/profile" element={
             <ProtectedRoute>
               <Profile user={user} userData={userData} />
             </ProtectedRoute>
           } />
+          
           <Route path="/profile/:uid" element={
-              <ProtectedRoute>
-                <ProfileView />
-              </ProtectedRoute>
-            } />
+            <ProtectedRoute>
+              <ProfileView />
+            </ProtectedRoute>
+          } />
+          
           <Route path="/rewards" element={
             <ProtectedRoute requireAgeVerification>
               <Rewards user={user} userData={userData} />
             </ProtectedRoute>
           } />
+          
           <Route path="/invites" element={
             <ProtectedRoute requireAgeVerification>
               <InvitedFriends user={user} userData={userData} />
             </ProtectedRoute>
           } />
-          
           
           <Route path="/cc" element={<CreateChallengeForm />} />
           <Route path="/wex" element={<UserList />} />
@@ -282,12 +300,13 @@ function App() {
           <Route path="/p/:challengeId/:id" element={<PostDetail userData={userData}/>} />
           <Route path="/challenge/:id" element={<ChallengeDetails userData={userData}/>} />
           <Route path="/challenges/:challengeId" element={<ParticipationsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-
+          
           <Route path="/admin">
-          <Route index element={<AdminDashboard />} />
-          <Route path='user/:id' element={<ViewUser />} />
-        </Route>
+            <Route index element={<AdminDashboard />} />
+            <Route path='user/:id' element={<ViewUser />} />
+          </Route>
+          
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
     </Router>
