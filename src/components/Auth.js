@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 const API_URL = process.env.NODE_ENV === 'development'
   ? 'http://127.0.0.1:5001/efoote-abf1b/us-central1'
-  : 'https://us-central1-efoote-abf1b.cloudfunctions.net';
+  : 'https://us-central1-votasnap.cloudfunctions.net';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -190,6 +190,7 @@ export default function Auth() {
           <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
             Votansap
           </h1>
+          <small className="text-white mb-2 tracking-tight">Postar | Ganhar | Bazar</small>
         </div>
         <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
           <div className="px-6 py-5 bg-gradient-to-r from-[#ff286a] to-[#ff8c5a]">
