@@ -7,7 +7,7 @@ import logo from "../img/logo.png";
 import { toast } from "sonner";
 
 const API_URL = process.env.NODE_ENV === 'development'
-  ? 'http://127.0.0.1:5001/efoote-abf1b/us-central1'
+  ? 'http://127.0.0.1:5001/votasnap/us-central1'
   : 'https://us-central1-votasnap.cloudfunctions.net';
 
 export default function Auth() {
@@ -195,7 +195,7 @@ export default function Auth() {
         <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
           <div className="px-6 py-5 bg-gradient-to-r from-[#ff286a] to-[#ff8c5a]">
             <h2 className="text-white font-bold text-lg">
-              {step === "phone" ? "📱 Entrar ou cadastrar" : "✅ Confirmar código"}
+              {step === "phone" ? "Entrar ou cadastrar" : "Confirmar código"}
             </h2>
             {step === "code" && (
               <p className="text-white/80 text-sm mt-1">

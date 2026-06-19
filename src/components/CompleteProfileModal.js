@@ -93,7 +93,7 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
       return;
     }
     
-    const usernameRegex = /^[\w ]{3,20}$/; // Allows letters, numbers, underscore and spaces
+    const usernameRegex = /^[\w ]{3,20}$/;
     if (!usernameRegex.test(username)) {
       setUsernameStatus('invalid');
       setError('Nome de usuário deve ter 3-20 caracteres (letras, números, _ e espaços)');
@@ -199,46 +199,103 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
   const getUsernameStatusMessage = () => {
     switch (usernameStatus) {
       case 'checking':
-        return <span className="flex items-center text-blue-500"><Loader size={14} className="animate-spin mr-1" /> Verificando...</span>;
+        return (
+          <span className="flex items-center text-blue-400">
+            <Loader size={14} className="animate-spin mr-1" /> 
+            Verificando...
+          </span>
+        );
       case 'available':
-        return <span className="flex items-center text-green-500"><CheckCircle size={14} className="mr-1" /> Disponível</span>;
+        return (
+          <span className="flex items-center text-green-400">
+            <CheckCircle size={14} className="mr-1" /> 
+            Disponível
+          </span>
+        );
       case 'taken':
       case 'invalid':
-        return <span className="flex items-center text-red-500"><XCircle size={14} className="mr-1" /> {usernameStatus === 'taken' ? 'Indisponível' : 'Inválido'}</span>;
+        return (
+          <span className="flex items-center text-red-400">
+            <XCircle size={14} className="mr-1" /> 
+            {usernameStatus === 'taken' ? 'Indisponível' : 'Inválido'}
+          </span>
+        );
       default:
-        return <span className="text-gray-500">3-20 caracteres (letras, números, _ e espaços)</span>;
+        return (
+          <span className="text-gray-500 text-xs">
+            3-20 caracteres (letras, números, _ e espaços)
+          </span>
+        );
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto my-8 relative">
+    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      {/* Background elements TikTok style */}
+      <div className="absolute inset-0 overflow-hidden">
+        {[...Array(10)].map((_, i) => (
+          <div 
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              width: `${Math.random() * 15 + 5}px`,
+              height: `${Math.random() * 15 + 5}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              background: `linear-gradient(135deg, #ff286a ${Math.random() * 100}%, #ff8c5a)`,
+              opacity: 0.1,
+              animation: `floatTikTok ${Math.random() * 20 + 10}s linear infinite`,
+              animationDelay: `${Math.random() * 5}s`,
+              filter: 'blur(2px)'
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative bg-[#1a1a1a] rounded-2xl shadow-2xl w-full max-w-md mx-auto my-8 border border-gray-800">
+        {/* Header com gradiente */}
+        <div className="relative h-2 bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] rounded-t-2xl"></div>
+        
         <button 
           onClick={onCancel}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors"
+          className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-10 bg-[#2a2a2a] p-2 rounded-full hover:bg-[#ff286a] hover:bg-opacity-20"
           aria-label="Fechar"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
 
         <div className="p-6 md:p-8">
-          <div className="mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold text-purple-600 mb-1">
-              {initialUserData ? 'Atualize seu perfil' : 'Complete seu perfil'}
+          <div className="mb-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3">
+              <span className="text-3xl font-bold text-white">
+                {initialUserData ? '✏️' : '🎉'}
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">
+              <span className="bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] bg-clip-text text-transparent">
+                {initialUserData ? 'Atualizar Perfil' : 'Bem-vindo! 🏠'}
+              </span>
             </h2>
-            <p className="text-gray-600">Precisamos de algumas informações para personalizar sua experiência</p>
+            <p className="text-gray-400 text-sm">
+              {initialUserData 
+                ? 'Mantenha seu perfil sempre atualizado' 
+                : 'Complete seu cadastro para começar'}
+            </p>
           </div>
 
           {success && (
-            <div className="p-3 bg-green-50 text-green-600 rounded-lg flex items-start mb-4">
-              <CheckCircle className="flex-shrink-0 mr-2 mt-0.5" size={16} />
-              <span>{success}</span>
+            <div className="p-4 bg-green-500 bg-opacity-10 border border-green-500 border-opacity-20 text-green-400 rounded-xl flex items-start mb-6">
+              <CheckCircle className="flex-shrink-0 mr-3 mt-0.5" size={18} />
+              <span className="text-sm">{success}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Username field */}
             <div>
-              <label className="block text-gray-700 mb-1 font-medium">Nome de usuário*</label>
+              <label className="block text-gray-300 mb-2 text-sm font-medium">
+                Nome de usuário <span className="text-[#ff286a]">*</span>
+              </label>
               <div className="relative">
                 <input
                   type="text"
@@ -247,58 +304,82 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
                   onChange={handleChange}
                   onBlur={checkUsername}
                   placeholder="ex: joao silva"
-                  className={`w-full px-4 py-2 rounded-lg border-2 ${usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-red-300' : usernameStatus === 'available' ? 'border-green-300' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-20`}
+                  className={`w-full px-4 py-3 bg-[#2a2a2a] border ${
+                    usernameStatus === 'taken' || usernameStatus === 'invalid' 
+                      ? 'border-red-500' 
+                      : usernameStatus === 'available' 
+                        ? 'border-green-500' 
+                        : 'border-gray-700'
+                  } rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-[#ff286a] focus:border-transparent outline-none transition pr-24`}
                   required
                 />
                 <button 
                   type="button" 
                   onClick={checkUsername}
                   disabled={!formData.username || usernameStatus === 'checking'}
-                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-sm rounded-md transition-colors ${
+                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1.5 text-xs rounded-lg transition-colors ${
                     !formData.username || usernameStatus === 'checking'
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                      ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] text-white hover:opacity-90'
                   }`}
                 >
-                  {usernameStatus === 'checking' ? 'Verificando...' : 'Verificar'}
+                  {usernameStatus === 'checking' ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    'Verificar'
+                  )}
                 </button>
               </div>
-              <div className="mt-1 text-sm h-5">
+              <div className="mt-2 text-xs h-5">
                 {getUsernameStatusMessage()}
               </div>
             </div>
 
+            {/* Province and City */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-700 mb-1 font-medium">Província*</label>
+                <label className="block text-gray-300 mb-2 text-sm font-medium">
+                  Província <span className="text-[#ff286a]">*</span>
+                </label>
                 <select
                   name="province"
                   value={formData.province}
                   onChange={handleChange}
-                  className={`w-full px-4 py-2 rounded-lg border-2 ${touchedFields.province && !formData.province ? 'border-red-300' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                  className={`w-full px-4 py-3 bg-[#2a2a2a] border ${
+                    touchedFields.province && !formData.province 
+                      ? 'border-red-500' 
+                      : 'border-gray-700'
+                  } rounded-xl text-white focus:ring-2 focus:ring-[#ff286a] focus:border-transparent outline-none transition appearance-none cursor-pointer`}
                   required
                 >
-                  <option value="">Selecione...</option>
+                  <option value="" className="bg-[#2a2a2a]">Selecione...</option>
                   {provinces.map(province => (
-                    <option key={province.code} value={province.code}>
+                    <option key={province.code} value={province.code} className="bg-[#2a2a2a]">
                       {province.name}
                     </option>
                   ))}
                 </select>
               </div>
+              
               <div>
-                <label className="block text-gray-700 mb-1 font-medium">Cidade*</label>
+                <label className="block text-gray-300 mb-2 text-sm font-medium">
+                  Cidade <span className="text-[#ff286a]">*</span>
+                </label>
                 <select
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
                   disabled={!formData.province}
-                  className={`w-full px-4 py-2 rounded-lg border-2 ${touchedFields.city && !formData.city ? 'border-red-300' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50`}
+                  className={`w-full px-4 py-3 bg-[#2a2a2a] border ${
+                    touchedFields.city && !formData.city 
+                      ? 'border-red-500' 
+                      : 'border-gray-700'
+                  } rounded-xl text-white focus:ring-2 focus:ring-[#ff286a] focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed appearance-none`}
                   required
                 >
-                  <option value="">Selecione...</option>
+                  <option value="" className="bg-[#2a2a2a]">Selecione...</option>
                   {cities.map(city => (
-                    <option key={city} value={city}>
+                    <option key={city} value={city} className="bg-[#2a2a2a]">
                       {city}
                     </option>
                   ))}
@@ -306,7 +387,8 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
               </div>
             </div>
 
-            <div className="flex items-start pt-2">
+            {/* Age confirmation */}
+            <div className="flex items-start pt-4">
               <div className="flex items-center h-5">
                 <input
                   type="checkbox"
@@ -314,44 +396,67 @@ const CompleteProfileModal = ({ user, onComplete, onCancel }) => {
                   id="isOver13"
                   checked={formData.isOver13}
                   onChange={handleChange}
-                  className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                  className="w-4 h-4 bg-[#2a2a2a] border-gray-700 rounded focus:ring-[#ff286a] text-[#ff286a]"
                   required
                 />
               </div>
-              <label htmlFor="isOver13" className="ml-3 text-gray-700">
-                <span>Eu confirmo que tenho mais de 13 anos*</span>
-                <p className="text-xs text-gray-500 mt-1">Esta plataforma é destinada a maiores de 13 anos</p>
+              <label htmlFor="isOver13" className="ml-3">
+                <span className="text-sm text-gray-300">
+                  Confirmo que tenho mais de 13 anos <span className="text-[#ff286a]">*</span>
+                </span>
+                <p className="text-xs text-gray-500 mt-1">
+                  Esta plataforma é destinada a maiores de 13 anos
+                </p>
               </label>
             </div>
 
+            {/* Error message */}
             {error && (
-              <div className="p-3 bg-red-50 text-red-600 rounded-lg flex items-start">
-                <XCircle className="flex-shrink-0 mr-2 mt-0.5" size={16} />
-                <span>{error}</span>
+              <div className="p-4 bg-red-500 bg-opacity-10 border border-red-500 border-opacity-20 text-red-400 rounded-xl flex items-start">
+                <XCircle className="flex-shrink-0 mr-3 mt-0.5" size={18} />
+                <span className="text-sm">{error}</span>
               </div>
             )}
 
+            {/* Submit button */}
             <button
               type="submit"
               disabled={loading || usernameStatus !== 'available'}
-              className={`w-full py-3 px-4 text-white font-bold rounded-lg transition-colors flex items-center justify-center ${
+              className={`w-full py-4 px-4 text-white font-bold rounded-xl transition-all transform active:scale-95 flex items-center justify-center gap-2 text-lg ${
                 loading || usernameStatus !== 'available'
-                  ? 'bg-purple-400 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-700 shadow-md hover:shadow-lg'
+                  ? 'bg-gradient-to-r from-gray-600 to-gray-700 cursor-not-allowed opacity-50'
+                  : 'bg-gradient-to-r from-[#ff286a] to-[#ff8c5a] hover:shadow-lg hover:shadow-[#ff286a]/20'
               }`}
             >
               {loading ? (
                 <>
-                  <Loader className="animate-spin mr-2" size={18} />
-                  Salvando...
+                  <Loader className="animate-spin" size={20} />
+                  <span>Salvando...</span>
                 </>
               ) : (
-                initialUserData ? 'Atualizar Perfil' : 'Completar Cadastro'
+                <>
+                  <span>{initialUserData ? 'Atualizar Perfil' : 'Começar'}</span>
+                  <span className="text-xl">✨</span>
+                </>
               )}
             </button>
+
+            {/* Footer note */}
+            <p className="text-center text-xs text-gray-600 mt-4">
+              Seus dados estão seguros e não serão compartilhados
+            </p>
           </form>
         </div>
       </div>
+
+      {/* Animation styles */}
+      <style jsx>{`
+        @keyframes floatTikTok {
+          0%, 100% { transform: translateY(0) translateX(0) rotate(0deg); }
+          33% { transform: translateY(-20px) translateX(10px) rotate(120deg); }
+          66% { transform: translateY(10px) translateX(-10px) rotate(240deg); }
+        }
+      `}</style>
     </div>
   );
 };

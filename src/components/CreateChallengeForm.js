@@ -1,477 +1,306 @@
-import React, { useState, useEffect } from 'react';
-import { push, ref as dbRef } from 'firebase/database';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../fb';
-import { FaHeart, FaImage, FaPlus, FaUpload, FaSpinner, FaCheck, FaMapMarkerAlt } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { ref, push, set } from "firebase/database";
+import { PlusCircle, Image as ImageIcon, Trophy, Clock, Tag, Gift, DollarSign, Award } from 'lucide-react';
+import { db } from '../fb';
 
-const AdminChallengeForm = () => {
-  // List of provinces
-  const [provinces] = useState([
-    { id: 'maputo', name: 'Maputo' },
-    { id: 'gaza', name: 'Gaza' },
-    { id: 'inhambane', name: 'Inhambane' },
-    { id: 'sofala', name: 'Sofala' },
-    { id: 'manica', name: 'Manica' },
-    { id: 'tete', name: 'Tete' },
-    { id: 'zambezia', name: 'Zambézia' },
-    { id: 'nampula', name: 'Nampula' },
-    { id: 'niassa', name: 'Niassa' },
-    { id: 'cabo_delgado', name: 'Cabo Delgado' }
-  ]);
+const CATEGORIES = [
+  { value: 'fotografia', label: '📸 Fotografia' },
+  { value: 'musica', label: '🎵 Música' },
+  { value: 'danca', label: '💃 Dança' },
+  { value: 'culinaria', label: '🍲 Culinária' },
+  { value: 'moda', label: '👗 Moda' },
+  { value: 'desporto', label: '⚽ Desporto' },
+  { value: 'arte', label: '🎨 Arte' },
+  { value: 'humor', label: '😂 Humor' },
+];
 
-  // Initial form state
-  const initialFormState = {
+const CreateChallengeForm = () => {
+  const [formData, setFormData] = useState({
     title: '',
     description: '',
+    category: 'fotografia',
+    type: 'free', // free | paid | sponsored
     prize: '',
-    deadline: '',
-    type: 'photo',
-    imageFile: null,
-    brand: {
-      name: '',
-      logo: ''
-    },
-    terms: '',
-    likeGoal: 100,
-    participants: 0,
-    province: '',
-    isNational: false
-  };
+    prizeType: 'cash', // cash | physical | badge
+    sponsor: '',
+    bannerUrl: '',
+    durationDays: 7,
+    entryFee: 0,
+  });
 
-  const [form, setForm] = useState(initialFormState);
   const [loading, setLoading] = useState(false);
-  const [logoFile, setLogoFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [logoPreview, setLogoPreview] = useState(null);
+  const [success, setSuccess] = useState(false);
 
-  // Clean up object URLs
-  useEffect(() => {
-    return () => {
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
-      if (logoPreview) URL.revokeObjectURL(logoPreview);
-    };
-  }, [imagePreview, logoPreview]);
-
-  // Handlers
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-  };
-
-  const handleBrandChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ 
-      ...form, 
-      brand: { 
-        ...form.brand, 
-        [name]: value 
-      } 
-    });
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.match('image.*')) {
-        alert('Por favor, selecione um arquivo de imagem');
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        alert('A imagem deve ter menos de 5MB');
-        return;
-      }
-      setForm({ ...form, imageFile: file });
-      setImagePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleLogoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.match('image.*')) {
-        alert('Por favor, selecione um arquivo de imagem');
-        return;
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        alert('O logo deve ter menos de 2MB');
-        return;
-      }
-      setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleLocationChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-      ...(name === 'isNational' && checked ? { province: '' } : {})
-    }));
-  };
-
-  // Form validation
-  const validateForm = () => {
-    if (!form.title || form.title.length < 5) {
-      return { valid: false, message: 'O título deve ter pelo menos 5 caracteres' };
-    }
-    
-    if (!form.description || form.description.length < 20) {
-      return { valid: false, message: 'A descrição deve ter pelo menos 20 caracteres' };
-    }
-    
-    if (!form.prize) {
-      return { valid: false, message: 'Por favor, insira o prêmio' };
-    }
-    
-    if (!form.deadline) {
-      return { valid: false, message: 'Por favor, insira a data limite' };
-    }
-    
-    if (new Date(form.deadline) < new Date()) {
-      return { valid: false, message: 'A data limite deve ser no futuro' };
-    }
-    
-    if (!form.imageFile) {
-      return { valid: false, message: 'Por favor, adicione a imagem do desafio' };
-    }
-    
-    if (!logoFile) {
-      return { valid: false, message: 'Por favor, adicione o logo da marca' };
-    }
-    
-    if (!form.brand.name) {
-      return { valid: false, message: 'Por favor, insira o nome da marca' };
-    }
-    
-    if (!form.terms) {
-      return { valid: false, message: 'Por favor, insira os termos do desafio' };
-    }
-    
-    return { valid: true };
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    const validation = validateForm();
-    if (!validation.valid) {
-      alert(validation.message);
-      return;
-    }
-
     setLoading(true);
+
     try {
-      // Upload banner image
-      const imgRef = ref(storage, `challenges/${Date.now()}_${form.imageFile.name}`);
-      await uploadBytes(imgRef, form.imageFile);
-      const bannerURL = await getDownloadURL(imgRef);
+      const challengesRef = ref(db, 'challenges');
+      const newChallengeRef = push(challengesRef);
 
-      // Upload brand logo
-      const logoRef = ref(storage, `brands/${Date.now()}_${logoFile.name}`);
-      await uploadBytes(logoRef, logoFile);
-      const logoURL = await getDownloadURL(logoRef);
+      const startTime = Date.now();
+      const endTime = startTime + (Number(formData.durationDays) * 24 * 60 * 60 * 1000);
 
-      const challengeData = {
-        title: form.title,
-        description: form.description,
-        prize: form.prize,
-        deadline: form.deadline,
-        type: form.type,
-        brand: {
-          name: form.brand.name,
-          logo: logoURL
-        },
-        terms: form.terms,
-        likeGoal: parseInt(form.likeGoal) || 100,
-        participants: 0,
+      await set(newChallengeRef, {
+        id: newChallengeRef.key,
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        type: formData.type,
+        prize: formData.prizeType === 'cash'
+          ? `${formData.prize} MZN`
+          : formData.prize,
+        prizeType: formData.prizeType,
+        sponsor: formData.type === 'sponsored' ? formData.sponsor : '',
+        coverImage: formData.bannerUrl,
+        entryFee: Number(formData.entryFee),
         status: 'active',
-        createdAt: Date.now(),
-        coverImage: bannerURL,
-        location: {
-          isNational: form.isNational,
-          province: form.isNational ? '' : form.province
-        },
-        totalLikes: 0,
-        topParticipants: []
-      };
+        createdBy: 'admin',
+        createdAt: startTime,
+        endsAt: endTime,
+        totalVotes: 0,
+        totalParticipants: 0,
+      });
 
-      await push(dbRef(db, 'challenges'), challengeData);
-      alert("Desafio criado com sucesso!");
-      
-      // Reset form
-      setForm(initialFormState);
-      setLogoFile(null);
-      setImagePreview(null);
-      setLogoPreview(null);
+      setSuccess(true);
+      setFormData({
+        title: '',
+        description: '',
+        category: 'fotografia',
+        type: 'free',
+        prize: '',
+        prizeType: 'cash',
+        sponsor: '',
+        bannerUrl: '',
+        durationDays: 7,
+        entryFee: 0,
+      });
+
+      setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
-      console.error("Erro ao criar desafio:", error);
-      alert(`Erro ao criar desafio: ${error.message}`);
+      alert('Erro ao criar desafio: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen py-8 px-4">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-md max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-2 flex items-center">
-          <FaHeart className="mr-2 text-pink-500" />
-          Criar Desafio Baseado em Likes
-        </h2>
+    <div className="max-w-2xl mx-auto p-6 bg-slate-900 rounded-3xl border border-white/10 shadow-2xl">
+      <div className="flex items-center gap-3 mb-8">
+        <PlusCircle className="w-8 h-8 text-purple-500" />
+        <h2 className="text-2xl font-bold text-white">Novo Desafio</h2>
+      </div>
 
-        {/* Basic Information Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Título do Desafio*</label>
-            <input 
-              name="title" 
-              placeholder="Ex: Foto mais curtida do verão" 
-              className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500" 
-              value={form.title} 
-              onChange={handleInputChange} 
-              required 
+      {success && (
+        <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl text-green-400 text-sm font-medium">
+          ✅ Desafio criado com sucesso!
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+
+        {/* Tipo de desafio */}
+        <div className="space-y-2">
+          <label className="text-sm text-gray-400">Tipo de desafio</label>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { value: 'free', label: '🆓 Gratuito', color: 'border-teal-500' },
+              { value: 'paid', label: '💳 Pago', color: 'border-purple-500' },
+              { value: 'sponsored', label: '🏢 Patrocinado', color: 'border-pink-500' },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => handleChange('type', opt.value)}
+                className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                  formData.type === opt.value
+                    ? `${opt.color} bg-white/5 text-white`
+                    : 'border-white/10 text-gray-500'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Patrocinador — só se sponsored */}
+        {formData.type === 'sponsored' && (
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400 flex items-center gap-1">
+              <Tag className="w-3 h-3" /> Nome do patrocinador
+            </label>
+            <input
+              type="text"
+              className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white focus:border-purple-500 outline-none"
+              placeholder="Ex: Bar Praia do Wimbi"
+              value={formData.sponsor}
+              onChange={(e) => handleChange('sponsor', e.target.value)}
+              required
             />
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo*</label>
-            <select 
-              name="type" 
-              className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500" 
-              value={form.type} 
-              onChange={handleInputChange}
+        {/* Título e Categoria */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Título do Desafio</label>
+            <input
+              type="text"
+              className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white focus:border-purple-500 outline-none"
+              placeholder="Ex: Melhor foto na Praia do Wimbi"
+              value={formData.title}
+              onChange={(e) => handleChange('title', e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Categoria</label>
+            <select
+              className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white focus:border-purple-500 outline-none"
+              value={formData.category}
+              onChange={(e) => handleChange('category', e.target.value)}
             >
-              <option value="photo">Foto</option>
-              <option value="video">Vídeo</option>
+              {CATEGORIES.map(cat => (
+                <option key={cat.value} value={cat.value}>{cat.label}</option>
+              ))}
             </select>
           </div>
         </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Descrição*</label>
-          <textarea 
-            name="description" 
-            placeholder="Descreva o desafio de forma clara e atraente" 
-            rows={3}
-            className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500" 
-            value={form.description} 
-            onChange={handleInputChange} 
-            required 
+        {/* Banner */}
+        <div className="space-y-2">
+          <label className="text-sm text-gray-400">URL do Banner (opcional)</label>
+          <div className="flex items-center gap-2 bg-slate-800 border border-white/5 rounded-xl px-3">
+            <ImageIcon className="w-5 h-5 text-gray-500" />
+            <input
+              type="text"
+              className="w-full bg-transparent p-3 text-white outline-none"
+              placeholder="https://imagem.jpg"
+              value={formData.bannerUrl}
+              onChange={(e) => handleChange('bannerUrl', e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Descrição */}
+        <div className="space-y-2">
+          <label className="text-sm text-gray-400">Descrição do Desafio</label>
+          <textarea
+            className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white focus:border-purple-500 outline-none min-h-[100px]"
+            placeholder="Explique as regras e objetivos do desafio..."
+            value={formData.description}
+            onChange={(e) => handleChange('description', e.target.value)}
+            required
           />
         </div>
 
-        {/* Prize, Deadline and Goals Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Prêmio*</label>
-            <input 
-              name="prize" 
-              placeholder="Ex: R$1.000 em produtos" 
-              className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500" 
-              value={form.prize} 
-              onChange={handleInputChange} 
-              required 
-            />
+        {/* Tipo de prémio */}
+        <div className="space-y-2">
+          <label className="text-sm text-gray-400">Tipo de prémio</label>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { value: 'cash', label: '💰 Dinheiro', icon: DollarSign },
+              { value: 'physical', label: '🎁 Físico', icon: Gift },
+              { value: 'badge', label: '🏅 Badge', icon: Award },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => handleChange('prizeType', opt.value)}
+                className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                  formData.prizeType === opt.value
+                    ? 'border-purple-500 bg-white/5 text-white'
+                    : 'border-white/10 text-gray-500'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Data Limite*
-              <span className="text-xs text-gray-500 ml-1">(para encerramento do desafio)</span>
-            </label>
-            <input
-              type="datetime-local"
-              name="deadline"
-              className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500"
-              value={form.deadline}
-              onChange={handleInputChange}
-              min={new Date().toISOString().slice(0, 16)}
-              required
-            />
-            {form.deadline && new Date(form.deadline) < new Date() && (
-              <p className="text-red-500 text-xs mt-1">A data limite deve ser no futuro</p>
-            )}
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Meta de Likes*
-              <span className="text-xs text-gray-500 ml-1">(para vencer)</span>
+        </div>
+
+        {/* Prémio — varia conforme tipo */}
+        <div className="space-y-2">
+          <label className="text-sm text-gray-400 flex items-center gap-1">
+            <Trophy className="w-3 h-3" />
+            {formData.prizeType === 'cash' ? 'Valor do prémio (MZN)' : 'Descrição do prémio'}
+          </label>
+          <input
+            type={formData.prizeType === 'cash' ? 'number' : 'text'}
+            className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white focus:border-purple-500 outline-none"
+            placeholder={
+              formData.prizeType === 'cash' ? '500' :
+              formData.prizeType === 'physical' ? 'Ex: 2 Cervejas no Bar Wimbi' :
+              'Ex: Badge Chef MZ'
+            }
+            value={formData.prize}
+            onChange={(e) => handleChange('prize', e.target.value)}
+            required
+            min={formData.prizeType === 'cash' ? '0' : undefined}
+          />
+        </div>
+
+        {/* Duração e Taxa de entrada */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400 flex items-center gap-1">
+              <Clock className="w-3 h-3" /> Duração (Dias)
             </label>
             <input
               type="number"
-              name="likeGoal"
+              className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white focus:border-purple-500 outline-none"
+              placeholder="7"
+              value={formData.durationDays}
+              onChange={(e) => handleChange('durationDays', e.target.value)}
+              required
               min="1"
-              className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500"
-              value={form.likeGoal}
-              onChange={(e) => setForm({...form, likeGoal: parseInt(e.target.value) || 100})}
-              required
+              max="30"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Taxa de Entrada (MZN)</label>
+            <input
+              type="number"
+              className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white focus:border-purple-500 outline-none"
+              placeholder="0 (grátis)"
+              value={formData.entryFee}
+              onChange={(e) => handleChange('entryFee', e.target.value)}
+              min="0"
             />
           </div>
         </div>
 
-        {/* Location Section */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-            <FaMapMarkerAlt className="mr-2 text-blue-500" />
-            Localização do Desafio
-          </h3>
-          
-          <div className="space-y-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="isNational"
-                checked={form.isNational}
-                onChange={handleLocationChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="isNational" className="ml-2 text-sm text-gray-700">
-                Desafio nacional (todo o país)
-              </label>
-            </div>
-
-            {!form.isNational && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Província*</label>
-                <select
-                  name="province"
-                  value={form.province}
-                  onChange={handleLocationChange}
-                  className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500"
-                  disabled={form.isNational}
-                  required={!form.isNational}
-                >
-                  <option value="">Selecione uma província</option>
-                  {provinces.map(province => (
-                    <option key={province.id} value={province.id}>
-                      {province.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
+        {/* Resumo */}
+        <div className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-1">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Resumo</p>
+          <p className="text-sm text-gray-300">
+            <span className="text-white font-medium">{formData.title || 'Sem título'}</span>
+            {' '}— {formData.type === 'sponsored' ? `patrocinado por ${formData.sponsor || '...'}` : formData.type === 'paid' ? 'criado por utilizador' : 'gratuito da plataforma'}
+          </p>
+          <p className="text-sm text-gray-300">
+            Prémio: <span className="text-yellow-400 font-medium">
+              {formData.prizeType === 'cash' && formData.prize ? `${formData.prize} MZN` : formData.prize || '...'}
+            </span>
+            {' '}· Duração: <span className="text-white">{formData.durationDays} dias</span>
+          </p>
         </div>
 
-        {/* Brand Information Section */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-lg font-medium text-gray-800 mb-4">Marca Patrocinadora</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Marca*</label>
-              <input 
-                name="name" 
-                placeholder="Ex: Coca-Cola" 
-                className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500" 
-                value={form.brand.name} 
-                onChange={handleBrandChange} 
-                required 
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Logo da Marca*</label>
-              <div className="flex items-center gap-4">
-                <label className="flex flex-col items-center justify-center px-4 py-4 bg-white rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 w-24 h-24">
-                  {logoPreview ? (
-                    <img 
-                      src={logoPreview} 
-                      alt="Logo" 
-                      className="w-full h-full object-contain rounded-lg"
-                    />
-                  ) : (
-                    <>
-                      <FaPlus className="text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-600">Adicionar</span>
-                    </>
-                  )}
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={handleLogoChange} 
-                    className="hidden"
-                    required
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Challenge Image Section */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Imagem do Desafio*</label>
-          <label className="flex flex-col items-center justify-center px-4 py-6 bg-white rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50">
-            {imagePreview ? (
-              <div className="relative w-full">
-                <img 
-                  src={imagePreview} 
-                  alt="Preview" 
-                  className="w-full h-48 object-cover rounded-lg mb-4"
-                />
-                <div className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md">
-                  <FaUpload className="text-pink-500" />
-                </div>
-              </div>
-            ) : (
-              <>
-                <FaImage className="text-gray-400 text-2xl mb-2" />
-                <p className="text-sm text-gray-600 text-center">
-                  Clique para adicionar a imagem do desafio<br />
-                  <span className="text-xs text-gray-400">Tamanho recomendado: 1200x630px</span>
-                </p>
-              </>
-            )}
-            <input 
-              type="file" 
-              accept="image/*" 
-              onChange={handleImageChange} 
-              className="hidden"
-              required
-            />
-          </label>
-        </div>
-
-        {/* Terms Section */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Termos Simples*</label>
-          <textarea 
-            name="terms" 
-            placeholder="Ex: A foto com mais likes até a data limite vence." 
-            rows={2}
-            className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-pink-500" 
-            value={form.terms} 
-            onChange={handleInputChange} 
-            required 
-          />
-        </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-end">
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="flex items-center justify-center bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition font-medium min-w-[150px]"
-          >
-            {loading ? (
-              <>
-                <FaSpinner className="animate-spin mr-2" />
-                Criando...
-              </>
-            ) : (
-              <>
-                <FaCheck className="mr-2" />
-                Criar Desafio
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50"
+        >
+          {loading ? 'A publicar...' : 'Publicar Desafio no VotaSnap'}
+        </button>
       </form>
     </div>
   );
 };
 
-export default AdminChallengeForm;
+export default CreateChallengeForm;

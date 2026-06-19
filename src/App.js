@@ -5,24 +5,16 @@ import { auth, db } from './fb';
 import { ref, get, onValue, set } from 'firebase/database';
 import logo from './img/logo.png';
 import Auth from './components/Auth';
-import HomePage from './components/Home';
 import Profile from './components/Profile';
-import Rewards from './components/Rewards';
-import NotAllowed from './components/NotAllowed';
 import Header from './components/Header';
 import BottomMenu from './components/Bottom';
 import CompleteProfileModal from './components/CompleteProfileModal';
+import HomePage from './components/HomePage';
 import CreateChallengeForm from './components/CreateChallengeForm';
-import ParticipationsPage from './components/ParticipationsPage';
-import PostDetail from './components/PostDetail';
-import InvitedFriends from './components/InvitedFriends';
-import UserList from './components/InviteX';
-import AdminDashboard from './components/AdminDashboard';
-import ViewUser from './cc/ViewUser';
-import ProfileView from './components/ProfileView';
-import Shop from './components/Shop';
-import ContactModal from './components/ContactModal';
-import ChallengeDetails from './components/ChallengeDetails';
+import ChallengesList from './components/ChallengesList';
+import UsersList from './components/UsersList';
+import ModerationPanel from './components/ModerationPanel';
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -246,12 +238,6 @@ function App() {
           }}
         />
       )}
-      {showSetContact && user && (
-        <ContactModal 
-          user={user}
-          onComplete={handleProfileComplete}
-        />
-      )}
       
       {/* Main app layout */}
       <Layout>
@@ -262,6 +248,19 @@ function App() {
               <Auth />
             </AuthRoute>
           } />
+
+          <Route path="/not-allowed" element={
+            <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white px-4">
+              <h1 className="text-4xl font-bold mb-4">Acesso Negado</h1>
+              <p className="text-lg mb-6">Desculpe, você não tem permissão para acessar esta página.</p>
+              <button 
+                onClick={() => window.history.back()}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
+              >
+                Voltar
+              </button>
+            </div>
+          } />
           
           {/* Protected Routes */}
           <Route path="/" element={
@@ -270,42 +269,18 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile user={user} userData={userData} />
-            </ProtectedRoute>
+          <Route path="/cc" element={
+              <CreateChallengeForm/>
           } />
-          
-          <Route path="/profile/:uid" element={
-            <ProtectedRoute>
-              <ProfileView />
-            </ProtectedRoute>
+           <Route path="/cl" element={
+              <ChallengesList/>
           } />
-          
-          <Route path="/rewards" element={
-            <ProtectedRoute requireAgeVerification>
-              <Rewards user={user} userData={userData} />
-            </ProtectedRoute>
+          <Route path="/ul" element={
+              <UsersList/>
           } />
-          
-          <Route path="/invites" element={
-            <ProtectedRoute requireAgeVerification>
-              <InvitedFriends user={user} userData={userData} />
-            </ProtectedRoute>
+           <Route path="/mc" element={
+              <ModerationPanel/>
           } />
-          
-          <Route path="/cc" element={<CreateChallengeForm />} />
-          <Route path="/wex" element={<UserList />} />
-          <Route path="/explore" element={<Shop />} />
-          <Route path="/p/:challengeId/:id" element={<PostDetail userData={userData}/>} />
-          <Route path="/challenge/:id" element={<ChallengeDetails userData={userData}/>} />
-          <Route path="/challenges/:challengeId" element={<ParticipationsPage />} />
-          
-          <Route path="/admin">
-            <Route index element={<AdminDashboard />} />
-            <Route path='user/:id' element={<ViewUser />} />
-          </Route>
-          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
