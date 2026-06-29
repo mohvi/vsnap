@@ -8,6 +8,7 @@ import ChallengesList from './components/ChallengesList';
 import UsersList from './components/UsersList';
 import ModerationPanel from './components/ModerationPanel';
 import WinnersConfirmation from './components/WinnersConfirmation';
+import RedirectToApp from './components/RedirectToApp';
 
 const NAV_ITEMS = [
   { path: '/cc', label: 'Criar Desafio', icon: PlusCircle },
@@ -71,6 +72,8 @@ function App() {
             <Route path="/wc" element={<WinnersConfirmation />} />
             <Route path="/mc" element={<ModerationPanel />} />
             <Route path="*" element={<Navigate to="/cl" replace />} />
+             <Route path="/entry/:challengeId/:entryId" element={<RedirectToApp />} />
+            <Route path="/challenge/:challengeId" element={<RedirectToApp />} />
           </Routes>
         </main>
       </div>

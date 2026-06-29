@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "mz.votasnap.app",
+      "sha256_cert_fingerprints": ["8F:82:0B:9D:B8:05:22:B8:F9:8C:0F:DC:FC:8E:5D:8C:65:EF:20:DA:5C:D3:69:AE:DC:26:2B:72:3B:F7:99:C1"]
+    }
+  }
+]
