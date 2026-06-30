@@ -2,13 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { ref, onValue, update, remove } from 'firebase/database';
 import {
   Trophy, Clock, Users, Vote, Edit2, XCircle, Trash2,
-  Search, Filter, ExternalLink, CheckCircle2,
+  Search, ExternalLink, CheckCircle2, BarChart3, ChevronDown, ChevronUp,
+  Target, Camera, Video, Film, Zap,
 } from 'lucide-react';
 import { db } from '../fb';
 
+// ⚠️ Corrigido: o schema real grava status 'completed' para desafios
+// terminados (ver export do Realtime Database), não 'ended'. O valor
+// antigo nunca batia certo e o card ficava preso no estilo 'active'.
 const STATUS_STYLES = {
   active: { label: 'Activo', color: 'bg-green-500/10 text-green-400 border-green-500/30' },
-  ended: { label: 'Encerrado', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
+  completed: { label: 'Concluído', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
   cancelled: { label: 'Cancelado', color: 'bg-red-500/10 text-red-400 border-red-500/30' },
 };
 
@@ -18,14 +22,23 @@ const TYPE_STYLES = {
   sponsored: { label: '🏢 Patrocinado', color: 'text-pink-400' },
 };
 
+const MEDIA_TYPE_STYLES = {
+  photo: { label: 'Só fotos', icon: Camera },
+  video: { label: 'Só vídeos', icon: Video },
+  both: { label: 'Foto ou vídeo', icon: Film },
+};
+
 function ChallengesList() {
   const [challenges, setChallenges] = useState([]);
+  const [entriesByChallenge, setEntriesByChallenge] = useState({});
+  const [votesByChallenge, setVotesByChallenge] = useState({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [editingChallenge, setEditingChallenge] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [expandedAnalytics, setExpandedAnalytics] = useState(null); // id do desafio com análise aberta
 
   useEffect(() => {
     const challengesRef = ref(db, 'challenges');
@@ -44,10 +57,21 @@ function ChallengesList() {
     return () => unsub();
   }, []);
 
+  // Entradas e votos completos — usados só para a análise (não para a lista principal),
+  // por isso ficam num state separado em vez de misturar com o objecto challenge.
+  useEffect(() => {
+    const unsubEntries = onValue(ref(db, 'entries'), snap => setEntriesByChallenge(snap.val() || {}));
+    const unsubVotes = onValue(ref(db, 'votes'), snap => setVotesByChallenge(snap.val() || {}));
+    return () => {
+      unsubEntries();
+      unsubVotes();
+    };
+  }, []);
+
   const handleEndChallenge = async (id) => {
     if (!window.confirm('Encerrar este desafio agora? Os participantes não poderão mais votar nem submeter.')) return;
     await update(ref(db, `challenges/${id}`), {
-      status: 'ended',
+      status: 'completed',
       endsAt: Date.now(),
     });
   };
@@ -80,6 +104,35 @@ function ChallengesList() {
     const hours = Math.floor((diff % 86400000) / 3600000);
     if (days > 0) return `${days}d restantes`;
     return `${hours}h restantes`;
+  };
+
+  // ── Análise por desafio ──
+  // Deriva tudo a partir de entries/{id} e votes/{id} reais — ranking de
+  // entradas, taxa de conversão (votos / participantes) e ritmo de votação
+  // (votos nas últimas 24h vs total), em vez de qualquer número mockado.
+  const getChallengeAnalytics = (challenge) => {
+    const entries = Object.entries(entriesByChallenge[challenge.id] || {})
+      .map(([entryId, e]) => ({ entryId, ...e }));
+    const votes = Object.values(votesByChallenge[challenge.id] || {});
+
+    const leaderboard = [...entries]
+      .sort((a, b) => (b.votes || 0) - (a.votes || 0))
+      .slice(0, 5);
+
+    const totalParticipants = entries.length;
+    const totalVotesReal = votes.length; // fonte da verdade: nó votes/, não o contador denormalizado
+    const conversionRate = totalParticipants > 0
+      ? ((totalVotesReal / totalParticipants) * 100).toFixed(0)
+      : 0;
+
+    const last24h = Date.now() - 24 * 60 * 60 * 1000;
+    const votesLast24h = votes.filter(v => v.votedAt && v.votedAt > last24h).length;
+
+    const goalProgress = challenge.voteGoal
+      ? Math.min(100, Math.round((totalVotesReal / challenge.voteGoal) * 100))
+      : null;
+
+    return { leaderboard, totalParticipants, totalVotesReal, conversionRate, votesLast24h, goalProgress };
   };
 
   const filtered = challenges.filter(c => {
@@ -129,7 +182,7 @@ function ChallengesList() {
         >
           <option value="all">Todos os estados</option>
           <option value="active">Activos</option>
-          <option value="ended">Encerrados</option>
+          <option value="completed">Concluídos</option>
           <option value="cancelled">Cancelados</option>
         </select>
 
@@ -155,7 +208,11 @@ function ChallengesList() {
           {filtered.map(challenge => {
             const statusStyle = STATUS_STYLES[challenge.status] || STATUS_STYLES.active;
             const typeStyle = TYPE_STYLES[challenge.type] || TYPE_STYLES.free;
+            const mediaStyle = MEDIA_TYPE_STYLES[challenge.allowedMediaType] || MEDIA_TYPE_STYLES.both;
+            const MediaIcon = mediaStyle.icon;
             const timeLeft = getTimeStatus(challenge);
+            const isAnalyticsOpen = expandedAnalytics === challenge.id;
+            const analytics = isAnalyticsOpen ? getChallengeAnalytics(challenge) : null;
 
             return (
               <div
@@ -173,6 +230,10 @@ function ChallengesList() {
                       <span className={`text-xs font-medium ${typeStyle.color}`}>
                         {typeStyle.label}
                       </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-gray-400 flex items-center gap-1">
+                        <MediaIcon className="w-3 h-3" />
+                        {mediaStyle.label}
+                      </span>
                       {challenge.sponsor && (
                         <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-gray-400">
                           📢 {challenge.sponsor}
@@ -187,7 +248,7 @@ function ChallengesList() {
                       {challenge.description}
                     </p>
 
-                    <div className="flex items-center gap-5 text-sm text-gray-400">
+                    <div className="flex items-center gap-5 text-sm text-gray-400 flex-wrap">
                       <span className="flex items-center gap-1.5">
                         <Trophy className="w-3.5 h-3.5 text-yellow-500" />
                         {challenge.prize}
@@ -207,10 +268,39 @@ function ChallengesList() {
                         </span>
                       )}
                     </div>
+
+                    {/* Meta de votos — "o que vier primeiro" */}
+                    {challenge.voteGoal && (
+                      <div className="mt-3 max-w-xs">
+                        <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                          <span className="flex items-center gap-1">
+                            <Target className="w-3 h-3 text-purple-400" />
+                            Meta: {challenge.voteGoal} votos
+                          </span>
+                          <span>{Math.min(100, Math.round(((challenge.totalVotes || 0) / challenge.voteGoal) * 100))}%</span>
+                        </div>
+                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                            style={{ width: `${Math.min(100, Math.round(((challenge.totalVotes || 0) / challenge.voteGoal) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Acções */}
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => setExpandedAnalytics(isAnalyticsOpen ? null : challenge.id)}
+                      className={`p-2 rounded-lg transition-all ${
+                        isAnalyticsOpen ? 'bg-purple-600 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
+                      }`}
+                      title="Ver análise"
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                    </button>
+
                     <button
                       onClick={() => setEditingChallenge(challenge)}
                       className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
@@ -246,6 +336,58 @@ function ChallengesList() {
                     </button>
                   </div>
                 </div>
+
+                {/* Painel de análise — dados reais de entries/ e votes/ */}
+                {isAnalyticsOpen && analytics && (
+                  <div className="mt-5 pt-5 border-t border-white/5">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                      <div className="bg-white/5 rounded-xl p-3">
+                        <p className="text-gray-500 text-xs">Participantes</p>
+                        <p className="text-white text-lg font-bold">{analytics.totalParticipants}</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-3">
+                        <p className="text-gray-500 text-xs">Votos reais</p>
+                        <p className="text-white text-lg font-bold">{analytics.totalVotesReal}</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-3">
+                        <p className="text-gray-500 text-xs">Conversão votos/participante</p>
+                        <p className="text-white text-lg font-bold">{analytics.conversionRate}%</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-3">
+                        <p className="text-gray-500 text-xs flex items-center gap-1">
+                          <Zap className="w-3 h-3 text-yellow-400" /> Votos nas últimas 24h
+                        </p>
+                        <p className="text-white text-lg font-bold">{analytics.votesLast24h}</p>
+                      </div>
+                    </div>
+
+                    {challenge.totalVotes !== analytics.totalVotesReal && (
+                      <div className="mb-4 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2">
+                        ⚠️ O contador "totalVotes" do desafio ({challenge.totalVotes || 0}) está dessincronizado
+                        do número real de votos ({analytics.totalVotesReal}). Vale corrigir manualmente ou rever a lógica que actualiza esse campo.
+                      </div>
+                    )}
+
+                    <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-2">Ranking de entradas</p>
+                    {analytics.leaderboard.length === 0 ? (
+                      <p className="text-gray-600 text-sm">Ainda sem entradas.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {analytics.leaderboard.map((entry, i) => (
+                          <div key={entry.entryId} className="flex items-center gap-3 bg-white/5 rounded-lg p-2.5">
+                            <span className={`text-xs font-bold w-5 text-center ${i === 0 ? 'text-yellow-400' : 'text-gray-500'}`}>
+                              #{i + 1}
+                            </span>
+                            <span className="flex-1 text-sm text-gray-300 truncate">{entry.caption || entry.entryId}</span>
+                            <span className="text-xs text-purple-400 font-medium flex items-center gap-1">
+                              <Vote className="w-3 h-3" /> {entry.votes || 0}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
