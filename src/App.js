@@ -15,6 +15,7 @@ import WinnersConfirmation from './components/WinnersConfirmation';
 import RedirectToApp from './components/RedirectToApp';
 import MockDataPanel from './components/MockDataPanel';
 import { useDashboardData } from './components/useDashboardData';
+import PrivacyPolicy from './components/Privacypolicy';
 
 // ============================================================
 // 1. CONFIGURAÇÃO DOS ITENS DE NAVEGAÇÃO
@@ -35,8 +36,12 @@ const NAV_ITEMS = [
 function Sidebar() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
-  // Stats reais para o mini-resumo do sidebar (em vez dos números fixos 1.2k / 12)
   const { totalUsers, activeChallengesCount } = useDashboardData();
+
+  // Se estiver na página de política, não renderiza a sidebar
+  if (location.pathname === '/policy') {
+    return null;
+  }
 
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
 
@@ -107,7 +112,7 @@ function Sidebar() {
           </div>
         )}
 
-        {/* STATS PREVIEW (expandido) — agora com dados reais do Firebase */}
+        {/* STATS PREVIEW (expandido) */}
         {!isCollapsed && (
           <div className="px-4 py-3 border-b border-white/5">
             <div className="grid grid-cols-2 gap-2">
@@ -215,7 +220,7 @@ function Sidebar() {
 }
 
 // ============================================================
-// 3. COMPONENTE DASHBOARD - PÁGINA INICIAL (dados reais do Firebase)
+// 3. COMPONENTE DASHBOARD - PÁGINA INICIAL
 // ============================================================
 function DashboardStats() {
   const {
@@ -231,10 +236,6 @@ function DashboardStats() {
     recentActivity,
   } = useDashboardData();
 
-  // Cards de estatísticas — sem percentagens de variação por agora,
-  // porque calcular "+12.5%" exige guardar um snapshot histórico
-  // (ex: stats_daily/{date}) que ainda não existe no schema.
-  // Mostramos o valor actual real e tiramos o "trend" inventado.
   const stats = [
     { title: 'Utilizadores Activos', value: activeUsers, total: totalUsers, icon: Users, color: 'blue' },
     { title: 'Desafios em Curso', value: activeChallengesCount, icon: Clock, color: 'yellow' },
@@ -321,7 +322,6 @@ function DashboardStats() {
 
       {/* ATIVIDADE RECENTE + ALERTAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Atividade — derivada de votes/, entries/ e challenges/ reais */}
         <div className="lg:col-span-2 bg-[#14141F] border border-white/5 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white font-semibold flex items-center gap-2">
@@ -352,8 +352,6 @@ function DashboardStats() {
           </div>
         </div>
 
-        {/* Alertas — desafios a terminar é real; moderação e prémios
-            dependem de campos que ainda faltam no schema (ver hook) */}
         <div className="bg-[#14141F] border border-white/5 rounded-2xl p-5">
           <h3 className="text-white font-semibold flex items-center gap-2 mb-4">
             <Bell className="w-5 h-5 text-yellow-400" />
@@ -374,9 +372,7 @@ function DashboardStats() {
                 <Shield className="w-4 h-4 text-red-400 mt-0.5" />
                 <div>
                   <p className="text-white text-sm font-medium">{entriesToModerateCount} entrada(s) para moderar</p>
-                  <p className="text-gray-400 text-xs">
-                    {entriesToModerateCount === 0 ? "Campo 'reported' ainda não existe em entries/" : 'Revisão necessária'}
-                  </p>
+                  <p className="text-gray-400 text-xs">Revisão necessária</p>
                 </div>
               </div>
             </div>
@@ -385,7 +381,7 @@ function DashboardStats() {
                 <Award className="w-4 h-4 text-purple-400 mt-0.5" />
                 <div>
                   <p className="text-white text-sm font-medium">{winnersPendingCount} vencedor(es) a confirmar prémio</p>
-                  <p className="text-gray-400 text-xs">Baseado em completed sem campo prizePaid</p>
+                  <p className="text-gray-400 text-xs">Baseado em completed sem prizePaid</p>
                 </div>
               </div>
             </div>
@@ -397,32 +393,45 @@ function DashboardStats() {
 }
 
 // ============================================================
-// 4. COMPONENTE PRINCIPAL APP
+// 4. COMPONENTE LAYOUT - Controla se mostra Sidebar ou não
+// ============================================================
+function AppLayout() {
+  const location = useLocation();
+  const isPolicyPage = location.pathname === '/policy';
+
+  return (
+    <div className="min-h-screen bg-[#0A0A12] text-white font-sans antialiased">
+      {/* Sidebar - não renderiza na página de política */}
+      <Sidebar />
+      
+      {/* Main content - sem margem na página de política */}
+      <div className={`min-h-screen transition-all duration-300 ${!isPolicyPage ? 'lg:ml-[280px]' : ''}`}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardStats />} />
+          <Route path="/cc" element={<CreateChallengeForm />} />
+          <Route path="/cl" element={<ChallengesList />} />
+          <Route path="/ul" element={<UsersList />} />
+          <Route path="/wc" element={<WinnersConfirmation />} />
+          <Route path="/mc" element={<ModerationPanel />} />
+          <Route path="/policy" element={<PrivacyPolicy />} />
+          <Route path="/mock" element={<MockDataPanel />} />
+          <Route path="/entry/:challengeId/:entryId" element={<RedirectToApp />} />
+          <Route path="/challenge/:challengeId" element={<RedirectToApp />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 5. COMPONENTE PRINCIPAL APP
 // ============================================================
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-[#0A0A12] text-white font-sans antialiased">
-        {/* SIDEBAR */}
-        <Sidebar />
-
-        {/* MAIN CONTENT - com margem para o sidebar */}
-        <div className="lg:ml-[280px] min-h-screen transition-all duration-300">
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<DashboardStats />} />
-            <Route path="/cc" element={<CreateChallengeForm />} />
-            <Route path="/cl" element={<ChallengesList />} />
-            <Route path="/ul" element={<UsersList />} />
-            <Route path="/wc" element={<WinnersConfirmation />} />
-            <Route path="/mc" element={<ModerationPanel />} />
-            <Route path="/mock" element={<MockDataPanel />} />
-            <Route path="/entry/:challengeId/:entryId" element={<RedirectToApp />} />
-            <Route path="/challenge/:challengeId" element={<RedirectToApp />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </div>
-      </div>
+      <AppLayout />
     </Router>
   );
 }
