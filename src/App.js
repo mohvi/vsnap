@@ -16,6 +16,7 @@ import RedirectToApp from './components/RedirectToApp';
 import MockDataPanel from './components/MockDataPanel';
 import { useDashboardData } from './components/useDashboardData';
 import PrivacyPolicy from './components/Privacypolicy';
+import AccountDeletion from './components/Accountdeletion';
 
 // ============================================================
 // 1. CONFIGURAÇÃO DOS ITENS DE NAVEGAÇÃO
@@ -39,7 +40,7 @@ function Sidebar() {
   const { totalUsers, activeChallengesCount } = useDashboardData();
 
   // Se estiver na página de política, não renderiza a sidebar
-  if (location.pathname === '/policy') {
+  if (location.pathname === '/policy' || location.pathname === '/eliminar-conta') {
     return null;
   }
 
@@ -415,6 +416,7 @@ function AppLayout() {
           <Route path="/wc" element={<WinnersConfirmation />} />
           <Route path="/mc" element={<ModerationPanel />} />
           <Route path="/policy" element={<PrivacyPolicy />} />
+          <Route path="/eliminar-conta" element={<AccountDeletion />} />
           <Route path="/mock" element={<MockDataPanel />} />
           <Route path="/entry/:challengeId/:entryId" element={<RedirectToApp />} />
           <Route path="/challenge/:challengeId" element={<RedirectToApp />} />
