@@ -5,7 +5,7 @@ import {
   Sparkles, ChevronLeft, ChevronRight, LogOut, Settings,
   Bell, Zap, Crown, TrendingUp, Activity, Shield,
   ArrowUpRight, ArrowDownRight, MoreVertical, Star,
-  Award, Clock, Eye, DollarSign, AlertCircle
+  Award, Clock, Eye, DollarSign, AlertCircle, FlaskConical
 } from 'lucide-react';
 import CreateChallengeForm from './components/CreateChallengeForm';
 import ChallengesList from './components/ChallengesList';
@@ -13,7 +13,8 @@ import UsersList from './components/UsersList';
 import ModerationPanel from './components/ModerationPanel';
 import WinnersConfirmation from './components/WinnersConfirmation';
 import RedirectToApp from './components/RedirectToApp';
-import { useDashboardData, timeAgo } from './components/useDashboardData';
+import MockDataPanel from './components/MockDataPanel';
+import { useDashboardData } from './components/useDashboardData';
 
 // ============================================================
 // 1. CONFIGURAÇÃO DOS ITENS DE NAVEGAÇÃO
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { path: '/wc', label: 'Vencedores', icon: Trophy },
   { path: '/mc', label: 'Moderação', icon: Flag },
   { path: '/ul', label: 'Utilizadores', icon: Users },
+  { path: '/mock', label: 'Mock Data', icon: FlaskConical, devOnly: true },
 ];
 
 // ============================================================
@@ -344,7 +346,6 @@ function DashboardStats() {
                     <span className="font-medium">@{item.username}</span>
                     <span className="text-gray-400"> {item.action}</span>
                   </p>
-                  <p className="text-gray-500 text-xs">{timeAgo(item.timestamp)}</p>
                 </div>
               </div>
             ))}
@@ -415,6 +416,7 @@ function App() {
             <Route path="/ul" element={<UsersList />} />
             <Route path="/wc" element={<WinnersConfirmation />} />
             <Route path="/mc" element={<ModerationPanel />} />
+            <Route path="/mock" element={<MockDataPanel />} />
             <Route path="/entry/:challengeId/:entryId" element={<RedirectToApp />} />
             <Route path="/challenge/:challengeId" element={<RedirectToApp />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
