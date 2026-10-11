@@ -1,3 +1,4 @@
+import { adminRequest } from '../services/adminApi';
 import React, { useEffect, useState } from 'react';
 import { ref, onValue, update, remove } from 'firebase/database';
 import {
@@ -11,6 +12,8 @@ import { db } from '../fb';
 // terminados (ver export do Realtime Database), não 'ended'. O valor
 // antigo nunca batia certo e o card ficava preso no estilo 'active'.
 const STATUS_STYLES = {
+  ended: { label: 'Encerrado', color: 'text-gray-400' },
+  pending_confirmation: { label: 'A confirmar', color: 'text-yellow-400' },
   active: { label: 'Activo', color: 'bg-green-500/10 text-green-400 border-green-500/30' },
   completed: { label: 'Concluído', color: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
   cancelled: { label: 'Cancelado', color: 'bg-red-500/10 text-red-400 border-red-500/30' },
@@ -33,6 +36,7 @@ function ChallengesList() {
   const [entriesByChallenge, setEntriesByChallenge] = useState({});
   const [votesByChallenge, setVotesByChallenge] = useState({});
   const [loading, setLoading] = useState(true);
+  const [closingId, setClosingId] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
@@ -69,14 +73,18 @@ function ChallengesList() {
   }, []);
 
   const handleEndChallenge = async (id) => {
-    if (!window.confirm('Encerrar este desafio agora? Os participantes não poderão mais votar nem submeter.')) return;
-    await update(ref(db, `challenges/${id}`), {
-      status: 'completed',
-      endsAt: Date.now(),
-    });
+    if (closingId || !window.confirm('Encerrar este desafio agora? Novas participações e votos serão bloqueados e o resultado será processado.')) return;
+    setClosingId(id);
+    try {
+      await adminRequest('/api/challenges/close', { challengeId: id, endNow: true });
+      window.alert('Desafio encerrado. As aplicações ligadas receberão a atualização automaticamente.');
+    }
+    catch (error) { window.alert(error.message); }
+    finally { setClosingId(null); }
   };
 
   const handleReactivate = async (id) => {
+    if (challenges.find(c => c.id === id)?.processedAt) { window.alert('Este desafio já foi processado. Cria um novo desafio.'); return; }
     const newEndsAt = Date.now() + (7 * 24 * 60 * 60 * 1000);
     await update(ref(db, `challenges/${id}`), {
       status: 'active',
@@ -312,8 +320,9 @@ function ChallengesList() {
                     {challenge.status === 'active' ? (
                       <button
                         onClick={() => handleEndChallenge(challenge.id)}
+                        disabled={closingId !== null}
                         className="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-all"
-                        title="Encerrar"
+                        title={closingId === challenge.id ? 'A encerrar...' : 'Encerrar agora'}
                       >
                         <XCircle className="w-4 h-4" />
                       </button>

@@ -17,6 +17,8 @@ import MockDataPanel from './components/MockDataPanel';
 import { useDashboardData } from './components/useDashboardData';
 import PrivacyPolicy from './components/Privacypolicy';
 import AccountDeletion from './components/Accountdeletion';
+import SponsorsPanel from './components/SponsorsPanel';
+import AdminGate from './components/AdminGate';
 
 // ============================================================
 // 1. CONFIGURAÇÃO DOS ITENS DE NAVEGAÇÃO
@@ -38,11 +40,6 @@ function Sidebar() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const { totalUsers, activeChallengesCount } = useDashboardData();
-
-  // Se estiver na página de política, não renderiza a sidebar
-  if (location.pathname === '/policy' || location.pathname === '/eliminar-conta') {
-    return null;
-  }
 
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
 
@@ -275,15 +272,26 @@ function DashboardStats() {
             Bem-vindo de volta! Aqui está o resumo da sua plataforma.
           </p>
         </div>
-        <div className="flex gap-3 mt-4 md:mt-0">
-          <Link
-            to="/cc"
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-medium text-sm shadow-lg shadow-purple-600/25 hover:shadow-purple-600/40 transition-all duration-300 hover:scale-105"
-          >
-            <PlusCircle className="w-4 h-4" />
-            Novo Desafio
-          </Link>
-        </div>
+            <div className="flex gap-3 mt-4 md:mt-0">
+              <Link
+                to="/cc"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-medium text-sm shadow-lg shadow-purple-600/25 hover:shadow-purple-600/40 transition-all duration-300 hover:scale-105"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Novo Desafio
+              </Link>
+            </div>
+             <div className="flex gap-3 mt-4 md:mt-0">
+              <Link
+                to="/sponsors"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-medium text-sm shadow-lg shadow-purple-600/25 hover:shadow-purple-600/40 transition-all duration-300 hover:scale-105"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Patrocinadores
+              </Link>
+            </div>
+            
+        
       </div>
 
       {/* STATS CARDS */}
@@ -394,19 +402,33 @@ function DashboardStats() {
 }
 
 // ============================================================
-// 4. COMPONENTE LAYOUT - Controla se mostra Sidebar ou não
+// 4. COMPONENTE PARA DETERMINAR O LAYOUT BASEADO NA ROTA
 // ============================================================
-function AppLayout() {
+function AppRouter() {
   const location = useLocation();
-  const isPolicyPage = location.pathname === '/policy';
+  
+  // Verifica se a rota atual é pública (sem sidebar)
+  const publicPaths = ['/policy', '/eliminar-conta', '/entry', '/challenge'];
+  const isPublicRoute = publicPaths.some(path => location.pathname.startsWith(path));
 
+  // Se for rota pública, renderiza sem sidebar
+  if (isPublicRoute) {
+    return (
+      <Routes>
+        <Route path="/policy" element={<PrivacyPolicy />} />
+        <Route path="/eliminar-conta" element={<AccountDeletion />} />
+        <Route path="/entry/:challengeId/:entryId" element={<RedirectToApp />} />
+        <Route path="/challenge/:challengeId" element={<RedirectToApp />} />
+      </Routes>
+    );
+  }
+
+  // Rotas administrativas com sidebar
   return (
+    <AdminGate>
     <div className="min-h-screen bg-[#0A0A12] text-white font-sans antialiased">
-      {/* Sidebar - não renderiza na página de política */}
       <Sidebar />
-      
-      {/* Main content - sem margem na página de política */}
-      <div className={`min-h-screen transition-all duration-300 ${!isPolicyPage ? 'lg:ml-[280px]' : ''}`}>
+      <div className="lg:ml-[280px] min-h-screen transition-all duration-300">
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardStats />} />
@@ -415,15 +437,13 @@ function AppLayout() {
           <Route path="/ul" element={<UsersList />} />
           <Route path="/wc" element={<WinnersConfirmation />} />
           <Route path="/mc" element={<ModerationPanel />} />
-          <Route path="/policy" element={<PrivacyPolicy />} />
-          <Route path="/eliminar-conta" element={<AccountDeletion />} />
           <Route path="/mock" element={<MockDataPanel />} />
-          <Route path="/entry/:challengeId/:entryId" element={<RedirectToApp />} />
-          <Route path="/challenge/:challengeId" element={<RedirectToApp />} />
+          <Route path="/sponsors" element={<SponsorsPanel />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
     </div>
+    </AdminGate>
   );
 }
 
@@ -433,7 +453,7 @@ function AppLayout() {
 function App() {
   return (
     <Router>
-      <AppLayout />
+      <AppRouter />
     </Router>
   );
 }

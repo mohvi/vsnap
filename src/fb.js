@@ -19,7 +19,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 export const db = getDatabase(app);
 export const storage = getStorage(app);
-auth.settings.appVerificationDisabledForTesting = true;
 
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();

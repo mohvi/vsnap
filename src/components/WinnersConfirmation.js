@@ -87,6 +87,7 @@ function WinnersConfirmation() {
   };
 
   const handleRevert = async (challenge) => {
+    if (challenge.processedAt) { window.alert('Um desafio processado não pode ser reaberto. Cria um novo desafio.'); return; }
     if (!window.confirm(`Reverter "${challenge.title}"? O desafio voltará a ficar activo por mais 3 dias e os Snaps distribuídos serão mantidos.`)) return;
     await update(ref(db, `challenges/${challenge.id}`), {
       status: 'active',

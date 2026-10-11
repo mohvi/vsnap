@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { ref as dbRef, push, set } from "firebase/database";
+import React, { useEffect, useState } from 'react';
+import { ref as dbRef, push, set, onValue } from "firebase/database";
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { PlusCircle, Image as ImageIcon, Trophy, Clock, Tag, Gift, DollarSign, Award, Target, Camera, Video, Upload, X } from 'lucide-react';
+import {
+  PlusCircle, Image as ImageIcon, Trophy, Clock, Tag, Gift,
+  DollarSign, Award, Target, Camera, Video, Upload, X,
+  Building2, ChevronDown, Plus,
+} from 'lucide-react';
 import { db, storage } from '../fb';
-// ⚠️ 'storage' precisa de estar exportado em '../fb' (getStorage(app)),
-// tal como já acontece com 'db'. Se ainda não existir lá, é só adicionar.
 
 const CATEGORIES = [
   { value: 'fotografia', label: '📸 Fotografia' },
@@ -28,22 +30,40 @@ const CreateChallengeForm = () => {
     title: '',
     description: '',
     category: 'fotografia',
-    type: 'free', // free | paid | sponsored
+    type: 'free',
     prize: '',
-    prizeType: 'cash', // cash | physical | badge
-    sponsor: '',
+    prizeType: 'cash',
+    sponsorId: '',   // ID da colecção sponsors/ — substitui o campo de texto livre
     durationDays: 7,
     entryFee: 0,
-    allowedMediaType: 'photo', // photo | video | both
-    voteGoal: '', // opcional — string vazia = sem meta, só prazo
+    allowedMediaType: 'photo',
+    voteGoal: '',
   });
 
+  const [sponsors, setSponsors] = useState([]);         // lista de patrocinadores do Firebase
+  const [sponsorsLoading, setSponsorsLoading] = useState(false);
   const [bannerFile, setBannerFile] = useState(null);
   const [bannerPreview, setBannerPreview] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Carrega a colecção sponsors/ do Firebase quando o tipo muda para 'sponsored'.
+  // Só carrega uma vez — usa o listener onValue mas cancela logo depois.
+  useEffect(() => {
+    if (formData.type !== 'sponsored') return;
+    setSponsorsLoading(true);
+    const unsub = onValue(dbRef(db, 'sponsors'), snap => {
+      const data = snap.val() || {};
+      const list = Object.entries(data)
+        .map(([id, s]) => ({ id, ...s }))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      setSponsors(list);
+      setSponsorsLoading(false);
+    });
+    return () => unsub();
+  }, [formData.type]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -52,7 +72,6 @@ const CreateChallengeForm = () => {
   const handleBannerSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/')) {
       setError('O banner tem de ser uma imagem (jpg, png, webp).');
       return;
@@ -61,7 +80,6 @@ const CreateChallengeForm = () => {
       setError('A imagem do banner não pode passar 5MB.');
       return;
     }
-
     setError('');
     setBannerFile(file);
     setBannerPreview(URL.createObjectURL(file));
@@ -73,29 +91,17 @@ const CreateChallengeForm = () => {
     setUploadProgress(0);
   };
 
-  // Faz upload do banner para Firebase Storage e devolve a downloadURL.
-  // Mesmo padrão de path usado em entries/{challengeId}/{userId}/... no schema actual.
   const uploadBanner = (challengeId) => {
     return new Promise((resolve, reject) => {
-      if (!bannerFile) {
-        resolve(''); // banner é opcional
-        return;
-      }
+      if (!bannerFile) { resolve(''); return; }
       const path = `challenges/${challengeId}/banner_${Date.now()}.${bannerFile.name.split('.').pop()}`;
       const fileRef = storageRef(storage, path);
       const uploadTask = uploadBytesResumable(fileRef, bannerFile);
-
       uploadTask.on(
         'state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        },
+        (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
         (err) => reject(err),
-        async () => {
-          const url = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(url);
-        }
+        async () => resolve(await getDownloadURL(uploadTask.snapshot.ref))
       );
     });
   };
@@ -104,7 +110,10 @@ const CreateChallengeForm = () => {
     e.preventDefault();
     setError('');
 
-    // Meta de votos é opcional, mas se preenchida tem de ser um número positivo
+    if (formData.type === 'sponsored' && !formData.sponsorId) {
+      setError('Selecciona um patrocinador para este desafio.');
+      return;
+    }
     if (formData.voteGoal !== '' && Number(formData.voteGoal) <= 0) {
       setError('A meta de votos, se definida, tem de ser maior que 0.');
       return;
@@ -118,13 +127,16 @@ const CreateChallengeForm = () => {
       const newChallengeRef = push(challengesRef);
       const challengeId = newChallengeRef.key;
 
-      // Upload do banner primeiro — se falhar, não criamos o desafio
-      // com um path inválido pendurado no Storage.
       const bannerUrl = await uploadBanner(challengeId);
 
       const startTime = Date.now();
       const endTime = startTime + (Number(formData.durationDays) * 24 * 60 * 60 * 1000);
       const hasVoteGoal = formData.voteGoal !== '';
+
+      // Resolve o patrocinador seleccionado para guardar também o nome legível,
+      // mantendo retrocompatibilidade com o campo 'sponsor' (string) que
+      // o RedirectToApp e o feed já usam como fallback.
+      const selectedSponsor = sponsors.find(s => s.id === formData.sponsorId);
 
       await set(newChallengeRef, {
         id: challengeId,
@@ -136,22 +148,18 @@ const CreateChallengeForm = () => {
           ? `${formData.prize} MZN`
           : formData.prize,
         prizeType: formData.prizeType,
-        sponsor: formData.type === 'sponsored' ? formData.sponsor : '',
+        // ── Campos de patrocinador ──
+        // sponsorId → referência à colecção sponsors/ (para logo, links, etc.)
+        // sponsor   → nome em texto simples como fallback (retrocompatibilidade)
+        sponsorId: formData.type === 'sponsored' ? formData.sponsorId : null,
+        sponsor: formData.type === 'sponsored' ? (selectedSponsor?.name || '') : '',
         coverImage: bannerUrl,
         entryFee: Number(formData.entryFee),
-        allowedMediaType: formData.allowedMediaType, // 'photo' | 'video' | 'both'
+        allowedMediaType: formData.allowedMediaType,
         status: 'active',
         createdBy: 'admin',
         createdAt: startTime,
         endsAt: endTime,
-        // ── Condição de vitória: "o que vier primeiro" ──
-        // O desafio fecha quando QUALQUER UMA destas condições for atingida:
-        //   1) endsAt for alcançado (prazo normal, já existia), OU
-        //   2) alguma entrada atingir voteGoal votos (se voteGoal estiver definido)
-        // Isto precisa de uma Cloud Function/listener em votes/{challengeId}
-        // que, a cada novo voto, verifica se entries/{challengeId}/{entryId}/votes
-        // atingiu voteGoal e, se sim, fecha o desafio imediatamente
-        // (status: 'completed', winnerEntryId, etc.) mesmo antes do endsAt.
         voteGoal: hasVoteGoal ? Number(formData.voteGoal) : null,
         winCondition: hasVoteGoal ? 'firstToReachGoalOrDeadline' : 'mostVotesAtDeadline',
         totalVotes: 0,
@@ -160,20 +168,12 @@ const CreateChallengeForm = () => {
 
       setSuccess(true);
       setFormData({
-        title: '',
-        description: '',
-        category: 'fotografia',
-        type: 'free',
-        prize: '',
-        prizeType: 'cash',
-        sponsor: '',
-        durationDays: 7,
-        entryFee: 0,
-        allowedMediaType: 'photo',
-        voteGoal: '',
+        title: '', description: '', category: 'fotografia',
+        type: 'free', prize: '', prizeType: 'cash',
+        sponsorId: '', durationDays: 7, entryFee: 0,
+        allowedMediaType: 'photo', voteGoal: '',
       });
       removeBanner();
-
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       setError('Erro ao criar desafio: ' + err.message);
@@ -182,6 +182,9 @@ const CreateChallengeForm = () => {
       setUploadProgress(0);
     }
   };
+
+  // Patrocinador actualmente seleccionado (para mostrar preview do logo)
+  const selectedSponsor = sponsors.find(s => s.id === formData.sponsorId) || null;
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-slate-900 rounded-3xl border border-white/10 shadow-2xl">
@@ -195,7 +198,6 @@ const CreateChallengeForm = () => {
           ✅ Desafio criado com sucesso!
         </div>
       )}
-
       {error && (
         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm font-medium">
           {error}
@@ -229,20 +231,91 @@ const CreateChallengeForm = () => {
           </div>
         </div>
 
-        {/* Patrocinador — só se sponsored */}
+        {/* Selector de patrocinador — só se sponsored */}
         {formData.type === 'sponsored' && (
           <div className="space-y-2">
             <label className="text-sm text-gray-400 flex items-center gap-1">
-              <Tag className="w-3 h-3" /> Nome do patrocinador
+              <Building2 className="w-3 h-3" /> Patrocinador
             </label>
-            <input
-              type="text"
-              className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white focus:border-purple-500 outline-none"
-              placeholder="Ex: Bar Praia do Wimbi"
-              value={formData.sponsor}
-              onChange={(e) => handleChange('sponsor', e.target.value)}
-              required
-            />
+
+            {sponsorsLoading ? (
+              <div className="bg-slate-800 border border-white/5 rounded-xl p-3 text-gray-500 text-sm">
+                A carregar patrocinadores...
+              </div>
+            ) : sponsors.length === 0 ? (
+              // Nenhum patrocinador na colecção — leva o admin a criar um primeiro
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+                <Building2 className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-amber-400 text-sm font-medium">Sem patrocinadores cadastrados</p>
+                  <p className="text-amber-400/70 text-xs mt-1">
+                    Vai a <strong>Patrocinadores</strong> no menu lateral e adiciona o primeiro antes de criar um desafio patrocinado.
+                  </p>
+                  <a
+                    href="/sponsors"
+                    className="inline-flex items-center gap-1.5 mt-2 text-xs bg-amber-500/20 text-amber-400 px-3 py-1.5 rounded-lg hover:bg-amber-500/30 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" /> Adicionar patrocinador
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Preview do patrocinador seleccionado */}
+                {selectedSponsor && (
+                  <div className="flex items-center gap-3 bg-pink-500/10 border border-pink-500/20 rounded-xl p-3 mb-2">
+                    {selectedSponsor.logoUrl ? (
+                      <img src={selectedSponsor.logoUrl} alt={selectedSponsor.name}
+                        className="w-10 h-10 rounded-lg object-cover border border-white/10 flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-600 to-purple-600 flex items-center justify-center flex-shrink-0">
+                        <span className="text-white text-sm font-bold">
+                          {selectedSponsor.name?.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-semibold truncate">{selectedSponsor.name}</p>
+                      <p className="text-pink-400/70 text-xs">{selectedSponsor.city}</p>
+                    </div>
+                    {selectedSponsor.instagram && (
+                      <a
+                        href={`https://instagram.com/${selectedSponsor.instagram}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-gray-500 hover:text-pink-400 transition-colors"
+                      >
+                        @{selectedSponsor.instagram}
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Dropdown de patrocinadores */}
+                <div className="relative">
+                  <select
+                    value={formData.sponsorId}
+                    onChange={(e) => handleChange('sponsorId', e.target.value)}
+                    className="w-full bg-slate-800 border border-white/5 rounded-xl px-4 py-3 text-white text-sm outline-none appearance-none focus:border-pink-500 cursor-pointer"
+                    required
+                  >
+                    <option value="">Selecciona um patrocinador...</option>
+                    {sponsors.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}{s.city ? ` — ${s.city}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                </div>
+
+                <p className="text-xs text-gray-600 flex items-center gap-1">
+                  <Building2 className="w-3 h-3" />
+                  Para adicionar um novo patrocinador, vai a{' '}
+                  <a href="/sponsors" className="text-pink-400 hover:text-pink-300">Patrocinadores</a>
+                  {' '}no menu.
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -296,45 +369,30 @@ const CreateChallengeForm = () => {
               );
             })}
           </div>
-          <p className="text-xs text-gray-500">
-            O ecrã de submissão (MediaUploader) precisa de validar este campo antes de aceitar o upload do participante.
-          </p>
         </div>
 
-        {/* Upload do Banner — agora vai para Firebase Storage */}
+        {/* Upload do Banner */}
         <div className="space-y-2">
           <label className="text-sm text-gray-400 flex items-center gap-1">
             <ImageIcon className="w-3 h-3" /> Banner do desafio (opcional)
           </label>
-
           {!bannerPreview ? (
             <label className="flex flex-col items-center justify-center gap-2 bg-slate-800 border border-dashed border-white/15 rounded-xl p-6 cursor-pointer hover:border-purple-500 transition-colors">
               <Upload className="w-6 h-6 text-gray-500" />
               <span className="text-sm text-gray-400">Clica para escolher uma imagem (máx. 5MB)</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleBannerSelect}
-              />
+              <input type="file" accept="image/*" className="hidden" onChange={handleBannerSelect} />
             </label>
           ) : (
             <div className="relative">
               <img src={bannerPreview} alt="Pré-visualização do banner" className="w-full h-40 object-cover rounded-xl border border-white/10" />
-              <button
-                type="button"
-                onClick={removeBanner}
-                className="absolute top-2 right-2 bg-black/70 hover:bg-black rounded-full p-1.5 text-white"
-              >
+              <button type="button" onClick={removeBanner}
+                className="absolute top-2 right-2 bg-black/70 hover:bg-black rounded-full p-1.5 text-white">
                 <X className="w-4 h-4" />
               </button>
               {loading && uploadProgress > 0 && (
                 <div className="absolute bottom-0 left-0 right-0 bg-black/60 rounded-b-xl px-3 py-2">
                   <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-purple-500 transition-all"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
+                    <div className="h-full bg-purple-500 transition-all" style={{ width: `${uploadProgress}%` }} />
                   </div>
                   <span className="text-[10px] text-gray-300">{Math.round(uploadProgress)}% enviado</span>
                 </div>
@@ -380,7 +438,7 @@ const CreateChallengeForm = () => {
           </div>
         </div>
 
-        {/* Prémio — varia conforme tipo */}
+        {/* Prémio */}
         <div className="space-y-2">
           <label className="text-sm text-gray-400 flex items-center gap-1">
             <Trophy className="w-3 h-3" />
@@ -401,7 +459,7 @@ const CreateChallengeForm = () => {
           />
         </div>
 
-        {/* Duração, Meta de votos e Taxa de entrada */}
+        {/* Duração, Meta de votos e Taxa */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <label className="text-sm text-gray-400 flex items-center gap-1">
@@ -413,9 +471,7 @@ const CreateChallengeForm = () => {
               placeholder="7"
               value={formData.durationDays}
               onChange={(e) => handleChange('durationDays', e.target.value)}
-              required
-              min="1"
-              max="30"
+              required min="1" max="30"
             />
           </div>
           <div className="space-y-2">
@@ -445,11 +501,16 @@ const CreateChallengeForm = () => {
         </div>
 
         {/* Resumo */}
-        <div className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-1">
+        <div className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-1.5">
           <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Resumo</p>
           <p className="text-sm text-gray-300">
             <span className="text-white font-medium">{formData.title || 'Sem título'}</span>
-            {' '}— {formData.type === 'sponsored' ? `patrocinado por ${formData.sponsor || '...'}` : formData.type === 'paid' ? 'criado por utilizador' : 'gratuito da plataforma'}
+            {' '}—{' '}
+            {formData.type === 'sponsored'
+              ? `patrocinado por ${selectedSponsor?.name || '...'}`
+              : formData.type === 'paid'
+              ? 'criado por utilizador'
+              : 'gratuito da plataforma'}
           </p>
           <p className="text-sm text-gray-300">
             Prémio: <span className="text-yellow-400 font-medium">
@@ -457,20 +518,30 @@ const CreateChallengeForm = () => {
             </span>
           </p>
           <p className="text-sm text-gray-300">
-            Termina quando: <span className="text-white">
+            Termina quando:{' '}
+            <span className="text-white">
               {formData.voteGoal
                 ? `atingir ${formData.voteGoal} votos OU passarem ${formData.durationDays} dias — o que vier primeiro`
                 : `passarem ${formData.durationDays} dias`}
             </span>
           </p>
           <p className="text-sm text-gray-300">
-            Mídia aceite: <span className="text-white">{MEDIA_TYPES.find(m => m.value === formData.allowedMediaType)?.label}</span>
+            Mídia aceite: <span className="text-white">
+              {MEDIA_TYPES.find(m => m.value === formData.allowedMediaType)?.label}
+            </span>
           </p>
+          {selectedSponsor?.logoUrl && (
+            <div className="flex items-center gap-2 pt-1">
+              <img src={selectedSponsor.logoUrl} alt={selectedSponsor.name}
+                className="w-5 h-5 rounded object-cover" />
+              <span className="text-xs text-pink-400">Logo do patrocinador será mostrado na landing page e no feed</span>
+            </div>
+          )}
         </div>
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || (formData.type === 'sponsored' && !formData.sponsorId)}
           className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50"
         >
           {loading
