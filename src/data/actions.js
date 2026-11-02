@@ -1,6 +1,6 @@
 import { ref, update, increment, runTransaction, push } from 'firebase/database';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
-import { db, storage } from '../fb';
+import { auth, db, storage } from '../fb';
 import { DAY_MS, PARTICIPATION_SNAPS, WINNER_SNAPS } from '../config';
 import { adminRequest } from '../services/adminApi';
 
@@ -38,6 +38,7 @@ export async function createChallenge(challengeId, payload, deal = null) {
     [`challenges/${challengeId}`]: payload,
     [`challengeDeals/${challengeId}`]: deal,
   });
+  await logAudit('challenge.create', { type: 'challenge', id: challengeId }, { title: payload.title, type: payload.type });
 }
 
 export function newChallengeId() {
@@ -51,6 +52,7 @@ export async function updateChallenge(challengeId, fields) {
 // O fecho é feito pela API para que os resultados sejam processados uma só vez no servidor.
 export async function endChallenge(challengeId) {
   await adminRequest('/api/challenges/close', { challengeId, endNow: true });
+  await logAudit('challenge.end', { type: 'challenge', id: challengeId });
 }
 
 export async function reactivateChallenge(challengeId, days = 7) {
@@ -60,6 +62,7 @@ export async function reactivateChallenge(challengeId, days = 7) {
     () => ({ status: 'active', endsAt: Date.now() + days * DAY_MS }),
     'O desafio já está activo ou já foi processado.',
   );
+  await logAudit('challenge.reactivate', { type: 'challenge', id: challengeId }, { days });
 }
 
 // Apaga desafio + entradas + votos numa única escrita atómica.
@@ -70,6 +73,7 @@ export async function deleteChallenge(challengeId) {
     [`entries/${challengeId}`]: null,
     [`votes/${challengeId}`]: null,
   });
+  await logAudit('challenge.delete', { type: 'challenge', id: challengeId });
 }
 
 // ── Marcas ──
@@ -92,15 +96,18 @@ export async function saveSponsor(sponsorId, publicFields, privateFields, challe
     updates[`challenges/${cid}/sponsor`] = publicFields.name;
     updates[`challenges/${cid}/sponsorLogo`] = publicFields.logoUrl || null;
   });
+  addAudit(updates, 'sponsor.save', { type: 'sponsor', id: sponsorId }, { name: publicFields.name });
   await update(ref(db), updates);
 }
 
 export async function setSponsorActive(sponsorId, active) {
   await update(ref(db, `sponsors/${sponsorId}`), { active, updatedAt: Date.now() });
+  await logAudit(active ? 'sponsor.activate' : 'sponsor.deactivate', { type: 'sponsor', id: sponsorId });
 }
 
 export async function updateChallengeDeal(challengeId, fields) {
   await update(ref(db, `challengeDeals/${challengeId}`), { ...fields, updatedAt: Date.now() });
+  await logAudit('deal.update', { type: 'challenge', id: challengeId }, fields);
 }
 
 // ── Vencedores ──
@@ -112,6 +119,7 @@ export async function confirmWinner(challengeId) {
     () => ({ status: 'completed', confirmedAt: Date.now(), prizePaid: true }),
     'Este desafio já foi confirmado ou alterado por outro admin.',
   );
+  await logAudit('winner.confirm', { type: 'challenge', id: challengeId });
 }
 
 // Resolve um empate. A transacção garante que só um admin/clique consegue
@@ -134,6 +142,7 @@ export async function resolveTie(challengeId, entry) {
     [`users/${entry.userId}/snaps`]: increment(WINNER_SNAPS - PARTICIPATION_SNAPS),
     [`users/${entry.userId}/wins`]: increment(1),
   });
+  await logAudit('winner.tie', { type: 'challenge', id: challengeId }, { winnerId: entry.userId, entryId: entry.id });
 }
 
 // Volta a abrir o desafio por mais `days` dias. Os Snaps já distribuídos
@@ -155,26 +164,116 @@ export async function revertChallenge(challengeId, days = 3) {
     }),
     'O desafio já não está a aguardar confirmação ou já foi processado.',
   );
+  await logAudit('winner.revert', { type: 'challenge', id: challengeId }, { days });
 }
 
 // ── Utilizadores ──
+// Cada acção sobre contas grava a alteração e o registo de auditoria na mesma escrita.
 
-export async function banUser(uid, reason) {
-  await update(ref(db, `users/${uid}`), {
-    banned: true,
-    bannedAt: Date.now(),
-    banReason: reason?.trim() || 'Violação dos termos de uso',
+// `uids` aceita um ou vários utilizadores (acções em massa). `until` null = permanente.
+export async function banUsers(uids, reason, until = null) {
+  const now = Date.now();
+  const banReason = reason?.trim() || 'Violação dos termos de uso';
+  const updates = {};
+  uids.forEach((uid) => {
+    Object.assign(updates, {
+      [`users/${uid}/banned`]: true,
+      [`users/${uid}/bannedAt`]: now,
+      [`users/${uid}/bannedUntil`]: until,
+      [`users/${uid}/banReason`]: banReason,
+    });
+    addAudit(updates, 'user.ban', { type: 'user', id: uid }, { reason: banReason, until });
   });
+  await update(ref(db), updates);
 }
 
-export async function unbanUser(uid) {
-  await update(ref(db, `users/${uid}`), { banned: false, bannedAt: null, banReason: null });
+export async function unbanUsers(uids) {
+  const updates = {};
+  uids.forEach((uid) => {
+    Object.assign(updates, {
+      [`users/${uid}/banned`]: false,
+      [`users/${uid}/bannedAt`]: null,
+      [`users/${uid}/bannedUntil`]: null,
+      [`users/${uid}/banReason`]: null,
+    });
+    addAudit(updates, 'user.unban', { type: 'user', id: uid });
+  });
+  await update(ref(db), updates);
+}
+
+// O aviso fica em users/{uid}/warnings, que o próprio utilizador pode ler.
+export async function warnUsers(uids, reason) {
+  const text = reason.trim();
+  const updates = {};
+  uids.forEach((uid) => {
+    const id = push(ref(db, `users/${uid}/warnings`)).key;
+    updates[`users/${uid}/warnings/${id}`] = { reason: text, createdAt: Date.now(), by: currentAdmin().email };
+    updates[`users/${uid}/warningsCount`] = increment(1);
+    addAudit(updates, 'user.warn', { type: 'user', id: uid }, { reason: text });
+  });
+  await update(ref(db), updates);
+}
+
+// Acerto manual de Snaps: saldo e histórico na mesma escrita, sempre com motivo.
+export async function adjustSnaps(uid, amount, reason) {
+  const id = push(ref(db, `snaps_history/${uid}`)).key;
+  const updates = {
+    [`users/${uid}/snaps`]: increment(amount),
+    [`snaps_history/${uid}/${id}`]: {
+      amount, type: 'admin_adjustment', reason: reason.trim(), createdAt: Date.now(), by: currentAdmin().email,
+    },
+  };
+  addAudit(updates, 'user.snaps', { type: 'user', id: uid }, { amount, reason: reason.trim() });
+  await update(ref(db), updates);
+}
+
+// Notas internas: adminNotes/{uid} só é legível por admins.
+export async function addAdminNote(uid, text) {
+  const id = push(ref(db, `adminNotes/${uid}`)).key;
+  const admin = currentAdmin();
+  const updates = { [`adminNotes/${uid}/${id}`]: { text: text.trim(), createdAt: Date.now(), by: admin.email } };
+  addAudit(updates, 'user.note', { type: 'user', id: uid });
+  await update(ref(db), updates);
+}
+
+export async function deleteAdminNote(uid, noteId) {
+  const updates = { [`adminNotes/${uid}/${noteId}`]: null };
+  addAudit(updates, 'user.note_delete', { type: 'user', id: uid });
+  await update(ref(db), updates);
+}
+
+// ── Auditoria ──
+//  adminAudit/{id} → { action, target: {type, id}, details, by: {uid, email}, at }
+// Só admin (regra da raiz). Acções de utilizador gravam-no atomicamente;
+// as restantes registam depois de concluídas (melhor esforço).
+
+function currentAdmin() {
+  const u = auth.currentUser;
+  return { uid: u?.uid || null, email: u?.email || null };
+}
+
+function auditRecord(action, target, details) {
+  return { action, target, details: details || null, by: currentAdmin(), at: Date.now() };
+}
+
+function addAudit(updates, action, target, details) {
+  const id = push(ref(db, 'adminAudit')).key;
+  updates[`adminAudit/${id}`] = auditRecord(action, target, details);
+}
+
+async function logAudit(action, target, details) {
+  try {
+    await push(ref(db, 'adminAudit'), auditRecord(action, target, details));
+  } catch (err) {
+    console.warn('Não foi possível registar a auditoria:', err);
+  }
 }
 
 // ── Moderação ──
 
 export async function dismissReport(reportId) {
   await update(ref(db, `reports/${reportId}`), { status: 'dismissed', resolvedAt: Date.now() });
+  await logAudit('report.dismiss', { type: 'report', id: reportId });
 }
 
 // Remove a entrada denunciada e mantém os contadores coerentes, numa só escrita:
@@ -207,6 +306,7 @@ export async function removeReportedEntry(report, { entries, votes, reports }) {
     }
   });
 
+  addAudit(updates, 'report.remove_entry', { type: 'user', id: entry?.userId || report.reportedUserId || null }, { challengeId, entryId });
   await update(ref(db), updates);
 
   const mediaUrl = entry?.mediaUrl || report.mediaUrl;

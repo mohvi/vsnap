@@ -1,4 +1,6 @@
 import { DAY_MS } from '../config';
+import { toCsv } from '../utils/csv';
+import { countExpiredBans } from './users';
 
 // Funções puras que derivam métricas a partir dos nós do Realtime Database.
 // Ficam separadas do provider para poderem ser testadas sem Firebase.
@@ -36,6 +38,7 @@ export function computeDashboardMetrics({
     // O ecrã de vencedores lista exactamente os desafios neste estado.
     winnersPendingCount: challengesList.filter((c) => c.status === 'pending_confirmation').length,
     pendingReportsCount: Object.values(reports).filter((r) => r.status === 'pending').length,
+    expiredBansCount: countExpiredBans(users, now),
     activeSponsorsCount: Object.values(sponsors).filter((s) => s.active !== false).length,
     activeSponsoredCount: activeChallenges.filter((c) => c.type === 'sponsored').length,
     ...computeDealTotals(challengeDeals),
@@ -119,14 +122,6 @@ export function computeSponsorReport(challenge, challengeEntries = {}, challenge
   };
 }
 
-const csvCell = (value) => {
-  const s = String(value ?? '');
-  return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
-
-const BOM = String.fromCharCode(0xfeff);
-
-// CSV com ";" e BOM: abre directamente no Excel em português.
 export function buildReportCsv(challenge, report) {
   const rows = [
     ['Desafio', challenge.title],
@@ -142,7 +137,7 @@ export function buildReportCsv(challenge, report) {
     ['Dia', 'Votos'],
     ...report.votesByDay.map((d) => [d.day, d.count]),
   ];
-  return BOM + rows.map((r) => r.map(csvCell).join(';')).join('\r\n');
+  return toCsv(rows);
 }
 
 export function computeRecentActivity({ users = {}, challenges = {}, entries = {}, votes = {} }, limit = 8) {

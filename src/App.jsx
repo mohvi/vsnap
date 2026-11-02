@@ -21,6 +21,8 @@ const AccountDeletion = lazy(() => import('./components/Accountdeletion'));
 const RedirectToApp = lazy(() => import('./components/RedirectToApp'));
 const SponsorsPage = lazy(() => import('./components/SponsorsPage'));
 const SponsorReport = lazy(() => import('./components/SponsorReport'));
+const UserDetailPage = lazy(() => import('./components/users/UserDetailPage'));
+const AuditLog = lazy(() => import('./components/AuditLog'));
 
 export default function App() {
   return (
@@ -45,6 +47,8 @@ export default function App() {
               <Route path="/marcas" element={<SponsorsPage />} />
               <Route path="/marcas/:sponsorId" element={<SponsorReport />} />
               <Route path="/ul" element={<UsersList />} />
+              <Route path="/ul/:uid" element={<UserDetailPage />} />
+              <Route path="/auditoria" element={<AuditLog />} />
               <Route path="/wc" element={<WinnersConfirmation />} />
               <Route path="/mc" element={<ModerationPanel />} />
               {ENABLE_MOCK && <Route path="/mock" element={<MockDataPanel />} />}

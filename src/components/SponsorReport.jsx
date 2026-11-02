@@ -7,6 +7,7 @@ import { useAdminData } from '../data/AdminDataProvider';
 import { updateChallengeDeal } from '../data/actions';
 import { buildReportCsv, computeSponsorReport, computeSponsorSummary, toList } from '../data/metrics';
 import { runAction } from '../utils/runAction';
+import { downloadCsv } from '../utils/csv';
 import { formatDate, formatNumber } from '../utils/format';
 import { PageLoader } from './ui/Spinner';
 import { SponsorLogo } from './SponsorsPage';
@@ -22,15 +23,6 @@ const PRIZE_PROVIDERS = {
   sponsor: 'A marca entrega o prémio',
   votasnap: 'A VotaSnap entrega o prémio',
 };
-
-function downloadCsv(filename, content) {
-  const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 export default function SponsorReport() {
   const { sponsorId } = useParams();
