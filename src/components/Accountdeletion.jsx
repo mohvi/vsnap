@@ -1,4 +1,4 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
 import { Sparkles, ArrowLeft, Trash2, Smartphone, Mail, ShieldCheck } from 'lucide-react';
 
 const CONTACT_EMAIL = 'geral@votasnap.com';
@@ -19,13 +19,13 @@ export default function AccountDeletion() {
       <div className="relative z-10 max-w-2xl mx-auto px-5 md:px-8 pb-24">
 
         <div className="flex items-center justify-between pt-8 pb-10">
-          <a
-            href="/"
+          <Link
+            to="/policy"
             className="flex items-center gap-2 text-gray-400 hover:text-white text-sm font-medium transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar
-          </a>
+          </Link>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-600/25">
               <Sparkles className="w-4 h-4 text-white" />
@@ -117,7 +117,7 @@ export default function AccountDeletion() {
             <p className="text-gray-600 text-[11px] mt-4 leading-relaxed">
               Alguns registos podem ser retidos por período adicional quando exigido por lei ou
               para prevenção de fraude, conforme descrito na nossa{' '}
-              <a href="/privacidade" className="text-purple-400 hover:text-purple-300">Política de Privacidade</a>.
+              <Link to="/policy" className="text-purple-400 hover:text-purple-300">Política de Privacidade</Link>.
             </p>
           </div>
 

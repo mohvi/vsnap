@@ -21,3 +21,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# env (nunca commitar credenciais)
+.env
+
+# firebase-admin service account
+serviceAccount*.json

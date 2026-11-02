@@ -3,64 +3,43 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@emotion/react": "^11.13.0",
-    "@emotion/styled": "^11.13.0",
-    "@mui/icons-material": "^5.16.6",
-    "@mui/material": "^5.16.6",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "axios": "^1.7.7",
-    "canvas-confetti": "^1.9.3",
-    "chart.js": "^4.5.0",
-    "dotenv": "^17.0.0",
     "firebase": "^10.12.5",
-    "framer-motion": "^12.34.3",
     "lucide-react": "^0.485.0",
     "react": "^18.3.1",
-    "react-chartjs-2": "^5.3.0",
     "react-dom": "^18.3.1",
-    "react-feather": "^2.0.10",
-    "react-icons": "^5.5.0",
-    "react-image-crop": "^11.0.10",
-    "react-loading-skeleton": "^3.5.0",
-    "react-native-vector-icons": "^10.2.0",
-    "react-player": "^3.2.0",
-    "react-quill": "^2.0.0",
     "react-router-dom": "^6.26.0",
-    "react-scripts": "5.0.1",
-    "react-tsparticles": "^2.12.2",
-    "sonner": "^2.0.7",
-    "tsparticles-slim": "^2.12.0",
-    "web-vitals": "^2.1.4"
+    "sonner": "^2.0.7"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "set-admin": "node scripts/set-admin.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "firebase-admin": "^14.5.0",
+    "globals": "^17.13.0",
+    "jsdom": "^29.1.1",
     "postcss": "^8.4.40",
-    "tailwindcss": "^3.4.7"
+    "tailwindcss": "^3.4.7",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }

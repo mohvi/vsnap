@@ -1,0 +1,12 @@
+// Fragmento ADITIVO para as regras do Firebase Storage. Em Storage, se
+// qualquer regra que corresponda ao path permitir o acesso, o acesso é
+// concedido — juntar este bloco às regras existentes dá acesso aos admins
+// sem alterar as permissões da app móvel. Ver README → Regras do Firebase.
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
+    }
+  }
+}

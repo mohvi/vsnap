@@ -1,9 +1,9 @@
-import React from 'react';
+import { Fragment } from 'react';
 import {
   Sparkles, Shield, Database, Eye, Server, Share2, Clock,
   UserCheck, ShieldCheck, Lock, RefreshCw, Mail, MapPin,
   Phone, Instagram, ExternalLink, CheckCircle2, XCircle,
-  AlertTriangle, Wifi, HardDrive, Trash2, Baby, FileCheck,
+  AlertTriangle, Wifi, Trash2, Baby, FileCheck,
 } from 'lucide-react';
 
 const CONTACT = {
@@ -426,7 +426,7 @@ export default function PrivacyPolicy() {
                   </thead>
                   <tbody>
                     {PLAY_DATA_TYPES.map((group) => (
-                      <React.Fragment key={group.category}>
+                      <Fragment key={group.category}>
                         <tr>
                           <td colSpan={6} className="pt-4 pb-1">
                             <span className="text-purple-400 font-semibold uppercase tracking-wider text-[10px]">
@@ -444,7 +444,7 @@ export default function PrivacyPolicy() {
                             <td className="py-2.5 px-2 text-center">{item.required ? <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 mx-auto"/> : <XCircle className="w-3.5 h-3.5 text-gray-600 mx-auto"/>}</td>
                           </tr>
                         ))}
-                      </React.Fragment>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

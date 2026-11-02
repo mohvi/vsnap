@@ -1,0 +1,11 @@
+{
+  // Fragmento ADITIVO para as regras do Realtime Database (o RTDB aceita
+  // comentários neste ficheiro). Permissões concedidas num nó pai valem para
+  // todos os filhos, por isso juntar estas duas linhas à raiz das regras
+  // existentes dá acesso total aos admins sem alterar o que a app móvel já
+  // pode fazer. Ver README → Regras do Firebase.
+  "rules": {
+    ".read": "auth != null && auth.token.admin === true",
+    ".write": "auth != null && auth.token.admin === true"
+  }
+}
