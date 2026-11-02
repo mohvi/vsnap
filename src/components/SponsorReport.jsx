@@ -50,7 +50,7 @@ export default function SponsorReport() {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center text-gray-400">
         <p>Marca não encontrada.</p>
-        <Link to="/marcas" className="text-purple-400 text-sm">Voltar às marcas</Link>
+        <Link to="/marcas" className="text-brand-400 text-sm">Voltar às marcas</Link>
       </div>
     );
   }
@@ -75,7 +75,7 @@ export default function SponsorReport() {
 
       {sponsorChallenges.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
-          Esta marca ainda não tem desafios. <Link to="/cc" className="text-purple-400">Criar desafio patrocinado</Link>
+          Esta marca ainda não tem desafios. <Link to="/cc" className="text-brand-400">Criar desafio patrocinado</Link>
         </div>
       ) : (
         <>
@@ -85,7 +85,7 @@ export default function SponsorReport() {
                 key={c.id}
                 onClick={() => setSelectedId(c.id)}
                 className={`flex-shrink-0 px-3 py-2 rounded-xl border text-sm text-left ${
-                  c.id === selected.id ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-white/10 text-gray-400 hover:border-white/20'
+                  c.id === selected.id ? 'border-brand-500 bg-brand-500/10 text-white' : 'border-white/10 text-gray-400 hover:border-white/20'
                 }`}
               >
                 <span className="block font-medium truncate max-w-[220px]">{c.title}</span>
@@ -118,7 +118,7 @@ function ChallengeReport({ challenge, report, deal }) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-white text-lg font-semibold flex items-center gap-2 break-words">
-            <BarChart3 className="w-5 h-5 text-purple-400 flex-shrink-0" /> {challenge.title}
+            <BarChart3 className="w-5 h-5 text-brand-400 flex-shrink-0" /> {challenge.title}
           </h2>
           <p className="text-gray-500 text-sm">
             {formatDate(challenge.createdAt)} – {formatDate(challenge.endsAt)} · Prémio: <span className="text-yellow-400">{challenge.prize}</span>
@@ -141,7 +141,7 @@ function ChallengeReport({ challenge, report, deal }) {
           ['Votos', formatNumber(report.votes), Vote],
           ['Dia com mais votos', report.peakDay ? `${report.peakDay.count} (${report.peakDay.day.slice(5)})` : '—', TrendingUp],
         ].map(([label, value, Icon]) => (
-          <div key={label} className="bg-slate-900 border border-white/10 rounded-2xl p-4">
+          <div key={label} className="bg-ink-900 border border-white/10 rounded-2xl p-4">
             <p className="text-gray-500 text-xs flex items-center gap-1"><Icon className="w-3 h-3" />{label}</p>
             <p className="text-white text-xl font-bold mt-1">{value}</p>
           </div>
@@ -149,12 +149,12 @@ function ChallengeReport({ challenge, report, deal }) {
       </div>
 
       {report.votesByDay.length > 0 && (
-        <div className="bg-slate-900 border border-white/10 rounded-2xl p-4">
+        <div className="bg-ink-900 border border-white/10 rounded-2xl p-4">
           <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-3">Votos por dia</p>
           <div className="flex items-end gap-1 h-32" role="img" aria-label="Votos por dia">
             {report.votesByDay.map((d) => (
               <div key={d.day} className="flex-1 min-w-[6px] flex flex-col items-center justify-end h-full" title={`${d.day}: ${d.count} votos`}>
-                <div className="w-full rounded-t bg-gradient-to-t from-purple-600 to-pink-500" style={{ height: `${(d.count / maxDay) * 100}%`, minHeight: d.count ? 2 : 0 }} />
+                <div className="w-full rounded-t bg-gradient-to-t from-brand-600 to-accent-500" style={{ height: `${(d.count / maxDay) * 100}%`, minHeight: d.count ? 2 : 0 }} />
               </div>
             ))}
           </div>
@@ -190,7 +190,7 @@ function ChallengeReport({ challenge, report, deal }) {
                 href={e.mediaUrl || undefined}
                 target="_blank"
                 rel="noreferrer"
-                className="block bg-slate-900 border border-white/10 rounded-xl overflow-hidden hover:border-purple-500/50"
+                className="block bg-ink-900 border border-white/10 rounded-xl overflow-hidden hover:border-brand-500/50"
               >
                 <div className="relative aspect-square bg-black">
                   {e.mediaType === 'video' ? (
@@ -202,7 +202,7 @@ function ChallengeReport({ challenge, report, deal }) {
                 </div>
                 <div className="p-2">
                   <p className="text-white text-xs font-medium truncate">@{e.username}</p>
-                  <p className="text-purple-400 text-xs">{formatNumber(e.votes)} votos</p>
+                  <p className="text-brand-400 text-xs">{formatNumber(e.votes)} votos</p>
                 </div>
               </a>
             ))}
@@ -229,7 +229,7 @@ function DealPanel({ challengeId, deal }) {
   const paid = deal?.paymentStatus === 'paid';
 
   return (
-    <div className="bg-slate-900 border border-white/10 rounded-2xl p-4 print:hidden">
+    <div className="bg-ink-900 border border-white/10 rounded-2xl p-4 print:hidden">
       <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-3">Acordo com a marca (interno)</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
         <label className="block">
@@ -238,7 +238,7 @@ function DealPanel({ challengeId, deal }) {
             type="number"
             inputMode="numeric"
             min="0"
-            className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white outline-none focus:border-purple-500"
+            className="w-full bg-ink-800 border border-white/5 rounded-xl p-3 text-white outline-none focus:border-brand-500"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             onBlur={() => {

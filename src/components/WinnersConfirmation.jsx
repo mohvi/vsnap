@@ -79,7 +79,7 @@ export default function WinnersConfirmation() {
             const winner = users[challenge.winnerId];
 
             return (
-              <article key={challenge.id} className="bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-5">
+              <article key={challenge.id} className="bg-ink-900 border border-white/10 rounded-2xl p-4 sm:p-5">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -124,7 +124,7 @@ export default function WinnersConfirmation() {
                         <span className="text-gray-500 text-sm w-6">#{i + 1}</span>
                         <Avatar user={user} size="w-8 h-8" textSize="text-xs" />
                         <p className="flex-1 min-w-0 text-white text-sm font-medium truncate">{user?.name || 'Utilizador'}</p>
-                        <span className="text-purple-400 text-sm font-medium flex items-center gap-1">
+                        <span className="text-brand-400 text-sm font-medium flex items-center gap-1">
                           <Vote className="w-3.5 h-3.5" />
                           {entry.votes || 0}
                         </span>

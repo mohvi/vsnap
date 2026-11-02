@@ -20,13 +20,13 @@ const REASON_LABELS = {
 };
 
 const MEDIA_BADGES = {
-  video: { label: '🎬 Vídeo', className: 'bg-purple-500/10 text-purple-400 border-purple-500/30' },
+  video: { label: '🎬 Vídeo', className: 'bg-brand-500/10 text-brand-400 border-brand-500/30' },
   audio: { label: '🎵 Áudio', className: 'bg-green-500/10 text-green-400 border-green-500/30' },
   image: { label: '🖼️ Imagem', className: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
 };
 
 const MEDIA_ICONS = {
-  video: <Video className="w-6 h-6 text-purple-400" />,
+  video: <Video className="w-6 h-6 text-brand-400" />,
   audio: <Music className="w-6 h-6 text-green-400" />,
   image: <ImageIcon className="w-6 h-6 text-blue-400" />,
   unknown: <File className="w-6 h-6 text-gray-500" />,
@@ -43,10 +43,10 @@ function Thumbnail({ url, mediaType, onPlay }) {
   }
   if (mediaType === 'video' || mediaType === 'audio') {
     return (
-      <button onClick={onPlay} aria-label="Reproduzir" className="relative w-full h-full bg-slate-800 flex items-center justify-center">
+      <button onClick={onPlay} aria-label="Reproduzir" className="relative w-full h-full bg-ink-800 flex items-center justify-center">
         {MEDIA_ICONS[mediaType]}
         <span className="absolute inset-0 flex items-center justify-center">
-          <span className="w-10 h-10 rounded-full bg-purple-500/30 flex items-center justify-center">
+          <span className="w-10 h-10 rounded-full bg-brand-500/30 flex items-center justify-center">
             <Play className="w-5 h-5 text-white ml-0.5" />
           </span>
         </span>
@@ -94,7 +94,7 @@ export default function ModerationPanel() {
             aria-selected={filterStatus === opt.value}
             onClick={() => setFilterStatus(opt.value)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${
-              filterStatus === opt.value ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              filterStatus === opt.value ? 'bg-brand-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
           >
             {opt.label}
@@ -117,10 +117,10 @@ export default function ModerationPanel() {
             const isPlaying = playing === report.id;
 
             return (
-              <article key={report.id} className="bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-5">
+              <article key={report.id} className="bg-ink-900 border border-white/10 rounded-2xl p-4 sm:p-5">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="flex gap-4 flex-1 min-w-0">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-slate-800 flex-shrink-0 overflow-hidden">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-ink-800 flex-shrink-0 overflow-hidden">
                       <Thumbnail url={mediaUrl} mediaType={mediaType} onPlay={() => setPlaying(isPlaying ? null : report.id)} />
                     </div>
 
@@ -172,7 +172,7 @@ export default function ModerationPanel() {
                 </div>
 
                 {isPlaying && mediaUrl && (
-                  <div className="mt-4 p-3 bg-slate-800/50 rounded-xl">
+                  <div className="mt-4 p-3 bg-ink-800/50 rounded-xl">
                     {mediaType === 'video' ? (
                       <video src={mediaUrl} controls autoPlay playsInline className="w-full max-h-[60vh] rounded-xl bg-black" onEnded={() => setPlaying(null)} />
                     ) : (

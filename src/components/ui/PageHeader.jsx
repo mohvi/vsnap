@@ -1,4 +1,4 @@
-export default function PageHeader({ icon: Icon, iconClass = 'text-purple-400', title, subtitle, actions }) {
+export default function PageHeader({ icon: Icon, iconClass = 'text-brand-400', title, subtitle, actions }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
       <div className="min-w-0">

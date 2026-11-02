@@ -204,7 +204,7 @@ export default function MockDataPanel() {
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6">
       <div className="flex items-center gap-3 mb-2 flex-wrap">
-        <FlaskConical className="w-7 h-7 text-purple-400" />
+        <FlaskConical className="w-7 h-7 text-brand-400" />
         <h1 className="text-xl sm:text-2xl font-bold text-white">Mock Data</h1>
         <span className="text-xs px-2 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-full">
           Apenas para testes / demo
@@ -212,16 +212,16 @@ export default function MockDataPanel() {
       </div>
       <p className="text-gray-500 text-sm mb-6">
         Cria posts com utilizadores fake para popular um desafio. Os utilizadores criados aqui têm{' '}
-        <code className="text-purple-400 text-xs bg-white/5 px-1 rounded">isFake: true</code> para fácil limpeza
+        <code className="text-brand-400 text-xs bg-white/5 px-1 rounded">isFake: true</code> para fácil limpeza
         (filtro &quot;Fake&quot; em Utilizadores).
       </p>
 
-      <div className="bg-[#14141F] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6">
+      <div className="bg-ink-900 border border-white/10 rounded-2xl p-4 sm:p-5 mb-6">
         <label htmlFor="mock-challenge" className="text-sm text-gray-400 mb-2 block">Desafio activo a popular</label>
         <div className="relative">
           <select
             id="mock-challenge"
-            className="w-full bg-slate-800 border border-white/10 rounded-xl pl-4 pr-10 py-3 text-white text-sm outline-none appearance-none focus:border-purple-500"
+            className="w-full bg-ink-800 border border-white/10 rounded-xl pl-4 pr-10 py-3 text-white text-sm outline-none appearance-none focus:border-brand-500"
             value={selectedChallenge}
             onChange={(e) => setSelectedChallenge(e.target.value)}
           >
@@ -246,7 +246,7 @@ export default function MockDataPanel() {
       <div
         role="button"
         tabIndex={0}
-        className="border-2 border-dashed border-white/10 rounded-2xl p-6 sm:p-8 text-center mb-6 cursor-pointer hover:border-purple-500/50 focus:border-purple-500/50 outline-none transition-colors"
+        className="border-2 border-dashed border-white/10 rounded-2xl p-6 sm:p-8 text-center mb-6 cursor-pointer hover:border-brand-500/50 focus:border-brand-500/50 outline-none transition-colors"
         onClick={() => fileInputRef.current?.click()}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInputRef.current?.click()}
         onDragOver={(e) => e.preventDefault()}
@@ -292,10 +292,10 @@ export default function MockDataPanel() {
               return (
                 <div
                   key={item.id}
-                  className={`bg-[#14141F] border rounded-2xl p-3 sm:p-4 transition-colors ${
+                  className={`bg-ink-900 border rounded-2xl p-3 sm:p-4 transition-colors ${
                     item.status === ITEM_STATUS.DONE ? 'border-green-500/30'
                       : item.status === ITEM_STATUS.ERROR ? 'border-red-500/30'
-                        : item.status === ITEM_STATUS.UPLOADING ? 'border-purple-500/30'
+                        : item.status === ITEM_STATUS.UPLOADING ? 'border-brand-500/30'
                           : 'border-white/10'
                   }`}
                 >
@@ -304,7 +304,7 @@ export default function MockDataPanel() {
                       {item.mediaType === 'photo' ? (
                         <img src={item.preview} alt={item.caption || 'Pré-visualização'} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                        <div className="w-full h-full flex items-center justify-center bg-ink-800">
                           <Video className="w-6 h-6 text-gray-400" />
                         </div>
                       )}
@@ -312,7 +312,7 @@ export default function MockDataPanel() {
 
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-accent-500 to-accent-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                           {item.fakeUser.name.charAt(0)}
                         </div>
                         <span className="text-white text-sm font-medium truncate">{item.fakeUser.name}</span>
@@ -323,7 +323,7 @@ export default function MockDataPanel() {
                           title="Gerar outro utilizador"
                           aria-label="Gerar outro utilizador"
                           disabled={locked}
-                          className="ml-auto p-1 text-gray-500 hover:text-purple-400 transition-colors disabled:opacity-30"
+                          className="ml-auto p-1 text-gray-500 hover:text-brand-400 transition-colors disabled:opacity-30"
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
                         </button>
@@ -331,7 +331,7 @@ export default function MockDataPanel() {
 
                       <input
                         aria-label="Legenda"
-                        className="w-full bg-slate-800 border border-white/5 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-purple-500 disabled:opacity-50"
+                        className="w-full bg-ink-800 border border-white/5 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:border-brand-500 disabled:opacity-50"
                         value={item.caption}
                         onChange={(e) => updateItem(item.id, { caption: e.target.value })}
                         disabled={locked}
@@ -341,9 +341,9 @@ export default function MockDataPanel() {
                       {item.status === ITEM_STATUS.UPLOADING && (
                         <div className="space-y-1">
                           <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all" style={{ width: `${item.progress}%` }} />
+                            <div className="h-full bg-gradient-to-r from-brand-500 to-accent-500 transition-all" style={{ width: `${item.progress}%` }} />
                           </div>
-                          <p className="text-purple-400 text-xs">{item.progress}% enviado...</p>
+                          <p className="text-brand-400 text-xs">{item.progress}% enviado...</p>
                         </div>
                       )}
                       {item.status === ITEM_STATUS.DONE && (
@@ -363,7 +363,7 @@ export default function MockDataPanel() {
                         <X className="w-4 h-4" />
                       </button>
                     )}
-                    {item.status === ITEM_STATUS.UPLOADING && <Loader2 className="w-4 h-4 text-purple-400 animate-spin flex-shrink-0" />}
+                    {item.status === ITEM_STATUS.UPLOADING && <Loader2 className="w-4 h-4 text-brand-400 animate-spin flex-shrink-0" />}
                     {item.status === ITEM_STATUS.DONE && <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />}
                   </div>
                 </div>
@@ -375,7 +375,7 @@ export default function MockDataPanel() {
             <button
               onClick={handlePublishAll}
               disabled={publishing || !selectedChallenge}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-accent-600 text-white font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {publishing ? (
                 <>

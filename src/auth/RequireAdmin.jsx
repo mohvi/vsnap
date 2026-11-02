@@ -15,8 +15,8 @@ export default function RequireAdmin({ children }) {
 
   if (status === 'forbidden') {
     return (
-      <div className="min-h-screen bg-[#0A0A12] flex items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-[#14141F] border border-white/10 rounded-2xl p-6 text-center">
+      <div className="min-h-screen bg-ink-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-ink-900 border border-white/10 rounded-2xl p-6 text-center">
           <ShieldAlert className="w-10 h-10 text-red-400 mx-auto mb-3" />
           <h1 className="text-white text-lg font-bold mb-1">Sem permissão</h1>
           <p className="text-gray-400 text-sm mb-6">

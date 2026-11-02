@@ -6,7 +6,7 @@ export default function Avatar({ user, size = 'w-9 h-9', textSize = 'text-sm' })
   return (
     <div
       aria-label={label}
-      className={`${size} ${textSize} rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-white font-bold flex-shrink-0`}
+      className={`${size} ${textSize} rounded-full bg-gradient-to-br from-accent-500 to-accent-400 flex items-center justify-center text-white font-bold flex-shrink-0`}
     >
       {label.charAt(0).toUpperCase()}
     </div>

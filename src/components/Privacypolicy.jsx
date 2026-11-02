@@ -35,7 +35,7 @@ function SectionCard({ id, icon: Icon, iconColor, title, children }) {
   return (
     <section
       id={id}
-      className="bg-[#14141F] border border-white/5 rounded-2xl p-6 md:p-7 scroll-mt-24"
+      className="bg-ink-900 border border-white/5 rounded-2xl p-6 md:p-7 scroll-mt-24"
     >
       <div className="flex items-center gap-3 mb-4">
         <div className={`p-2.5 rounded-xl bg-gradient-to-br ${iconColor} bg-opacity-10`}>
@@ -125,10 +125,10 @@ const PLAY_DATA_TYPES = [
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-[#0A0A12] text-white font-sans antialiased">
+    <div className="min-h-screen bg-ink-950 text-white font-sans antialiased">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-accent-600/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto px-5 md:px-8 pb-24">
@@ -136,20 +136,20 @@ export default function PrivacyPolicy() {
         {/* TOPO */}
         <div className="flex items-center justify-between pt-8 pb-6">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-600/25">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-600 to-accent-600 flex items-center justify-center shadow-lg shadow-brand-600/25">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <span className="text-white font-bold text-sm tracking-tight">
-              Vota<span className="text-purple-400">Snap</span>
+              Vota<span className="text-brand-400">Snap</span>
             </span>
           </div>
         </div>
 
         {/* HERO */}
         <div className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-600/10 border border-purple-500/20 mb-4">
-            <Shield className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-purple-400">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-600/10 border border-brand-500/20 mb-4">
+            <Shield className="w-3.5 h-3.5 text-brand-400" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-400">
               Transparência de dados
             </span>
           </div>
@@ -171,7 +171,7 @@ export default function PrivacyPolicy() {
             <a
               key={s.id}
               href={`#${s.id}`}
-              className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/5 border border-white/5 text-gray-400 hover:text-white hover:border-purple-500/30 hover:bg-purple-600/10 transition-all duration-200"
+              className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/5 border border-white/5 text-gray-400 hover:text-white hover:border-brand-500/30 hover:bg-brand-600/10 transition-all duration-200"
             >
               {s.label}
             </a>
@@ -180,7 +180,7 @@ export default function PrivacyPolicy() {
 
         <div className="space-y-5">
 
-          <SectionCard id="quem-somos" icon={UserCheck} iconColor="from-purple-600 to-pink-600" title="1. Quem somos">
+          <SectionCard id="quem-somos" icon={UserCheck} iconColor="from-brand-600 to-accent-600" title="1. Quem somos">
             <p>
               O VotaSnap é uma aplicação móvel de participação em desafios por voto da comunidade,
               desenvolvida por <strong className="text-white">{CONTACT.developer}</strong> ({CONTACT.handle}).
@@ -229,14 +229,14 @@ export default function PrivacyPolicy() {
                 'Melhorar a estabilidade e o desempenho da app',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 flex-shrink-0" />
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
           </SectionCard>
 
-          <SectionCard id="terceiros" icon={Server} iconColor="from-yellow-500 to-orange-500" title="4. Serviços de terceiros">
+          <SectionCard id="terceiros" icon={Server} iconColor="from-yellow-500 to-accent-500" title="4. Serviços de terceiros">
             <p>
               O VotaSnap é construído sobre o <strong className="text-white">Firebase</strong>, um
               conjunto de serviços de backend da Google, usado para autenticação, base de dados em
@@ -257,12 +257,12 @@ export default function PrivacyPolicy() {
               ))}
             </div>
             <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-purple-400 hover:text-purple-300 text-xs font-medium mt-4 transition-colors">
+              className="inline-flex items-center gap-1.5 text-brand-400 hover:text-brand-300 text-xs font-medium mt-4 transition-colors">
               Política de Privacidade da Google <ExternalLink className="w-3 h-3" />
             </a>
           </SectionCard>
 
-          <SectionCard id="partilha" icon={Share2} iconColor="from-pink-600 to-purple-600" title="5. Partilha de dados">
+          <SectionCard id="partilha" icon={Share2} iconColor="from-accent-600 to-brand-600" title="5. Partilha de dados">
             <p className="mb-2">Não vendemos os teus dados pessoais. Só partilhamos dados nestas situações:</p>
             <ul className="space-y-2 list-none">
               {[
@@ -271,7 +271,7 @@ export default function PrivacyPolicy() {
                 'Conteúdo que publicas (nome, username, avatar, fotos/vídeos, votos recebidos) é visível publicamente para outros utilizadores, por ser o propósito central da votação em comunidade',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 flex-shrink-0" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -287,7 +287,7 @@ export default function PrivacyPolicy() {
             </p>
           </SectionCard>
 
-          <SectionCard id="direitos" icon={UserCheck} iconColor="from-purple-600 to-pink-600" title="7. Os teus direitos">
+          <SectionCard id="direitos" icon={UserCheck} iconColor="from-brand-600 to-accent-600" title="7. Os teus direitos">
             <p className="mb-2">Tens o direito de:</p>
             <ul className="space-y-2 list-none mb-3">
               {[
@@ -297,14 +297,14 @@ export default function PrivacyPolicy() {
                 'Retirar o consentimento para notificações push, nas definições do teu dispositivo',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 flex-shrink-0" />
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
             <p>
               Para exercer qualquer um destes direitos, contacta-nos através de{' '}
-              <a href={`mailto:${CONTACT.email}`} className="text-purple-400 hover:text-purple-300 font-medium">
+              <a href={`mailto:${CONTACT.email}`} className="text-brand-400 hover:text-brand-300 font-medium">
                 {CONTACT.email}
               </a>.
             </p>
@@ -319,7 +319,7 @@ export default function PrivacyPolicy() {
             </p>
           </SectionCard>
 
-          <SectionCard id="seguranca" icon={Lock} iconColor="from-red-500 to-orange-500" title="9. Segurança">
+          <SectionCard id="seguranca" icon={Lock} iconColor="from-red-500 to-accent-500" title="9. Segurança">
             <p>
               Usamos as proteções de segurança fornecidas pelo Firebase (regras de acesso à base de
               dados e armazenamento, autenticação segura) para proteger os teus dados contra acesso
@@ -335,7 +335,7 @@ export default function PrivacyPolicy() {
           ═══════════════════════════════════════════════════════════ */}
           <section id="play-safety" className="scroll-mt-24">
             {/* Header da secção */}
-            <div className="bg-[#14141F] border border-white/5 rounded-2xl p-6 md:p-7 mb-4">
+            <div className="bg-ink-900 border border-white/5 rounded-2xl p-6 md:p-7 mb-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2.5 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500">
                   <FileCheck className="w-5 h-5 text-white" />
@@ -352,7 +352,7 @@ export default function PrivacyPolicy() {
             </div>
 
             {/* Resumo de práticas — formato visual igual ao painel da Play Store */}
-            <div className="bg-[#14141F] border border-white/5 rounded-2xl p-6 md:p-7 mb-4">
+            <div className="bg-ink-900 border border-white/5 rounded-2xl p-6 md:p-7 mb-4">
               <h3 className="text-white text-base font-semibold mb-4">Resumo de práticas de privacidade</h3>
               <div>
                 <SafetyRow
@@ -378,7 +378,7 @@ export default function PrivacyPolicy() {
                 />
                 <SafetyRow
                   icon={Database}
-                  iconColor="bg-purple-500/10 text-purple-400"
+                  iconColor="bg-brand-500/10 text-brand-400"
                   label="Dados recolhidos"
                   yes={true}
                   detail="Recolhemos dados necessários ao funcionamento: conta, perfil, conteúdo, atividade e identificador de dispositivo para notificações. Ver tabela completa abaixo."
@@ -401,7 +401,7 @@ export default function PrivacyPolicy() {
             </div>
 
             {/* Tabela detalhada de tipos de dados — formato da Play Console */}
-            <div className="bg-[#14141F] border border-white/5 rounded-2xl p-6 md:p-7 mb-4">
+            <div className="bg-ink-900 border border-white/5 rounded-2xl p-6 md:p-7 mb-4">
               <h3 className="text-white text-base font-semibold mb-1">Tipos de dados recolhidos</h3>
               <p className="text-gray-500 text-xs mb-5">
                 Formato correspondente ao formulário "Segurança dos dados" da Google Play Console.
@@ -429,7 +429,7 @@ export default function PrivacyPolicy() {
                       <Fragment key={group.category}>
                         <tr>
                           <td colSpan={6} className="pt-4 pb-1">
-                            <span className="text-purple-400 font-semibold uppercase tracking-wider text-[10px]">
+                            <span className="text-brand-400 font-semibold uppercase tracking-wider text-[10px]">
                               {group.category}
                             </span>
                           </td>
@@ -452,11 +452,11 @@ export default function PrivacyPolicy() {
             </div>
 
             {/* Finalidades de recolha — campo obrigatório na Play Console */}
-            <div className="bg-[#14141F] border border-white/5 rounded-2xl p-6 md:p-7 mb-4">
+            <div className="bg-ink-900 border border-white/5 rounded-2xl p-6 md:p-7 mb-4">
               <h3 className="text-white text-base font-semibold mb-4">Finalidades de recolha declaradas</h3>
               <div className="grid sm:grid-cols-2 gap-3">
                 {[
-                  { label: 'Funcionalidades da app', desc: 'Autenticação, perfil, feed, votação e desafios', color: 'border-l-purple-500' },
+                  { label: 'Funcionalidades da app', desc: 'Autenticação, perfil, feed, votação e desafios', color: 'border-l-brand-500' },
                   { label: 'Prevenção de fraude', desc: 'Deteção de contas duplicadas e votos suspeitos', color: 'border-l-red-500' },
                   { label: 'Notificações', desc: 'Alertas de votos, vencedores e novos desafios', color: 'border-l-blue-500' },
                   { label: 'Moderação de conteúdo', desc: 'Revisão de denúncias e aplicação de regras da comunidade', color: 'border-l-amber-500' },
@@ -493,7 +493,7 @@ export default function PrivacyPolicy() {
                   </ul>
                   <div className="mt-4 p-3 bg-white/5 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">URL de eliminação de conta (para a Play Console)</p>
-                    <code className="text-purple-400 text-xs">mailto:geral@votasnap.com?subject=Eliminar%20conta</code>
+                    <code className="text-brand-400 text-xs">mailto:geral@votasnap.com?subject=Eliminar%20conta</code>
                   </div>
                 </div>
               </div>
@@ -509,9 +509,9 @@ export default function PrivacyPolicy() {
           </SectionCard>
 
           {/* CONTACTO */}
-          <section id="contacto" className="bg-gradient-to-br from-purple-600/10 to-pink-600/10 border border-purple-500/20 rounded-2xl p-6 md:p-7 scroll-mt-24">
+          <section id="contacto" className="bg-gradient-to-br from-brand-600/10 to-accent-600/10 border border-brand-500/20 rounded-2xl p-6 md:p-7 scroll-mt-24">
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-brand-600 to-accent-600">
                 <Mail className="w-5 h-5 text-white" />
               </div>
               <h2 className="text-white text-lg font-semibold tracking-tight">12. Contacto</h2>
@@ -521,39 +521,39 @@ export default function PrivacyPolicy() {
             </p>
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                <Mail className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <Mail className="w-4 h-4 text-brand-400 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider">Email</p>
-                  <a href={`mailto:${CONTACT.email}`} className="text-white text-sm font-medium hover:text-purple-300">{CONTACT.email}</a>
+                  <a href={`mailto:${CONTACT.email}`} className="text-white text-sm font-medium hover:text-brand-300">{CONTACT.email}</a>
                 </div>
               </div>
               <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                <Phone className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <Phone className="w-4 h-4 text-brand-400 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider">Telefone</p>
-                  <a href={`tel:${CONTACT.phone.replace(/\s/g, '')}`} className="text-white text-sm font-medium hover:text-purple-300">{CONTACT.phone}</a>
+                  <a href={`tel:${CONTACT.phone.replace(/\s/g, '')}`} className="text-white text-sm font-medium hover:text-brand-300">{CONTACT.phone}</a>
                 </div>
               </div>
               <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                <UserCheck className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <UserCheck className="w-4 h-4 text-brand-400 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider">Desenvolvedor</p>
                   <p className="text-white text-sm font-medium">{CONTACT.developer}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
-                <MapPin className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <MapPin className="w-4 h-4 text-brand-400 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider">Localização</p>
                   <p className="text-white text-sm font-medium">{CONTACT.city}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3 sm:col-span-2">
-                <Instagram className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <Instagram className="w-4 h-4 text-brand-400 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider">Instagram</p>
                   <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noopener noreferrer"
-                    className="text-white text-sm font-medium hover:text-purple-300">@{CONTACT.instagram}</a>
+                    className="text-white text-sm font-medium hover:text-brand-300">@{CONTACT.instagram}</a>
                 </div>
               </div>
             </div>

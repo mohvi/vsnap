@@ -10,10 +10,10 @@ const MAILTO_LINK = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
 
 export default function AccountDeletion() {
   return (
-    <div className="min-h-screen bg-[#0A0A12] text-white font-sans antialiased">
+    <div className="min-h-screen bg-ink-950 text-white font-sans antialiased">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-accent-600/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 max-w-2xl mx-auto px-5 md:px-8 pb-24">
@@ -27,11 +27,11 @@ export default function AccountDeletion() {
             Voltar
           </Link>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-600/25">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-600 to-accent-600 flex items-center justify-center shadow-lg shadow-brand-600/25">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <span className="text-white font-bold text-sm tracking-tight">
-              Vota<span className="text-purple-400">Snap</span>
+              Vota<span className="text-brand-400">Snap</span>
             </span>
           </div>
         </div>
@@ -54,9 +54,9 @@ export default function AccountDeletion() {
         <div className="space-y-4">
 
           {/* Opção 1 — dentro da app */}
-          <div className="bg-[#14141F] border border-white/5 rounded-2xl p-6">
+          <div className="bg-ink-900 border border-white/5 rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 bg-opacity-10">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-brand-600 to-accent-600 bg-opacity-10">
                 <Smartphone className="w-5 h-5 text-white" />
               </div>
               <h2 className="text-white text-lg font-semibold">Pela app (recomendado)</h2>
@@ -66,15 +66,15 @@ export default function AccountDeletion() {
               diretamente por lá — a eliminação é imediata.
             </p>
             <ol className="text-gray-400 text-sm space-y-1.5 list-none">
-              <li className="flex gap-2"><span className="text-purple-400 font-semibold">1.</span> Abre a app VotaSnap e entra na tua conta</li>
-              <li className="flex gap-2"><span className="text-purple-400 font-semibold">2.</span> Vai a <span className="text-white">Perfil</span></li>
-              <li className="flex gap-2"><span className="text-purple-400 font-semibold">3.</span> Desce até <span className="text-white">Zona de risco</span> → <span className="text-white">Eliminar a minha conta</span></li>
-              <li className="flex gap-2"><span className="text-purple-400 font-semibold">4.</span> Confirma escrevendo <span className="text-white">ELIMINAR</span></li>
+              <li className="flex gap-2"><span className="text-brand-400 font-semibold">1.</span> Abre a app VotaSnap e entra na tua conta</li>
+              <li className="flex gap-2"><span className="text-brand-400 font-semibold">2.</span> Vai a <span className="text-white">Perfil</span></li>
+              <li className="flex gap-2"><span className="text-brand-400 font-semibold">3.</span> Desce até <span className="text-white">Zona de risco</span> → <span className="text-white">Eliminar a minha conta</span></li>
+              <li className="flex gap-2"><span className="text-brand-400 font-semibold">4.</span> Confirma escrevendo <span className="text-white">ELIMINAR</span></li>
             </ol>
           </div>
 
           {/* Opção 2 — sem acesso à app */}
-          <div className="bg-[#14141F] border border-white/5 rounded-2xl p-6">
+          <div className="bg-ink-900 border border-white/5 rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 bg-opacity-10">
                 <Mail className="w-5 h-5 text-white" />
@@ -88,7 +88,7 @@ export default function AccountDeletion() {
             </p>
             <a
               href={MAILTO_LINK}
-              className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-medium text-sm shadow-lg shadow-purple-600/25 hover:shadow-purple-600/40 transition-all duration-300 hover:scale-[1.02]"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-brand-600 to-accent-600 rounded-xl text-white font-medium text-sm shadow-lg shadow-brand-600/25 hover:shadow-brand-600/40 transition-all duration-300 hover:scale-[1.02]"
             >
               <Mail className="w-4 h-4" />
               Pedir eliminação por email
@@ -109,7 +109,7 @@ export default function AccountDeletion() {
                 'Conta de acesso (número de telefone)',
               ].map((item) => (
                 <div key={item} className="flex items-start gap-2 text-gray-400 text-xs">
-                  <span className="w-1 h-1 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+                  <span className="w-1 h-1 rounded-full bg-brand-500 mt-1.5 flex-shrink-0" />
                   {item}
                 </div>
               ))}
@@ -117,7 +117,7 @@ export default function AccountDeletion() {
             <p className="text-gray-600 text-[11px] mt-4 leading-relaxed">
               Alguns registos podem ser retidos por período adicional quando exigido por lei ou
               para prevenção de fraude, conforme descrito na nossa{' '}
-              <Link to="/policy" className="text-purple-400 hover:text-purple-300">Política de Privacidade</Link>.
+              <Link to="/policy" className="text-brand-400 hover:text-brand-300">Política de Privacidade</Link>.
             </p>
           </div>
 

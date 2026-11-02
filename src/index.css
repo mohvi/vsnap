@@ -7,6 +7,6 @@ html {
 }
 
 body {
-  @apply bg-[#0A0A12] text-white antialiased;
+  @apply bg-ink-950 text-white antialiased;
   overflow-x: hidden;
 }

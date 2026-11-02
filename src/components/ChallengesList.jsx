@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Trophy, Clock, Users, Vote, Edit2, XCircle, Trash2, Search, CheckCircle2,
   BarChart3, Target, Camera, Video, Film, Zap, ListChecks,
@@ -24,7 +24,7 @@ const STATUS_STYLES = {
 // 'paid' já não se cria; fica só para identificar desafios antigos.
 const TYPE_STYLES = {
   free: { label: '🌍 Comunidade', color: 'text-teal-400' },
-  sponsored: { label: '🏢 Patrocinado', color: 'text-pink-400' },
+  sponsored: { label: '🏢 Patrocinado', color: 'text-accent-400' },
   paid: { label: '💳 Pago (antigo)', color: 'text-gray-400' },
 };
 
@@ -34,7 +34,7 @@ const MEDIA_TYPE_STYLES = {
   both: { label: 'Foto ou vídeo', icon: Film },
 };
 
-const selectClass = 'bg-slate-800 border border-white/5 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-purple-500 w-full sm:w-auto';
+const selectClass = 'bg-ink-800 border border-white/5 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-brand-500 w-full sm:w-auto';
 
 function IconButton({ label, className, children, ...props }) {
   return (
@@ -46,7 +46,11 @@ function IconButton({ label, className, children, ...props }) {
 
 export default function ChallengesList() {
   const { loading, challenges, entries, votes } = useAdminData();
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const queryParam = searchParams.get('q') || '';
+  const [search, setSearch] = useState(queryParam);
+  // A pesquisa global abre esta página com ?q=título.
+  useEffect(() => setSearch(queryParam), [queryParam]);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [editing, setEditing] = useState(null);
@@ -94,7 +98,7 @@ export default function ChallengesList() {
       <PageHeader icon={ListChecks} title="Desafios" subtitle={`${list.length} desafios no total`} />
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-6">
-        <label className="flex items-center gap-2 bg-slate-800 border border-white/5 rounded-xl px-3 sm:flex-1 sm:min-w-[240px] focus-within:border-purple-500">
+        <label className="flex items-center gap-2 bg-ink-800 border border-white/5 rounded-xl px-3 sm:flex-1 sm:min-w-[240px] focus-within:border-brand-500">
           <Search className="w-4 h-4 text-gray-500" />
           <span className="sr-only">Pesquisar</span>
           <input
@@ -140,7 +144,7 @@ export default function ChallengesList() {
               : 0;
 
             return (
-              <article key={challenge.id} className="bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-5 hover:border-white/20 transition-colors">
+              <article key={challenge.id} className="bg-ink-900 border border-white/10 rounded-2xl p-4 sm:p-5 hover:border-white/20 transition-colors">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                   <div className="flex gap-4 flex-1 min-w-0">
                     {challenge.coverImage && (
@@ -162,7 +166,7 @@ export default function ChallengesList() {
                         {challenge.sponsor && (challenge.sponsorId ? (
                           <Link
                             to={`/marcas/${challenge.sponsorId}`}
-                            className="text-xs px-2 py-1 rounded-full bg-pink-500/10 text-pink-300 hover:bg-pink-500/20 truncate max-w-full inline-flex items-center gap-1"
+                            className="text-xs px-2 py-1 rounded-full bg-accent-500/10 text-accent-300 hover:bg-accent-500/20 truncate max-w-full inline-flex items-center gap-1"
                           >
                             {challenge.sponsorLogo && <img src={challenge.sponsorLogo} alt="" className="w-4 h-4 rounded object-contain bg-white" />}
                             {challenge.sponsor} · relatório
@@ -180,18 +184,18 @@ export default function ChallengesList() {
                         <span className="flex items-center gap-1.5" title="Participantes"><Users className="w-3.5 h-3.5" />{challenge.totalParticipants || 0}</span>
                         <span className="flex items-center gap-1.5" title="Votos"><Vote className="w-3.5 h-3.5" />{challenge.totalVotes || 0}</span>
                         {remaining && (
-                          <span className="flex items-center gap-1.5 text-purple-400"><Clock className="w-3.5 h-3.5" />{remaining}</span>
+                          <span className="flex items-center gap-1.5 text-brand-400"><Clock className="w-3.5 h-3.5" />{remaining}</span>
                         )}
                       </div>
 
                       {challenge.voteGoal && (
                         <div className="mt-3 max-w-xs">
                           <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                            <span className="flex items-center gap-1"><Target className="w-3 h-3 text-purple-400" />Meta: {challenge.voteGoal} votos</span>
+                            <span className="flex items-center gap-1"><Target className="w-3 h-3 text-brand-400" />Meta: {challenge.voteGoal} votos</span>
                             <span>{goalPct}%</span>
                           </div>
                           <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500" style={{ width: `${goalPct}%` }} />
+                            <div className="h-full bg-gradient-to-r from-brand-500 to-accent-500" style={{ width: `${goalPct}%` }} />
                           </div>
                         </div>
                       )}
@@ -203,7 +207,7 @@ export default function ChallengesList() {
                       label="Ver análise"
                       aria-expanded={isOpen}
                       onClick={() => setExpanded(isOpen ? null : challenge.id)}
-                      className={isOpen ? 'bg-purple-600 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}
+                      className={isOpen ? 'bg-brand-600 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}
                     >
                       <BarChart3 className="w-4 h-4" />
                     </IconButton>
@@ -258,7 +262,7 @@ export default function ChallengesList() {
                           <div key={entry.id} className="flex items-center gap-3 bg-white/5 rounded-lg p-2.5">
                             <span className={`text-xs font-bold w-5 text-center ${i === 0 ? 'text-yellow-400' : 'text-gray-500'}`}>#{i + 1}</span>
                             <span className="flex-1 text-sm text-gray-300 truncate">{entry.caption || entry.id}</span>
-                            <span className="text-xs text-purple-400 font-medium flex items-center gap-1"><Vote className="w-3 h-3" /> {entry.votes || 0}</span>
+                            <span className="text-xs text-brand-400 font-medium flex items-center gap-1"><Vote className="w-3 h-3" /> {entry.votes || 0}</span>
                           </div>
                         ))}
                       </div>
@@ -294,7 +298,7 @@ function EditModal({ challenge, onClose }) {
     if (ok) onClose();
   };
 
-  const inputClass = 'w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white outline-none focus:border-purple-500';
+  const inputClass = 'w-full bg-ink-800 border border-white/5 rounded-xl p-3 text-white outline-none focus:border-brand-500';
 
   return (
     <Modal

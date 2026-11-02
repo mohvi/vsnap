@@ -11,21 +11,21 @@ const ACTIVITY_ICONS = {
   vote: <Eye className="w-4 h-4 text-blue-400" />,
   entry: <PlusCircle className="w-4 h-4 text-green-400" />,
   create: <Zap className="w-4 h-4 text-yellow-400" />,
-  win: <Crown className="w-4 h-4 text-purple-400" />,
+  win: <Crown className="w-4 h-4 text-brand-400" />,
 };
 
 const GRADIENTS = {
   blue: 'from-blue-600 to-cyan-500',
-  yellow: 'from-yellow-500 to-orange-500',
+  yellow: 'from-yellow-500 to-accent-500',
   green: 'from-green-500 to-emerald-500',
-  purple: 'from-purple-600 to-pink-600',
+  purple: 'from-brand-600 to-accent-600',
 };
 
 function AlertCard({ to, tone, icon: Icon, title, subtitle }) {
   const tones = {
     yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
     red: 'bg-red-500/10 border-red-500/20 text-red-400',
-    purple: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
+    purple: 'bg-brand-500/10 border-brand-500/20 text-brand-400',
   };
   return (
     <Link to={to} className={`flex items-start gap-2 p-3 border rounded-xl hover:brightness-125 transition ${tones[tone]}`}>
@@ -68,14 +68,14 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400" />
+            <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-brand-400" />
             Dashboard
           </h1>
           <p className="text-gray-400 mt-1 text-sm">Resumo da plataforma em tempo real.</p>
         </div>
         <Link
           to="/cc"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-medium text-sm shadow-lg shadow-purple-600/25 hover:shadow-purple-600/40 transition-shadow"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-accent-600 rounded-xl text-white font-medium text-sm shadow-lg shadow-brand-600/25 hover:shadow-brand-600/40 transition-shadow"
         >
           <PlusCircle className="w-4 h-4" />
           Novo desafio
@@ -86,7 +86,7 @@ export default function Dashboard() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.title} className="bg-[#14141F] border border-white/5 rounded-2xl p-4 sm:p-5 hover:border-purple-500/30 transition-colors">
+            <div key={stat.title} className="bg-ink-900 border border-white/5 rounded-2xl p-4 sm:p-5 hover:border-brand-500/30 transition-colors">
               <div className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-gray-400 text-xs sm:text-sm">{stat.title}</p>
@@ -106,10 +106,10 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <section className="lg:col-span-2 bg-[#14141F] border border-white/5 rounded-2xl p-4 sm:p-5 order-2 lg:order-1">
+        <section className="lg:col-span-2 bg-ink-900 border border-white/5 rounded-2xl p-4 sm:p-5 order-2 lg:order-1">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white font-semibold flex items-center gap-2">
-              <Activity className="w-5 h-5 text-purple-400" />
+              <Activity className="w-5 h-5 text-brand-400" />
               Actividade recente
             </h2>
             <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-medium">Ao vivo</span>
@@ -133,7 +133,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <section className="bg-[#14141F] border border-white/5 rounded-2xl p-4 sm:p-5 order-1 lg:order-2">
+        <section className="bg-ink-900 border border-white/5 rounded-2xl p-4 sm:p-5 order-1 lg:order-2">
           <h2 className="text-white font-semibold flex items-center gap-2 mb-4">
             <Bell className="w-5 h-5 text-yellow-400" />
             Alertas

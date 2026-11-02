@@ -18,7 +18,7 @@ export default function RedirectToApp() {
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 p-6 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-600/25">
+      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-600 to-accent-600 flex items-center justify-center shadow-lg shadow-brand-600/25">
         <Sparkles className="w-8 h-8 text-white" />
       </div>
       <p className="text-gray-400 text-sm">A abrir o VotaSnap...</p>

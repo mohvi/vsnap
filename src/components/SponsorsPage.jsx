@@ -15,14 +15,14 @@ import PageHeader from './ui/PageHeader';
 import Modal, { ModalButton } from './ui/Modal';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
-const inputClass = 'w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white outline-none focus:border-purple-500';
+const inputClass = 'w-full bg-ink-800 border border-white/5 rounded-xl p-3 text-white outline-none focus:border-brand-500';
 
 export function SponsorLogo({ sponsor, size = 'w-12 h-12' }) {
   if (sponsor?.logoUrl) {
     return <img src={sponsor.logoUrl} alt="" className={`${size} rounded-xl object-contain bg-white flex-shrink-0`} />;
   }
   return (
-    <div className={`${size} rounded-xl bg-gradient-to-br from-pink-600 to-purple-600 flex items-center justify-center flex-shrink-0 text-white font-bold`}>
+    <div className={`${size} rounded-xl bg-gradient-to-br from-accent-600 to-brand-600 flex items-center justify-center flex-shrink-0 text-white font-bold`}>
       {(sponsor?.name || '?').slice(0, 1).toUpperCase()}
     </div>
   );
@@ -46,20 +46,20 @@ export default function SponsorsPage() {
     <div className="max-w-6xl mx-auto p-4 sm:p-6">
       <PageHeader
         icon={Building2}
-        iconClass="text-pink-400"
+        iconClass="text-accent-400"
         title="Marcas"
         subtitle="Patrocinadores dos desafios. Nome e logótipo aparecem na app; contactos e valores ficam só no painel."
         actions={(
           <button
             onClick={() => setEditing({})}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-pink-600 to-purple-600 rounded-xl text-white font-medium text-sm"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-600 to-brand-600 rounded-xl text-white font-medium text-sm"
           >
             <Plus className="w-4 h-4" /> Nova marca
           </button>
         )}
       />
 
-      <label className="flex items-center gap-2 bg-slate-800 border border-white/5 rounded-xl px-3 mb-6 focus-within:border-purple-500">
+      <label className="flex items-center gap-2 bg-ink-800 border border-white/5 rounded-xl px-3 mb-6 focus-within:border-brand-500">
         <Search className="w-4 h-4 text-gray-500" />
         <span className="sr-only">Pesquisar marcas</span>
         <input
@@ -84,7 +84,7 @@ export default function SponsorsPage() {
             return (
               <article
                 key={sponsor.id}
-                className={`bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-5 ${inactive ? 'opacity-60' : ''}`}
+                className={`bg-ink-900 border border-white/10 rounded-2xl p-4 sm:p-5 ${inactive ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-start gap-4">
                   <SponsorLogo sponsor={sponsor} />
@@ -131,7 +131,7 @@ export default function SponsorsPage() {
                 <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/5">
                   <Link
                     to={`/marcas/${sponsor.id}`}
-                    className="flex-1 inline-flex items-center justify-center gap-2 py-2 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 text-sm"
+                    className="flex-1 inline-flex items-center justify-center gap-2 py-2 rounded-lg bg-brand-600/20 text-brand-300 hover:bg-brand-600/30 text-sm"
                   >
                     <BarChart3 className="w-4 h-4" /> Relatórios
                   </Link>

@@ -26,7 +26,7 @@ export default function Modal({ title, onClose, children, footer, size = 'sm' })
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`bg-slate-900 border border-white/10 w-full ${widths[size]} rounded-t-2xl sm:rounded-2xl max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom)]`}
+        className={`bg-ink-900 border border-white/10 w-full ${widths[size]} rounded-t-2xl sm:rounded-2xl max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom)]`}
       >
         <div className="flex items-start justify-between gap-3 px-5 pt-5 sm:px-6 sm:pt-6">
           <h3 id={titleId} className="text-white font-bold text-lg">{title}</h3>
@@ -49,7 +49,7 @@ export function ModalButton({ variant = 'secondary', className = '', ...props })
   const variants = {
     secondary: 'bg-white/5 hover:bg-white/10 text-white',
     danger: 'bg-red-500 hover:bg-red-600 text-white',
-    primary: 'bg-purple-600 hover:bg-purple-700 text-white',
+    primary: 'bg-brand-600 hover:bg-brand-700 text-white',
     success: 'bg-green-600 hover:bg-green-700 text-white',
   };
   return (

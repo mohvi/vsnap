@@ -43,24 +43,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A12] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-ink-950 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-accent-600/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-600/25 mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-600 to-accent-600 flex items-center justify-center shadow-lg shadow-brand-600/25 mb-4">
             <Sparkles className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            Vota<span className="text-purple-400">Snap</span>
+            Vota<span className="text-brand-400">Snap</span>
           </h1>
           <p className="text-gray-500 text-sm mt-1">Painel de administração</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-[#14141F] border border-white/10 rounded-2xl p-5 sm:p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-ink-900 border border-white/10 rounded-2xl p-5 sm:p-6 space-y-4">
           {error && (
             <div role="alert" className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
               {error}
@@ -69,7 +69,7 @@ export default function LoginPage() {
 
           <label className="block">
             <span className="text-sm text-gray-400">Email</span>
-            <div className="mt-1 flex items-center gap-2 bg-slate-800 border border-white/5 rounded-xl px-3 focus-within:border-purple-500">
+            <div className="mt-1 flex items-center gap-2 bg-ink-800 border border-white/5 rounded-xl px-3 focus-within:border-brand-500">
               <Mail className="w-4 h-4 text-gray-500" />
               <input
                 type="email"
@@ -84,7 +84,7 @@ export default function LoginPage() {
 
           <label className="block">
             <span className="text-sm text-gray-400">Palavra-passe</span>
-            <div className="mt-1 flex items-center gap-2 bg-slate-800 border border-white/5 rounded-xl px-3 focus-within:border-purple-500">
+            <div className="mt-1 flex items-center gap-2 bg-ink-800 border border-white/5 rounded-xl px-3 focus-within:border-brand-500">
               <Lock className="w-4 h-4 text-gray-500" />
               <input
                 type="password"
@@ -100,7 +100,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-accent-600 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             Entrar

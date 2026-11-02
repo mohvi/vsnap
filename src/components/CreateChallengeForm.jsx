@@ -33,7 +33,7 @@ const MEDIA_TYPES = [
 // de dados; na interface chama-se "Comunidade" (organizado pela VotaSnap).
 const CHALLENGE_TYPES = [
   { value: 'free', label: '🌍 Comunidade', color: 'border-teal-500' },
-  { value: 'sponsored', label: '🏢 Patrocinado', color: 'border-pink-500' },
+  { value: 'sponsored', label: '🏢 Patrocinado', color: 'border-accent-500' },
 ];
 
 const PRIZE_PROVIDERS = [
@@ -65,9 +65,9 @@ const INITIAL_FORM = {
 };
 
 const MAX_BANNER_BYTES = 5 * 1024 * 1024;
-const inputClass = 'w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white focus:border-purple-500 outline-none';
+const inputClass = 'w-full bg-ink-800 border border-white/5 rounded-xl p-3 text-white focus:border-brand-500 outline-none';
 
-function OptionGroup({ label, options, value, onChange, activeClass = () => 'border-purple-500' }) {
+function OptionGroup({ label, options, value, onChange, activeClass = () => 'border-brand-500' }) {
   return (
     <fieldset className="space-y-2">
       <legend className="text-sm text-gray-400 mb-2">{label}</legend>
@@ -241,9 +241,9 @@ export default function CreateChallengeForm() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="max-w-2xl mx-auto p-4 sm:p-6 bg-slate-900 rounded-2xl sm:rounded-3xl border border-white/10 shadow-2xl">
+      <div className="max-w-2xl mx-auto p-4 sm:p-6 bg-ink-900 rounded-2xl sm:rounded-3xl border border-white/10 shadow-2xl">
         <div className="flex items-center gap-3 mb-6 sm:mb-8">
-          <PlusCircle className="w-7 h-7 sm:w-8 sm:h-8 text-purple-500" />
+          <PlusCircle className="w-7 h-7 sm:w-8 sm:h-8 text-brand-500" />
           <h1 className="text-xl sm:text-2xl font-bold text-white">Novo desafio</h1>
         </div>
 
@@ -263,10 +263,10 @@ export default function CreateChallengeForm() {
           />
 
           {formData.type === 'sponsored' && (
-            <div className="space-y-4 p-4 rounded-xl border border-pink-500/20 bg-pink-500/5">
+            <div className="space-y-4 p-4 rounded-xl border border-accent-500/20 bg-accent-500/5">
               {activeSponsors.length === 0 ? (
                 <p className="text-sm text-gray-300">
-                  Ainda não há marcas activas. <Link to="/marcas" className="text-pink-300 underline">Cria a marca primeiro</Link>.
+                  Ainda não há marcas activas. <Link to="/marcas" className="text-accent-300 underline">Cria a marca primeiro</Link>.
                 </p>
               ) : (
                 <label className="block space-y-2">
@@ -349,7 +349,7 @@ export default function CreateChallengeForm() {
           <div className="space-y-2">
             <span className="text-sm text-gray-400 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Banner do desafio (opcional)</span>
             {!bannerPreview ? (
-              <label className="flex flex-col items-center justify-center gap-2 bg-slate-800 border border-dashed border-white/15 rounded-xl p-6 cursor-pointer hover:border-purple-500 transition-colors text-center">
+              <label className="flex flex-col items-center justify-center gap-2 bg-ink-800 border border-dashed border-white/15 rounded-xl p-6 cursor-pointer hover:border-brand-500 transition-colors text-center">
                 <Upload className="w-6 h-6 text-gray-500" />
                 <span className="text-sm text-gray-400">Escolher uma imagem (máx. 5MB)</span>
                 <input type="file" accept="image/*" className="sr-only" onChange={handleBannerSelect} />
@@ -369,7 +369,7 @@ export default function CreateChallengeForm() {
                 {loading && uploadProgress > 0 && (
                   <div className="absolute bottom-0 left-0 right-0 bg-black/60 rounded-b-xl px-3 py-2">
                     <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-purple-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+                      <div className="h-full bg-brand-500 transition-all" style={{ width: `${uploadProgress}%` }} />
                     </div>
                     <span className="text-[10px] text-gray-300">{Math.round(uploadProgress)}% enviado</span>
                   </div>
@@ -463,7 +463,7 @@ export default function CreateChallengeForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-2xl hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-4 bg-gradient-to-r from-brand-600 to-indigo-600 text-white font-bold rounded-2xl hover:opacity-90 transition-opacity shadow-lg shadow-brand-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading

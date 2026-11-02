@@ -15,7 +15,7 @@ import Modal, { ModalButton } from './ui/Modal';
 import Avatar from './ui/Avatar';
 
 const PAGE_SIZE = 50;
-const selectClass = 'bg-slate-800 border border-white/5 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-purple-500 w-full sm:w-auto min-w-0';
+const selectClass = 'bg-ink-800 border border-white/5 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-brand-500 w-full sm:w-auto min-w-0';
 
 function StatusBadges({ user }) {
   return (
@@ -117,7 +117,7 @@ export default function UsersList() {
       />
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-6">
-        <label className="flex items-center gap-2 bg-slate-800 border border-white/5 rounded-xl px-3 sm:flex-1 sm:min-w-[240px] focus-within:border-purple-500">
+        <label className="flex items-center gap-2 bg-ink-800 border border-white/5 rounded-xl px-3 sm:flex-1 sm:min-w-[240px] focus-within:border-brand-500">
           <Search className="w-4 h-4 text-gray-500" />
           <span className="sr-only">Pesquisar</span>
           <input
@@ -155,7 +155,7 @@ export default function UsersList() {
       {/* Mobile: cartões */}
       <div className="md:hidden space-y-3">
         {visible.map((user) => (
-          <div key={user.uid} className="bg-slate-900 border border-white/10 rounded-2xl p-4">
+          <div key={user.uid} className="bg-ink-900 border border-white/10 rounded-2xl p-4">
             <div className="flex items-start gap-3">
               <button className="flex items-center gap-3 flex-1 min-w-0 text-left" onClick={() => setSelectedUid(user.uid)}>
                 <Avatar user={user} size="w-11 h-11" />
@@ -180,7 +180,7 @@ export default function UsersList() {
       </div>
 
       {/* Desktop: tabela */}
-      <div className="hidden md:block bg-slate-900 border border-white/10 rounded-2xl overflow-x-auto">
+      <div className="hidden md:block bg-ink-900 border border-white/10 rounded-2xl overflow-x-auto">
         <table className="w-full min-w-[760px]">
           <thead>
             <tr className="border-b border-white/10 text-left">
@@ -292,8 +292,8 @@ function UserDetailModal({ user, entries, votesGiven, onClose }) {
       <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
         {[
           [Coins, 'text-yellow-400', user.snaps || 0, 'Snaps'],
-          [Trophy, 'text-purple-400', user.wins || 0, 'Vitórias'],
-          [Vote, 'text-pink-400', votesGiven.length, 'Votos dados'],
+          [Trophy, 'text-brand-400', user.wins || 0, 'Vitórias'],
+          [Vote, 'text-accent-400', votesGiven.length, 'Votos dados'],
         ].map(([Icon, color, value, label]) => (
           <div key={label} className="bg-white/5 rounded-xl p-3 text-center">
             <Icon className={`w-4 h-4 ${color} mx-auto mb-1`} />
@@ -334,7 +334,7 @@ function UserDetailModal({ user, entries, votesGiven, onClose }) {
             aria-selected={tab === key}
             onClick={() => setTab(key)}
             className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === key ? 'border-purple-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'
+              tab === key ? 'border-brand-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'
             }`}
           >
             {label}
@@ -358,7 +358,7 @@ function UserDetailModal({ user, entries, votesGiven, onClose }) {
                 <p className="text-white text-sm truncate">{e.challengeTitle}</p>
                 <p className="text-gray-500 text-xs truncate">{e.caption}</p>
               </div>
-              <span className="text-xs text-purple-400 font-medium flex items-center gap-1 flex-shrink-0">
+              <span className="text-xs text-brand-400 font-medium flex items-center gap-1 flex-shrink-0">
                 <Vote className="w-3 h-3" /> {e.votes || 0}
               </span>
               {e.mediaUrl && (
@@ -421,7 +421,7 @@ function BanModal({ user, onClose }) {
       <label className="block">
         <span className="sr-only">Motivo do banimento</span>
         <textarea
-          className="w-full bg-slate-800 border border-white/5 rounded-xl p-3 text-white outline-none focus:border-red-500 text-sm"
+          className="w-full bg-ink-800 border border-white/5 rounded-xl p-3 text-white outline-none focus:border-red-500 text-sm"
           placeholder="Motivo do banimento..."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
