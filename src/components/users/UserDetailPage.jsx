@@ -14,6 +14,7 @@ import {
   buildUserIndex, buildUserTimeline, indexRow, isBanExpired, userReports, userSnapsHistory,
 } from '../../data/users';
 import { runAction } from '../../utils/runAction';
+import { provinceName } from '../../utils/provinces';
 import { formatDate, formatDateTime, formatNumber, timeAgo } from '../../utils/format';
 import { PageLoader } from '../ui/Spinner';
 import Avatar from '../ui/Avatar';
@@ -147,7 +148,7 @@ export default function UserDetailPage() {
             </div>
             <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-4 text-sm text-gray-400">
               <span className="flex items-center gap-2"><Phone className="w-3.5 h-3.5" />{user.phone || 'Sem telefone'}</span>
-              <span className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5" />{[user.city, user.province].filter(Boolean).join(', ') || 'Sem localização'}</span>
+              <span className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5" />{[user.city, provinceName(user.province)].filter(Boolean).join(', ') || 'Sem localização'}</span>
               <span className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5" />Registado em {formatDate(user.createdAt)}</span>
               <span className="flex items-center gap-2"><Activity className="w-3.5 h-3.5" />Última actividade há {timeAgo(row.lastActiveAt)}</span>
               {user.phoneVerifiedAt && (

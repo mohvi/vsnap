@@ -11,6 +11,7 @@ import {
 } from '../data/users';
 import { runAction } from '../utils/runAction';
 import { downloadCsv } from '../utils/csv';
+import { provinceName } from '../utils/provinces';
 import { formatDate, formatNumber, timeAgo } from '../utils/format';
 import { PageLoader } from './ui/Spinner';
 import PageHeader from './ui/PageHeader';
@@ -155,7 +156,7 @@ export default function UsersList() {
             label="Filtrar por província"
             value={filters.province}
             onChange={(v) => setFilter('province', v)}
-            options={{ all: 'Todas as províncias', ...Object.fromEntries(provinces.map((p) => [p, p])) }}
+            options={{ all: 'Todas as províncias', ...Object.fromEntries(provinces.map((p) => [p, provinceName(p)])) }}
           />
           <Select
             label="Filtrar por cidade"
@@ -275,7 +276,7 @@ export default function UsersList() {
                       </div>
                     </div>
                   </td>
-                  <td className="p-4 text-gray-400 text-sm whitespace-nowrap">{[user.city, user.province].filter(Boolean).join(', ') || '—'}</td>
+                  <td className="p-4 text-gray-400 text-sm whitespace-nowrap">{[user.city, provinceName(user.province)].filter(Boolean).join(', ') || '—'}</td>
                   <td className="p-4 text-yellow-400 text-sm font-medium tabular-nums">{formatNumber(user.snaps || 0)}</td>
                   <td className="p-4 text-gray-300 text-sm tabular-nums">{row.entriesCount}</td>
                   <td className="p-4 text-gray-300 text-sm tabular-nums">{row.votesCount}</td>

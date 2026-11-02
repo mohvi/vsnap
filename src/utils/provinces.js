@@ -1,5 +1,5 @@
 // src/utils/provinces.js
-export default [
+const PROVINCES = [
   {
     code: 'MP',
     name: 'Maputo',
@@ -56,3 +56,8 @@ export default [
     cities: ['Lichinga', 'Cuamba', 'Mandimba', 'Metarica', 'Ngaúma', 'Marrupa', 'Sanga', 'Majune']
   }
 ];
+
+export default PROVINCES;
+
+// Os utilizadores guardam o código da província (ex.: MP); o painel mostra o nome.
+export const provinceName = (code) => PROVINCES.find((p) => p.code === code)?.name || code;

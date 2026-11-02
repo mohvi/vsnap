@@ -1,7 +1,7 @@
 // Separadores simples: `tabs` é uma lista de [chave, rótulo].
 export default function Tabs({ tabs, value, onChange, className = '' }) {
   return (
-    <div role="tablist" className={`flex gap-1 border-b border-white/10 overflow-x-auto ${className}`}>
+    <div role="tablist" className={`flex gap-1 border-b border-white/10 overflow-x-auto overflow-y-hidden ${className}`}>
       {tabs.map(([key, label]) => (
         <button
           key={key}
