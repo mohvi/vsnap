@@ -147,13 +147,15 @@ export default function WinnersConfirmation() {
                     {ranked.length} participantes
                   </span>
                   <div className="flex flex-col-reverse sm:flex-row gap-2">
-                    <button
-                      onClick={() => askRevert(challenge)}
-                      className="px-4 py-2.5 sm:py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-medium transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      Reverter (+3 dias)
-                    </button>
+                    {!challenge.processedAt && (
+                      <button
+                        onClick={() => askRevert(challenge)}
+                        className="px-4 py-2.5 sm:py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-medium transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Reverter (+3 dias)
+                      </button>
+                    )}
                     {!challenge.isTie && (
                       <button
                         onClick={() => askConfirm(challenge)}

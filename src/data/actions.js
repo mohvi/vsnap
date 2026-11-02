@@ -2,6 +2,7 @@ import { ref, update, increment, runTransaction, push } from 'firebase/database'
 import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { db, storage } from '../fb';
 import { DAY_MS, PARTICIPATION_SNAPS, WINNER_SNAPS } from '../config';
+import { adminRequest } from '../services/adminApi';
 
 // Todas as escritas do painel ficam aqui. Regras seguidas:
 //  - contadores usam increment() (sem ler-modificar-escrever → sem corridas);
@@ -47,21 +48,17 @@ export async function updateChallenge(challengeId, fields) {
   await update(ref(db, `challenges/${challengeId}`), { ...fields, updatedAt: Date.now() });
 }
 
+// O fecho é feito pela API para que os resultados sejam processados uma só vez no servidor.
 export async function endChallenge(challengeId) {
-  await transitionChallenge(
-    challengeId,
-    (c) => c.status === 'active',
-    () => ({ status: 'completed', endsAt: Date.now() }),
-    'O desafio já não está activo.',
-  );
+  await adminRequest('/api/challenges/close', { challengeId, endNow: true });
 }
 
 export async function reactivateChallenge(challengeId, days = 7) {
   await transitionChallenge(
     challengeId,
-    (c) => c.status !== 'active',
+    (c) => c.status !== 'active' && !c.processedAt,
     () => ({ status: 'active', endsAt: Date.now() + days * DAY_MS }),
-    'O desafio já está activo.',
+    'O desafio já está activo ou já foi processado.',
   );
 }
 
@@ -145,7 +142,7 @@ export async function resolveTie(challengeId, entry) {
 export async function revertChallenge(challengeId, days = 3) {
   await transitionChallenge(
     challengeId,
-    (c) => c.status === 'pending_confirmation',
+    (c) => c.status === 'pending_confirmation' && !c.processedAt,
     (c) => ({
       status: 'active',
       endsAt: Date.now() + days * DAY_MS,
@@ -156,7 +153,7 @@ export async function revertChallenge(challengeId, days = 3) {
       revertedAt: Date.now(),
       revertCount: (c.revertCount || 0) + 1,
     }),
-    'O desafio já não está a aguardar confirmação.',
+    'O desafio já não está a aguardar confirmação ou já foi processado.',
   );
 }
 

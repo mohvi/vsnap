@@ -27,3 +27,10 @@ yarn-error.log*
 
 # firebase-admin service account
 serviceAccount*.json
+
+# credenciais Firebase
+*-firebase-adminsdk-*.json
+service-account*.json
+.env.*
+!.env.example
+google-services.json

@@ -214,7 +214,7 @@ export default function ChallengesList() {
                       <IconButton label="Encerrar" onClick={() => askEnd(challenge)} className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400">
                         <XCircle className="w-4 h-4" />
                       </IconButton>
-                    ) : (
+                    ) : !challenge.processedAt && (
                       <IconButton label="Reactivar (+7 dias)" onClick={() => handleReactivate(challenge)} className="bg-green-500/10 hover:bg-green-500/20 text-green-400">
                         <CheckCircle2 className="w-4 h-4" />
                       </IconButton>
