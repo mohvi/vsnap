@@ -1,4 +1,4 @@
-import { ref, update, increment, runTransaction, push } from 'firebase/database';
+import { ref, update, increment, runTransaction, push, serverTimestamp } from 'firebase/database';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../fb';
 import { DAY_MS, PARTICIPATION_SNAPS, WINNER_SNAPS } from '../config';
@@ -122,27 +122,27 @@ export async function confirmWinner(challengeId) {
   await logAudit('winner.confirm', { type: 'challenge', id: challengeId });
 }
 
-// Resolve um empate. A transacção garante que só um admin/clique consegue
-// escolher o vencedor; só depois disso os Snaps são creditados (increment).
+// Resolve um empate numa única escrita: vencedor, Snaps e registo entram juntos
+// ou não entra nada. A regra de `tieResolvedAt` só aceita a primeira resolução
+// de um desafio empatado, por isso um segundo clique (ou admin) é recusado.
 export async function resolveTie(challengeId, entry) {
-  await transitionChallenge(
-    challengeId,
-    (c) => c.status === 'pending_confirmation' && c.isTie === true,
-    () => ({
-      winnerId: entry.userId,
-      winnerEntryId: entry.id,
-      winnerVotes: entry.votes || 0,
-      isTie: false,
-      tieResolvedAt: Date.now(),
-    }),
-    'O empate já foi resolvido.',
-  );
-  // O vencedor já tinha recebido os Snaps de participação: recebe a diferença.
-  await update(ref(db), {
+  const updates = {
+    [`challenges/${challengeId}/winnerId`]: entry.userId,
+    [`challenges/${challengeId}/winnerEntryId`]: entry.id,
+    [`challenges/${challengeId}/winnerVotes`]: entry.votes || 0,
+    [`challenges/${challengeId}/isTie`]: false,
+    [`challenges/${challengeId}/tieResolvedAt`]: serverTimestamp(),
+    // O vencedor já tinha recebido os Snaps de participação: recebe a diferença.
     [`users/${entry.userId}/snaps`]: increment(WINNER_SNAPS - PARTICIPATION_SNAPS),
     [`users/${entry.userId}/wins`]: increment(1),
-  });
-  await logAudit('winner.tie', { type: 'challenge', id: challengeId }, { winnerId: entry.userId, entryId: entry.id });
+  };
+  addAudit(updates, 'winner.tie', { type: 'challenge', id: challengeId }, { winnerId: entry.userId, entryId: entry.id });
+  try {
+    await update(ref(db), updates);
+  } catch (err) {
+    if (/permission/i.test(err?.code || err?.message || '')) throw new StaleStateError('O empate já foi resolvido.');
+    throw err;
+  }
 }
 
 // Volta a abrir o desafio por mais `days` dias. Os Snaps já distribuídos
@@ -159,6 +159,9 @@ export async function revertChallenge(challengeId, days = 3) {
       winnerEntryId: null,
       winnerVotes: null,
       isTie: false,
+      // Um novo resultado pode voltar a ser confirmado ou desempatado.
+      tieResolvedAt: null,
+      confirmedAt: null,
       revertedAt: Date.now(),
       revertCount: (c.revertCount || 0) + 1,
     }),
@@ -187,7 +190,8 @@ export async function banUsers(uids, reason, until = null) {
   await update(ref(db), updates);
 }
 
-export async function unbanUsers(uids) {
+// `auto` marca no registo os banimentos temporários levantados por terem expirado.
+export async function unbanUsers(uids, { auto = false } = {}) {
   const updates = {};
   uids.forEach((uid) => {
     Object.assign(updates, {
@@ -196,7 +200,7 @@ export async function unbanUsers(uids) {
       [`users/${uid}/bannedUntil`]: null,
       [`users/${uid}/banReason`]: null,
     });
-    addAudit(updates, 'user.unban', { type: 'user', id: uid });
+    addAudit(updates, 'user.unban', { type: 'user', id: uid }, auto ? { reason: 'Prazo do banimento terminou' } : null);
   });
   await update(ref(db), updates);
 }
@@ -207,7 +211,7 @@ export async function warnUsers(uids, reason) {
   const updates = {};
   uids.forEach((uid) => {
     const id = push(ref(db, `users/${uid}/warnings`)).key;
-    updates[`users/${uid}/warnings/${id}`] = { reason: text, createdAt: Date.now(), by: currentAdmin().email };
+    updates[`users/${uid}/warnings/${id}`] = { reason: text, createdAt: Date.now(), by: adminLabel() };
     updates[`users/${uid}/warningsCount`] = increment(1);
     addAudit(updates, 'user.warn', { type: 'user', id: uid }, { reason: text });
   });
@@ -220,7 +224,7 @@ export async function adjustSnaps(uid, amount, reason) {
   const updates = {
     [`users/${uid}/snaps`]: increment(amount),
     [`snaps_history/${uid}/${id}`]: {
-      amount, type: 'admin_adjustment', reason: reason.trim(), createdAt: Date.now(), by: currentAdmin().email,
+      amount, type: 'admin_adjustment', reason: reason.trim(), createdAt: Date.now(), by: adminLabel(),
     },
   };
   addAudit(updates, 'user.snaps', { type: 'user', id: uid }, { amount, reason: reason.trim() });
@@ -230,8 +234,7 @@ export async function adjustSnaps(uid, amount, reason) {
 // Notas internas: adminNotes/{uid} só é legível por admins.
 export async function addAdminNote(uid, text) {
   const id = push(ref(db, `adminNotes/${uid}`)).key;
-  const admin = currentAdmin();
-  const updates = { [`adminNotes/${uid}/${id}`]: { text: text.trim(), createdAt: Date.now(), by: admin.email } };
+  const updates = { [`adminNotes/${uid}/${id}`]: { text: text.trim(), createdAt: Date.now(), by: adminLabel() } };
   addAudit(updates, 'user.note', { type: 'user', id: uid });
   await update(ref(db), updates);
 }
@@ -252,8 +255,13 @@ function currentAdmin() {
   return { uid: u?.uid || null, email: u?.email || null };
 }
 
+// Nome guardado em avisos, notas e movimentos de Snaps (a regra exige texto).
+const adminLabel = () => currentAdmin().email || currentAdmin().uid || 'admin';
+
+// `at` usa a hora do servidor: a regra de adminAudit exige-a e recusa registos
+// com autor diferente da sessão, por isso não é possível forjar quem fez o quê.
 function auditRecord(action, target, details) {
-  return { action, target, details: details || null, by: currentAdmin(), at: Date.now() };
+  return { action, target, details: details || null, by: currentAdmin(), at: serverTimestamp() };
 }
 
 function addAudit(updates, action, target, details) {

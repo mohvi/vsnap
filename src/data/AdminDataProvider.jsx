@@ -1,7 +1,9 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../fb';
 import { computeDashboardMetrics } from './metrics';
+import { isBanExpired } from './users';
+import { unbanUsers } from './actions';
 import { errorMessage } from '../utils/runAction';
 
 // Nós do Realtime Database partilhados por todo o painel. Antes cada ecrã
@@ -46,6 +48,19 @@ export function AdminDataProvider({ children }) {
     );
     return () => unsubs.forEach((unsub) => unsub());
   }, []);
+
+  // Sem Cloud Functions para levantar banimentos temporários: o primeiro admin
+  // a abrir o painel depois do prazo levanta-os (uma vez por sessão). A app e
+  // as regras já tratam a conta como desbloqueada assim que o prazo passa.
+  const autoUnbanDone = useRef(false);
+  useEffect(() => {
+    if (!loaded.users || autoUnbanDone.current) return;
+    autoUnbanDone.current = true;
+    const expired = Object.entries(data.users).filter(([, u]) => isBanExpired(u)).map(([uid]) => uid);
+    if (expired.length) {
+      unbanUsers(expired, { auto: true }).catch((err) => console.warn('Não foi possível levantar banimentos expirados:', err));
+    }
+  }, [loaded.users, data.users]);
 
   const loading = Object.keys(NODES).some((k) => !loaded[k]);
   const metrics = useMemo(() => computeDashboardMetrics(data), [data]);
