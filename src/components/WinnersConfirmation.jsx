@@ -28,7 +28,7 @@ export default function WinnersConfirmation() {
 
   const askConfirm = (challenge) => setDialog({
     title: 'Confirmar vencedor?',
-    message: <>O prémio de <strong className="text-white">&quot;{challenge.title}&quot;</strong> será marcado como entregue.</>,
+    message: <>O prémio de <strong className="text-white">&quot;{challenge.title}&quot;</strong> será marcado como entregue. O vencedor e os participantes recebem uma notificação.</>,
     confirmLabel: 'Confirmar',
     variant: 'success',
     onConfirm: () => runAction(() => confirmWinner(challenge.id), { success: 'Vencedor confirmado' }),

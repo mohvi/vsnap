@@ -101,7 +101,7 @@ export function WarnModal({ users, onClose }) {
       )}
     >
       <p className="text-gray-400 text-sm mb-4">
-        O aviso fica na conta de {who(users)} e conta para o histórico. Usa-o antes de banir.
+        O aviso fica na conta de {who(users)}, conta para o histórico e é enviado por notificação com o motivo. Usa-o antes de banir.
       </p>
       <label className="block">
         <span className="text-gray-300 text-xs font-medium">Motivo do aviso</span>

@@ -1,8 +1,12 @@
-import { ref, update, increment, runTransaction, push, serverTimestamp } from 'firebase/database';
+import { ref, get, update, increment, runTransaction, push, serverTimestamp } from 'firebase/database';
+import { toast } from 'sonner';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../fb';
 import { DAY_MS, PARTICIPATION_SNAPS, WINNER_SNAPS } from '../config';
 import { adminRequest } from '../services/adminApi';
+import {
+  inviteWinnerMessage, newChallengeMessage, newInviteCampaignMessage, warningMessage, winnerMessages,
+} from './push';
 
 // Todas as escritas do painel ficam aqui. Regras seguidas:
 //  - contadores usam increment() (sem ler-modificar-escrever → sem corridas);
@@ -33,11 +37,12 @@ async function transitionChallenge(challengeId, guard, apply, staleMessage) {
 
 // O desafio e o acordo comercial (só admin) são gravados juntos: não fica
 // um desafio patrocinado publicado sem o registo do que a marca vai pagar.
-export async function createChallenge(challengeId, payload, deal = null) {
+export async function createChallenge(challengeId, payload, deal = null, notifyUids = []) {
   await update(ref(db), {
     [`challenges/${challengeId}`]: payload,
     [`challengeDeals/${challengeId}`]: deal,
   });
+  autoNotify(newChallengeMessage(notifyUids, challengeId, payload), { type: 'challenge', id: challengeId }, 'all');
   await logAudit('challenge.create', { type: 'challenge', id: challengeId }, { title: payload.title, type: payload.type });
 }
 
@@ -125,13 +130,19 @@ export async function updateChallengeDeal(challengeId, fields) {
 // ── Vencedores ──
 
 export async function confirmWinner(challengeId) {
-  await transitionChallenge(
+  const challenge = await transitionChallenge(
     challengeId,
     (c) => c.status === 'pending_confirmation' && !c.isTie && !!c.winnerId,
     () => ({ status: 'completed', confirmedAt: Date.now(), prizePaid: true }),
     'Este desafio já foi confirmado ou alterado por outro admin.',
   );
   await logAudit('winner.confirm', { type: 'challenge', id: challengeId });
+  const entries = (await get(ref(db, `entries/${challengeId}`)).catch(() => null))?.val() || {};
+  winnerMessages(challengeId, challenge, entries).forEach((m, i) => autoNotify(
+    m,
+    i === 0 ? { type: 'user', id: challenge.winnerId } : { type: 'challenge', id: challengeId },
+    i === 0 ? 'user' : 'challenge',
+  ));
 }
 
 // Resolve um empate numa única escrita: vencedor, Snaps e registo entram juntos
@@ -228,6 +239,8 @@ export async function warnUsers(uids, reason) {
     addAudit(updates, 'user.warn', { type: 'user', id: uid }, { reason: text });
   });
   await update(ref(db), updates);
+  // A app ainda não mostra os avisos: a notificação é a forma de o utilizador saber.
+  autoNotify(warningMessage(uids, text), uids.length === 1 ? { type: 'user', id: uids[0] } : { type: 'push', id: 'warned' }, 'warned');
 }
 
 // Acerto manual de Snaps: saldo e histórico na mesma escrita, sempre com motivo.
@@ -344,15 +357,16 @@ export async function removeReportedEntry(report, { entries, votes, reports }) {
 //  inviteCampaigns/{id} → público; a app só conta convites enquanto status
 //  for 'active' e endsAt não tiver passado (regras).
 
-export async function createInviteCampaign(payload) {
+export async function createInviteCampaign(payload, notifyUids = []) {
   const id = push(ref(db, 'inviteCampaigns')).key;
   const updates = { [`inviteCampaigns/${id}`]: { ...payload, createdBy: adminLabel() } };
   addAudit(updates, 'invite.create', { type: 'invite', id }, { title: payload.title });
   await update(ref(db), updates);
+  autoNotify(newInviteCampaignMessage(notifyUids, payload), { type: 'invite', id }, 'all');
   return id;
 }
 
-export async function endInviteCampaign(campaignId, winnerUid = null) {
+export async function endInviteCampaign(campaignId, winnerUid = null, campaign = null) {
   const updates = {
     [`inviteCampaigns/${campaignId}/status`]: 'ended',
     [`inviteCampaigns/${campaignId}/endedAt`]: serverTimestamp(),
@@ -360,6 +374,7 @@ export async function endInviteCampaign(campaignId, winnerUid = null) {
   };
   addAudit(updates, 'invite.end', { type: 'invite', id: campaignId }, winnerUid ? { winnerId: winnerUid } : null);
   await update(ref(db), updates);
+  if (winnerUid) autoNotify(inviteWinnerMessage(winnerUid, campaign), { type: 'user', id: winnerUid }, 'user');
 }
 
 // Anula um convite suspeito: o convidador perde 1; o número continua marcado
@@ -391,4 +406,14 @@ export async function sendPushNotification({ uids, title, body, url }, auditTarg
   if (!response.ok) throw new Error(result.error || 'Não foi possível enviar as notificações.');
   await logAudit('push.send', auditTarget, { title, audience, sent: result.sent ?? 0, failed: result.failed ?? 0 });
   return result;
+}
+
+// Envia sem bloquear nem fazer falhar a acção principal (que já foi gravada).
+// Se o envio falhar, o admin vê um aviso e pode reenviar em Notificações.
+function autoNotify(msg, auditTarget, audience) {
+  if (!msg?.uids?.length) return;
+  sendPushNotification(msg, auditTarget, audience).catch((err) => {
+    console.warn('Notificação automática falhou:', err);
+    toast.warning('A acção foi feita, mas a notificação não foi enviada', { description: err?.message });
+  });
 }

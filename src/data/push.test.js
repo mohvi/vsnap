@@ -44,3 +44,25 @@ describe('públicos das notificações', () => {
     expect(auditTargetFor({ audience: 'user', uid: 'ana' })).toEqual({ type: 'user', id: 'ana' });
   });
 });
+
+describe('notificações automáticas', () => {
+  it('vencedor recebe uma mensagem e os outros participantes outra, sem repetidos', async () => {
+    const { winnerMessages } = await import('./push');
+    const msgs = winnerMessages('c1', { title: 'Pôr do sol', prize: '5000 MZN', winnerId: 'ana' }, {
+      e1: { userId: 'ana' }, e2: { userId: 'rui' }, e3: { userId: 'rui' }, e4: { userId: 'eva' },
+    });
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0]).toMatchObject({ uids: ['ana'], url: '/challenge/c1' });
+    expect(msgs[0].body).toContain('5000 MZN');
+    expect(msgs[1].uids).toEqual(['rui', 'eva']);
+    expect(winnerMessages('c1', { title: 'x', winnerId: 'ana' }, { e1: { userId: 'ana' } })).toHaveLength(1);
+  });
+
+  it('corta títulos e mensagens longos para os limites da API', async () => {
+    const { newChallengeMessage, TITLE_MAX, BODY_MAX } = await import('./push');
+    const m = newChallengeMessage(['a'], 'c', { title: 'T'.repeat(200), prize: 'P'.repeat(300) });
+    expect(m.title.length).toBeLessThanOrEqual(TITLE_MAX);
+    expect(m.body.length).toBeLessThanOrEqual(BODY_MAX);
+    expect(m.title.endsWith('…')).toBe(true);
+  });
+});

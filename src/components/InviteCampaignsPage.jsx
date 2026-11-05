@@ -61,7 +61,7 @@ export default function InviteCampaignsPage() {
         subtitle={`Cada edição dura ${INVITE_DURATION_DAYS} dias. Os convites são contados automaticamente pela app e validados pelas regras do Firebase.`}
       />
 
-      {!current && <CreateCampaignCard />}
+      {!current && <CreateCampaignCard users={users} />}
 
       {current && (
         <>
@@ -213,9 +213,9 @@ export default function InviteCampaignsPage() {
           variant="primary"
           confirmLabel="Encerrar"
           message={winner
-            ? `O vencedor registado será ${userLabel(users, winner.uid)} (${winner.reason === 'goal' ? 'primeiro a chegar à meta' : 'mais convites no fim do prazo'}). A app deixa de aceitar convites.`
+            ? `O vencedor registado será ${userLabel(users, winner.uid)} (${winner.reason === 'goal' ? 'primeiro a chegar à meta' : 'mais convites no fim do prazo'}) e recebe uma notificação. A app deixa de aceitar convites.`
             : 'Ainda não há vencedor (ninguém chegou à meta nem ao mínimo). A app deixa de aceitar convites.'}
-          onConfirm={() => runAction(() => endInviteCampaign(current.id, winner?.uid || null), { success: 'Edição encerrada' })}
+          onConfirm={() => runAction(() => endInviteCampaign(current.id, winner?.uid || null, current), { success: 'Edição encerrada' })}
           onClose={() => setConfirmEnd(false)}
         />
       )}
@@ -223,7 +223,8 @@ export default function InviteCampaignsPage() {
   );
 }
 
-function CreateCampaignCard() {
+function CreateCampaignCard({ users }) {
+  const [notifyAll, setNotifyAll] = useState(true);
   const [form, setForm] = useState({ title: 'Convida os teus amigos', prize: '', goal: 100, minimum: 30 });
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -233,7 +234,7 @@ function CreateCampaignCard() {
 
   const start = async () => {
     setBusy(true);
-    await runAction(() => createInviteCampaign(newCampaignPayload(form)), { success: 'Desafio de convites iniciado' });
+    await runAction(() => createInviteCampaign(newCampaignPayload(form), notifyAll ? Object.keys(users) : []), { success: 'Desafio de convites iniciado' });
     setBusy(false);
   };
 
@@ -261,6 +262,12 @@ function CreateCampaignCard() {
         </label>
       </div>
       {minimum > goal && <p className="text-red-400 text-xs mt-2">O mínimo não pode ser maior do que a meta.</p>}
+      <div className="mt-4">
+        <label className="flex items-start gap-3 text-sm text-gray-300 cursor-pointer select-none">
+            <input type="checkbox" className="mt-0.5 w-4 h-4 accent-brand-500" checked={notifyAll} onChange={(e) => setNotifyAll(e.target.checked)} />
+            <span>Avisar todos os utilizadores com uma notificação push</span>
+          </label>
+      </div>
       <button
         disabled={!valid || busy}
         onClick={start}

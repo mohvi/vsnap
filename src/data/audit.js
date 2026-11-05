@@ -26,7 +26,7 @@ export const AUDIT_ACTIONS = {
   'push.send': { label: 'Enviou notificação a', group: 'Notificações' },
 };
 
-const PUSH_AUDIENCE_LABELS = { all: 'todos os utilizadores', inactive: 'utilizadores inactivos' };
+const PUSH_AUDIENCE_LABELS = { all: 'todos os utilizadores', inactive: 'utilizadores inactivos', warned: 'utilizadores avisados' };
 
 export const AUDIT_GROUPS = [...new Set(Object.values(AUDIT_ACTIONS).map((a) => a.group))];
 

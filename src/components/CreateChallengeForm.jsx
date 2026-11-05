@@ -96,7 +96,8 @@ function OptionGroup({ label, options, value, onChange, activeClass = () => 'bor
 }
 
 export default function CreateChallengeForm() {
-  const { sponsors } = useAdminData();
+  const { sponsors, users } = useAdminData();
+  const [notifyAll, setNotifyAll] = useState(true);
   const activeSponsors = useMemo(
     () => toList(sponsors).filter((s) => s.active !== false).sort((a, b) => (a.name || '').localeCompare(b.name || '')),
     [sponsors],
@@ -221,9 +222,9 @@ export default function CreateChallengeForm() {
         prizeProvider: formData.prizeProvider,
         prizeNotes: formData.prizeNotes.trim() || null,
         createdAt: now,
-      } : null);
+      } : null, notifyAll ? Object.keys(users) : []);
 
-      toast.success('Desafio criado com sucesso!');
+      toast.success(notifyAll ? 'Desafio criado e utilizadores avisados' : 'Desafio criado com sucesso!');
       setFormData(INITIAL_FORM);
       removeBanner();
     } catch (err) {
@@ -459,6 +460,11 @@ export default function CreateChallengeForm() {
             </p>
             <p>Mídia aceite: <span className="text-white">{MEDIA_TYPES.find((m) => m.value === formData.allowedMediaType)?.label}</span></p>
           </div>
+
+<label className="flex items-start gap-3 text-sm text-gray-300 cursor-pointer select-none">
+            <input type="checkbox" className="mt-0.5 w-4 h-4 accent-brand-500" checked={notifyAll} onChange={(e) => setNotifyAll(e.target.checked)} />
+            <span>Avisar todos os utilizadores com uma notificação push (abre o desafio ao tocar)</span>
+          </label>
 
           <button
             type="submit"
