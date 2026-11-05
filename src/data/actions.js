@@ -327,3 +327,37 @@ export async function removeReportedEntry(report, { entries, votes, reports }) {
     }
   }
 }
+
+// ── Desafio de convites ──
+//  inviteCampaigns/{id} → público; a app só conta convites enquanto status
+//  for 'active' e endsAt não tiver passado (regras).
+
+export async function createInviteCampaign(payload) {
+  const id = push(ref(db, 'inviteCampaigns')).key;
+  const updates = { [`inviteCampaigns/${id}`]: { ...payload, createdBy: adminLabel() } };
+  addAudit(updates, 'invite.create', { type: 'invite', id }, { title: payload.title });
+  await update(ref(db), updates);
+  return id;
+}
+
+export async function endInviteCampaign(campaignId, winnerUid = null) {
+  const updates = {
+    [`inviteCampaigns/${campaignId}/status`]: 'ended',
+    [`inviteCampaigns/${campaignId}/endedAt`]: serverTimestamp(),
+    [`inviteCampaigns/${campaignId}/winnerUid`]: winnerUid,
+  };
+  addAudit(updates, 'invite.end', { type: 'invite', id: campaignId }, winnerUid ? { winnerId: winnerUid } : null);
+  await update(ref(db), updates);
+}
+
+// Anula um convite suspeito: o convidador perde 1; o número continua marcado
+// como usado, por isso não volta a contar para ninguém.
+export async function voidInviteAttribution(campaignId, inviteeUid, inviterUid, reason) {
+  const updates = {
+    [`inviteAttributions/${campaignId}/${inviteeUid}`]: null,
+    [`inviteProgress/${campaignId}/${inviterUid}/count`]: increment(-1),
+    [`inviteVoided/${campaignId}/${inviteeUid}`]: { inviterUid, reason: reason?.trim() || null, at: serverTimestamp(), by: adminLabel() },
+  };
+  addAudit(updates, 'invite.void', { type: 'user', id: inviterUid }, { reason: reason?.trim() || null, inviteeUid });
+  await update(ref(db), updates);
+}

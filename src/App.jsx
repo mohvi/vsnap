@@ -19,10 +19,12 @@ const MockDataPanel = lazy(() => import('./components/MockDataPanel'));
 const PrivacyPolicy = lazy(() => import('./components/Privacypolicy'));
 const AccountDeletion = lazy(() => import('./components/Accountdeletion'));
 const RedirectToApp = lazy(() => import('./components/RedirectToApp'));
+const InviteLanding = lazy(() => import('./components/InviteLanding'));
 const SponsorsPage = lazy(() => import('./components/SponsorsPage'));
 const SponsorReport = lazy(() => import('./components/SponsorReport'));
 const UserDetailPage = lazy(() => import('./components/users/UserDetailPage'));
 const AuditLog = lazy(() => import('./components/AuditLog'));
+const InviteCampaignsPage = lazy(() => import('./components/InviteCampaignsPage'));
 
 export default function App() {
   return (
@@ -35,6 +37,7 @@ export default function App() {
           <Route path="/eliminar-conta" element={<AccountDeletion />} />
           <Route path="/entry/:challengeId/:entryId" element={<RedirectToApp />} />
           <Route path="/challenge/:challengeId" element={<RedirectToApp />} />
+          <Route path="/invite/:code" element={<InviteLanding />} />
 
           <Route element={<AuthRoot />}>
             <Route path="/login" element={<LoginPage />} />
@@ -49,6 +52,7 @@ export default function App() {
               <Route path="/ul" element={<UsersList />} />
               <Route path="/ul/:uid" element={<UserDetailPage />} />
               <Route path="/auditoria" element={<AuditLog />} />
+              <Route path="/convites" element={<InviteCampaignsPage />} />
               <Route path="/wc" element={<WinnersConfirmation />} />
               <Route path="/mc" element={<ModerationPanel />} />
               {ENABLE_MOCK && <Route path="/mock" element={<MockDataPanel />} />}

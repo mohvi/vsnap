@@ -20,6 +20,7 @@ const NODES = {
   sponsors: 'sponsors',
   sponsorPrivate: 'sponsorPrivate',
   challengeDeals: 'challengeDeals',
+  inviteCampaigns: 'inviteCampaigns',
 };
 
 const AdminDataContext = createContext(null);

@@ -15,7 +15,7 @@ import { selectClass } from './ui/fields';
 
 const LIMIT = 500;
 
-const GROUP_TONES = { Utilizadores: 'blue', Desafios: 'brand', Vencedores: 'amber', Marcas: 'green', Moderação: 'red' };
+const GROUP_TONES = { Utilizadores: 'blue', Desafios: 'brand', Vencedores: 'amber', Marcas: 'green', Moderação: 'red', Convites: 'brand' };
 
 export default function AuditLog() {
   const data = useAdminData();

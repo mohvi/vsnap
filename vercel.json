@@ -2,5 +2,10 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "rewrites": [{ "source": "/((?!\\.well-known/).*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/entry/:challengeId/:entryId", "destination": "/api/share?type=entry&c=:challengeId&e=:entryId" },
+    { "source": "/challenge/:challengeId", "destination": "/api/share?type=challenge&c=:challengeId" },
+    { "source": "/invite/:code", "destination": "/api/share?type=invite&code=:code" },
+    { "source": "/((?!\.well-known/|api/).*)", "destination": "/index.html" }
+  ]
 }

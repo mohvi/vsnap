@@ -19,16 +19,20 @@ export const AUDIT_ACTIONS = {
   'deal.update': { label: 'Alterou o acordo de', group: 'Marcas' },
   'report.dismiss': { label: 'Arquivou a denúncia', group: 'Moderação' },
   'report.remove_entry': { label: 'Removeu publicação de', group: 'Moderação' },
+  'invite.create': { label: 'Iniciou o desafio de convites', group: 'Convites' },
+  'invite.end': { label: 'Encerrou o desafio de convites', group: 'Convites' },
+  'invite.void': { label: 'Anulou um convite de', group: 'Convites' },
 };
 
 export const AUDIT_GROUPS = [...new Set(Object.values(AUDIT_ACTIONS).map((a) => a.group))];
 
 // Nome legível do alvo de um registo, a partir dos dados já carregados.
-export function auditTargetLabel(target, { users = {}, challenges = {}, sponsors = {} }) {
+export function auditTargetLabel(target, { users = {}, challenges = {}, sponsors = {}, inviteCampaigns = {} }) {
   if (!target?.id) return '—';
   if (target.type === 'user') return users[target.id]?.username ? `@${users[target.id].username}` : target.id;
   if (target.type === 'challenge') return challenges[target.id]?.title ? `"${challenges[target.id].title}"` : target.id;
   if (target.type === 'sponsor') return sponsors[target.id]?.name || target.id;
+  if (target.type === 'invite') return inviteCampaigns[target.id]?.title ? `"${inviteCampaigns[target.id].title}"` : target.id;
   return target.id;
 }
 
@@ -36,6 +40,7 @@ export function auditTargetLink(target, { challenges = {} } = {}) {
   if (!target?.id) return null;
   if (target.type === 'user') return `/ul/${target.id}`;
   if (target.type === 'sponsor') return `/marcas/${target.id}`;
+  if (target.type === 'invite') return '/convites';
   if (target.type === 'challenge' && challenges[target.id]) return `/cl?q=${encodeURIComponent(challenges[target.id].title || '')}`;
   return null;
 }
