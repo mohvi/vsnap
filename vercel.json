@@ -19,5 +19,11 @@
       "source": "/((?!\\.well-known/|api/).*)",
       "destination": "/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 15 * * *"
+    }
   ]
 }
