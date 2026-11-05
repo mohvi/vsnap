@@ -373,3 +373,22 @@ export async function voidInviteAttribution(campaignId, inviteeUid, inviterUid, 
   addAudit(updates, 'invite.void', { type: 'user', id: inviterUid }, { reason: reason?.trim() || null, inviteeUid });
   await update(ref(db), updates);
 }
+
+// ── Notificações push ──
+// O envio passa pela função /api/push (a Expo não aceita pedidos do navegador
+// e os tokens só são legíveis por admins). O registo fica na auditoria.
+
+export async function sendPushNotification({ uids, title, body, url }, auditTarget, audience) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Sessão expirada.');
+  const token = await user.getIdToken();
+  const response = await fetch('/api/push', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ uids, title, body, url }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || 'Não foi possível enviar as notificações.');
+  await logAudit('push.send', auditTarget, { title, audience, sent: result.sent ?? 0, failed: result.failed ?? 0 });
+  return result;
+}

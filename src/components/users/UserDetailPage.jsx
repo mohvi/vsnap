@@ -4,7 +4,7 @@ import { ref, onValue } from 'firebase/database';
 import {
   ArrowLeft, Ban, BadgeCheck, Calendar, CheckCircle2, Coins, ExternalLink, Flag, Image as ImageIcon,
   MapPin, MessageSquareWarning, Phone, ShieldOff, Smartphone, StickyNote, Trash2, Trophy, UserX, Vote, Activity,
-  Crown, PlusCircle, Eye, AlertTriangle, UserPlus,
+  Crown, PlusCircle, Eye, AlertTriangle, UserPlus, Bell,
 } from 'lucide-react';
 import { db } from '../../fb';
 import { useAdminData } from '../../data/AdminDataProvider';
@@ -159,6 +159,7 @@ export default function UserDetailPage() {
           <div className="flex flex-wrap md:flex-col gap-2 md:w-44">
             <ActionButton icon={MessageSquareWarning} onClick={() => setModal('warn')}>Avisar</ActionButton>
             <ActionButton icon={Coins} onClick={() => setModal('snaps')}>Acertar Snaps</ActionButton>
+            <Link to={`/notificacoes?uid=${uid}`} className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors bg-white/5 hover:bg-white/10 text-gray-200"><Bell className="w-4 h-4" />Enviar notificação</Link>
             {user.banned ? (
               <ActionButton
                 icon={ShieldOff}

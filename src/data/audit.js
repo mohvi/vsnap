@@ -23,7 +23,10 @@ export const AUDIT_ACTIONS = {
   'invite.create': { label: 'Iniciou o desafio de convites', group: 'Convites' },
   'invite.end': { label: 'Encerrou o desafio de convites', group: 'Convites' },
   'invite.void': { label: 'Anulou um convite de', group: 'Convites' },
+  'push.send': { label: 'Enviou notificação a', group: 'Notificações' },
 };
+
+const PUSH_AUDIENCE_LABELS = { all: 'todos os utilizadores', inactive: 'utilizadores inactivos' };
 
 export const AUDIT_GROUPS = [...new Set(Object.values(AUDIT_ACTIONS).map((a) => a.group))];
 
@@ -34,6 +37,7 @@ export function auditTargetLabel(target, { users = {}, challenges = {}, sponsors
   if (target.type === 'challenge') return challenges[target.id]?.title ? `"${challenges[target.id].title}"` : target.id;
   if (target.type === 'sponsor') return sponsors[target.id]?.name || target.id;
   if (target.type === 'invite') return inviteCampaigns[target.id]?.title ? `"${inviteCampaigns[target.id].title}"` : target.id;
+  if (target.type === 'push') return PUSH_AUDIENCE_LABELS[target.id] || target.id;
   return target.id;
 }
 
@@ -42,6 +46,7 @@ export function auditTargetLink(target, { challenges = {} } = {}) {
   if (target.type === 'user') return `/ul/${target.id}`;
   if (target.type === 'sponsor') return `/marcas/${target.id}`;
   if (target.type === 'invite') return '/convites';
+  if (target.type === 'push') return '/notificacoes';
   if (target.type === 'challenge' && challenges[target.id]) return `/cl?q=${encodeURIComponent(challenges[target.id].title || '')}`;
   return null;
 }
@@ -52,6 +57,7 @@ export function auditDetails(entry) {
   const parts = [];
   if (d.amount != null) parts.push(`${d.amount > 0 ? '+' : ''}${d.amount} Snaps`);
   if (d.reason) parts.push(d.reason);
+  if (entry.action === 'push.send') parts.push(`"${d.title || ''}" · ${d.sent ?? 0} entregue(s)${d.failed ? `, ${d.failed} falhada(s)` : ''}`);
   if (entry.action === 'user.ban') parts.push(d.until ? `até ${new Date(d.until).toLocaleDateString('pt-MZ')}` : 'permanente');
   if (d.amountMzn != null) parts.push(`${d.amountMzn} MZN`);
   if (d.paymentStatus) parts.push(d.paymentStatus === 'paid' ? 'pago' : 'por pagar');
