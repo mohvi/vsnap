@@ -65,6 +65,18 @@ export async function reactivateChallenge(challengeId, days = 7) {
   await logAudit('challenge.reactivate', { type: 'challenge', id: challengeId }, { days });
 }
 
+// Desafios pagos antigos: o backend ainda pede pagamento quando type é 'paid'.
+// Passá-los a Comunidade (grátis) desbloqueia as publicações.
+export async function convertPaidChallengeToFree(challengeId) {
+  const updates = {
+    [`challenges/${challengeId}/type`]: 'free',
+    [`challenges/${challengeId}/entryFee`]: 0,
+    [`challenges/${challengeId}/updatedAt`]: Date.now(),
+  };
+  addAudit(updates, 'challenge.convert_free', { type: 'challenge', id: challengeId });
+  await update(ref(db), updates);
+}
+
 // Apaga desafio + entradas + votos numa única escrita atómica.
 export async function deleteChallenge(challengeId) {
   await update(ref(db), {

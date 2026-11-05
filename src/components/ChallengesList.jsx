@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Trophy, Clock, Users, Vote, Edit2, XCircle, Trash2, Search, CheckCircle2,
-  BarChart3, Target, Camera, Video, Film, Zap, ListChecks,
+  BarChart3, Target, Camera, Video, Film, Zap, ListChecks, Gift, AlertTriangle,
 } from 'lucide-react';
 import { useAdminData } from '../data/AdminDataProvider';
-import { deleteChallenge, endChallenge, reactivateChallenge, updateChallenge } from '../data/actions';
+import {
+  convertPaidChallengeToFree, deleteChallenge, endChallenge, reactivateChallenge, updateChallenge,
+} from '../data/actions';
 import { computeChallengeAnalytics, toList } from '../data/metrics';
 import { runAction } from '../utils/runAction';
 import { timeLeft } from '../utils/format';
@@ -93,9 +95,38 @@ export default function ChallengesList() {
   const handleReactivate = (c) =>
     runAction(() => reactivateChallenge(c.id), { success: 'Desafio reactivado por 7 dias' });
 
+  const askConvert = (c) => setDialog({
+    title: 'Converter em desafio de Comunidade?',
+    message: `"${c.title}" passa a ser gratuito: o servidor deixa de pedir pagamento para publicar. Quem já pagou não é reembolsado automaticamente.`,
+    confirmLabel: 'Converter',
+    variant: 'primary',
+    onConfirm: () => runAction(() => convertPaidChallengeToFree(c.id), { success: 'Desafio convertido em Comunidade' }),
+  });
+
+  const legacyPaidActive = list.filter((c) => c.type === 'paid' && c.status === 'active');
+
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6">
       <PageHeader icon={ListChecks} title="Desafios" subtitle={`${list.length} desafios no total`} />
+
+      {legacyPaidActive.length > 0 && (
+        <div role="alert" className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+          <p className="text-amber-200 text-sm flex-1">
+            {legacyPaidActive.length === 1 ? 'Há 1 desafio antigo pago activo' : `Há ${legacyPaidActive.length} desafios antigos pagos activos`}
+            {' '}({legacyPaidActive.map((c) => `"${c.title}"`).join(', ')}). O servidor ainda pede pagamento para publicar neles.
+          </p>
+          {legacyPaidActive.length === 1 ? (
+            <button onClick={() => askConvert(legacyPaidActive[0])} className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 text-sm font-medium">
+              Converter em Comunidade
+            </button>
+          ) : (
+            <button onClick={() => setFilterType('paid')} className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 text-sm font-medium">
+              Ver desafios pagos
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-6">
         <label className="flex items-center gap-2 bg-ink-800 border border-white/5 rounded-xl px-3 sm:flex-1 sm:min-w-[240px] focus-within:border-brand-500">
@@ -121,6 +152,7 @@ export default function ChallengesList() {
             <option value="all">Todos os tipos</option>
             <option value="free">Comunidade</option>
             <option value="sponsored">Patrocinados</option>
+            <option value="paid">Pagos (antigos)</option>
           </select>
         </div>
       </div>
@@ -214,6 +246,11 @@ export default function ChallengesList() {
                     <IconButton label="Editar" onClick={() => setEditing(challenge)} className="bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white">
                       <Edit2 className="w-4 h-4" />
                     </IconButton>
+                    {challenge.type === 'paid' && (
+                      <IconButton label="Converter em Comunidade (grátis)" onClick={() => askConvert(challenge)} className="bg-teal-500/10 hover:bg-teal-500/20 text-teal-400">
+                        <Gift className="w-4 h-4" />
+                      </IconButton>
+                    )}
                     {challenge.status === 'active' ? (
                       <IconButton label="Encerrar" onClick={() => askEnd(challenge)} className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400">
                         <XCircle className="w-4 h-4" />

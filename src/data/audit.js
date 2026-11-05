@@ -10,6 +10,7 @@ export const AUDIT_ACTIONS = {
   'challenge.end': { label: 'Encerrou o desafio', group: 'Desafios' },
   'challenge.reactivate': { label: 'Reactivou o desafio', group: 'Desafios' },
   'challenge.delete': { label: 'Apagou o desafio', group: 'Desafios' },
+  'challenge.convert_free': { label: 'Tornou gratuito o desafio', group: 'Desafios' },
   'winner.confirm': { label: 'Confirmou o vencedor de', group: 'Vencedores' },
   'winner.tie': { label: 'Resolveu o empate de', group: 'Vencedores' },
   'winner.revert': { label: 'Reverteu o desafio', group: 'Vencedores' },
