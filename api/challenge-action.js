@@ -4,7 +4,7 @@
 // com o mesmo token, para o backend, que faz o resto (prazo, duplicados, contadores).
 //   POST /api/challenge-action?action=submit  { challengeId, mediaUrl, mediaType, caption }
 //   POST /api/challenge-action?action=vote    { challengeId, entryId, remove }
-const { firebaseAdmin } = require('./_lib/admin');
+const { firebaseAdmin, adminHealth } = require('./_lib/admin');
 const { gateChallengeAction } = require('./_lib/events');
 
 const BACKEND_URL = (process.env.VOTASNAP_BACKEND_URL || 'https://us-central1-votasnap.cloudfunctions.net/votasnapApi').replace(/\/$/, '');
@@ -28,6 +28,8 @@ function readBody(req) {
 }
 
 module.exports = async (req, res) => {
+  // GET ?health=1 diz se a ligação ao Firebase funciona (sem mostrar a chave).
+  if (req.method === 'GET' && req.query?.health) return json(res, 200, adminHealth());
   if (req.method !== 'POST') return json(res, 405, { success: false, error: 'Método não permitido.' });
   const action = String(req.query?.action || '');
   if (!ACTIONS.has(action)) return json(res, 404, { success: false, error: 'Operação desconhecida.' });
