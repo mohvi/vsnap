@@ -16,7 +16,7 @@
       "destination": "/api/share?type=invite&code=:code"
     },
     {
-      "source": "/((?!\\.well-known/|api/).*)",
+      "source": "/((?!\\.well-known/|api/|assets/).*)",
       "destination": "/index.html"
     }
   ],

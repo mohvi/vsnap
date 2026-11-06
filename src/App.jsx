@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import { Toaster } from 'sonner';
 import { PageLoader } from './components/ui/Spinner';
 import { ENABLE_MOCK } from './config';
@@ -30,6 +31,7 @@ const NotificationsPage = lazy(() => import('./components/NotificationsPage'));
 export default function App() {
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <Suspense fallback={<PageLoader fullScreen />}>
         <Routes>
           {/* Públicas */}
@@ -65,6 +67,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
       <Toaster theme="dark" position="top-right" richColors closeButton />
     </BrowserRouter>
   );

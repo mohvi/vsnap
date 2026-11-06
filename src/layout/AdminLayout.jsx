@@ -6,6 +6,7 @@ import { Breadcrumbs, SearchButton } from './Topbar';
 import { useAuth } from '../auth/AuthProvider';
 import { useAdminData } from '../data/AdminDataProvider';
 import { PageLoader } from '../components/ui/Spinner';
+import ErrorBoundary from '../components/ui/ErrorBoundary';
 
 const CommandPalette = lazy(() => import('./CommandPalette'));
 
@@ -237,9 +238,11 @@ export default function AdminLayout() {
               <span>Erro ao ler dados do Firebase: {error}</span>
             </div>
           )}
-          <Suspense fallback={<PageLoader />}>
-            <Outlet />
-          </Suspense>
+          <ErrorBoundary resetKey={location.pathname}>
+            <Suspense fallback={<PageLoader />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
 
