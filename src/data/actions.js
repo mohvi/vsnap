@@ -8,6 +8,7 @@ import {
   inviteWinnerMessage, newChallengeMessage, newInviteCampaignMessage, placeMessage, warningMessage, winnerMessages,
 } from './push';
 import { challengePrizes, nextEligible, rankPlaces } from './prizes';
+import { challengeMinAge, meetsMinAge, userAge } from './audience';
 
 // Todas as escritas do painel ficam aqui. Regras seguidas:
 //  - contadores usam increment() (sem ler-modificar-escrever → sem corridas);
@@ -130,15 +131,28 @@ export async function updateChallengeDeal(challengeId, fields) {
 
 // ── Vencedores ──
 
+// Em desafios com idade mínima, quem não tem idade declarada suficiente não
+// pode receber prémio: fica de fora e o prémio passa ao classificado seguinte.
+async function underageUids(challenge, entries) {
+  const minAge = challengeMinAge(challenge);
+  if (!minAge) return [];
+  const demographics = (await get(ref(db, 'userDemographics'))).val() || {};
+  const uids = new Set(Object.values(entries || {}).map((e) => e?.userId).filter(Boolean));
+  if (challenge?.winnerId) uids.add(challenge.winnerId);
+  return [...uids].filter((uid) => !meetsMinAge(minAge, userAge(demographics, uid)));
+}
+
 // Confirma o resultado e abre uma entrega por prémio (1.º, 2.º…). O prémio só
 // fica "entregue" quando o admin o marca em Prémios (com BI, se 18+).
 export async function confirmWinner(challengeId) {
   const entries = (await get(ref(db, `entries/${challengeId}`)).catch(() => null))?.val() || {};
+  const current = (await get(ref(db, `challenges/${challengeId}`))).val();
+  const excluded = await underageUids(current, entries);
   const challenge = await transitionChallenge(
     challengeId,
     (c) => c.status === 'pending_confirmation' && !c.isTie && !!c.winnerId,
     (c) => {
-      const podium = rankPlaces(entries, c, challengePrizes(c).length)
+      const podium = rankPlaces(entries, c, challengePrizes(c).length, excluded)
         .map((p, i) => ({ place: i + 1, uid: p.uid, entryId: p.entryId }));
       return { status: 'completed', confirmedAt: Date.now(), prizePaid: false, podium };
     },
@@ -191,7 +205,7 @@ export async function forfeitPrize(challengeId, place, reason, challenge, delive
   if (!current || current.status !== 'pending') throw new StaleStateError('Esta entrega já foi alterada.');
   const entries = (await get(ref(db, `entries/${challengeId}`))).val() || {};
   const taken = Object.values(deliveries || {}).flatMap((d) => [d.uid, ...(d.history || []).map((h) => h.uid)]);
-  const next = nextEligible(entries, taken);
+  const next = nextEligible(entries, [...taken, ...(await underageUids(challenge, entries))]);
   const base = `prizeDeliveries/${challengeId}/${place}`;
   const record = {
     ...current,

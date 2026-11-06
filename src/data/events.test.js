@@ -46,3 +46,31 @@ describe('lembretes do último dia', () => {
     expect(reminderMessage(list[0])).toMatchObject({ title: '⏳ Último dia: A', url: '/challenge/soon' });
   });
 });
+
+describe('verificação antes de participar/votar', () => {
+  const { gateChallengeAction } = events;
+  const adult = { birthDate: '2000-01-01' };
+  const minor = { birthDate: '2010-01-01' };
+  const open = { status: 'active', startsAt: NOW - HOUR, endsAt: NOW + 24 * HOUR };
+
+  it('desafios sem idade mínima passam para todos', () => {
+    expect(gateChallengeAction('submit', {}, open, null, NOW)).toBeNull();
+    expect(gateChallengeAction('vote', {}, open, minor, NOW)).toBeNull();
+  });
+
+  it('18+ recusa menores e quem não indicou idade', () => {
+    const alcohol = { ...open, alcohol: true };
+    expect(gateChallengeAction('submit', {}, alcohol, adult, NOW)).toBeNull();
+    expect(gateChallengeAction('submit', {}, alcohol, minor, NOW)).toMatch(/maiores de 18/);
+    expect(gateChallengeAction('vote', {}, { ...open, minAge: 16 }, null, NOW)).toMatch(/data de nascimento/);
+  });
+
+  it('retirar um voto é sempre permitido', () => {
+    expect(gateChallengeAction('vote', { remove: true }, { ...open, alcohol: true }, minor, NOW)).toBeNull();
+  });
+
+  it('desafios agendados e inexistentes são recusados', () => {
+    expect(gateChallengeAction('submit', {}, { ...open, startsAt: NOW + HOUR }, adult, NOW)).toMatch(/ainda não abriu/);
+    expect(gateChallengeAction('vote', {}, null, adult, NOW)).toMatch(/não existe/);
+  });
+});

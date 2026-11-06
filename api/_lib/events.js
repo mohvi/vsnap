@@ -61,6 +61,23 @@ function meetsChallengeAge(challenge, demographics, now) {
   return age !== null && age >= minAge;
 }
 
+// Verificação de servidor antes de participar/votar. Devolve a mensagem de
+// recusa, ou null se pode seguir para o backend. Retirar um voto é sempre
+// permitido; o resto (prazo, duplicados) é verificado pelo backend.
+function gateChallengeAction(action, body, challenge, demographics, now) {
+  if (action === 'vote' && body?.remove) return null;
+  if (!challenge) return 'Este desafio não existe.';
+  const startsAt = Number(challenge.startsAt);
+  if (Number.isFinite(startsAt) && startsAt > now) return 'Este desafio ainda não abriu.';
+  if (!meetsChallengeAge(challenge, demographics, now)) {
+    const minAge = challenge.alcohol ? 18 : Number(challenge.minAge) || 0;
+    return ageFrom(demographics?.birthDate, now) === null
+      ? `Este desafio é só para maiores de ${minAge} anos. Indica a tua data de nascimento em Perfil → Idade e interesses.`
+      : `Este desafio é só para maiores de ${minAge} anos.`;
+  }
+  return null;
+}
+
 function reminderMessage(challenge) {
   return message(`⏳ Último dia: ${challenge.title}`, 'O desafio termina amanhã. Ainda vais a tempo de participar!', `/challenge/${challenge.id}`);
 }
@@ -71,5 +88,5 @@ function inviteCampaignReminderMessage(campaign) {
 
 module.exports = {
   VOTE_DIGEST_MS, REMINDER_WINDOW_MS, addVote, flushDue, voteMessage, inviteMessage,
-  challengesToRemind, reminderMessage, inviteCampaignReminderMessage, ageFrom, meetsChallengeAge,
+  challengesToRemind, reminderMessage, inviteCampaignReminderMessage, ageFrom, meetsChallengeAge, gateChallengeAction,
 };
