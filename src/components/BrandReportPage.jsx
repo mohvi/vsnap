@@ -117,8 +117,10 @@ export default function BrandReportPage() {
     users: data.users,
     consents: data.sponsorConsents[challengeId],
     deal: data.challengeDeals[challengeId],
+    demographics: data.userDemographics,
+    reminders: data.challengeReminders?.[challengeId],
     now: issuedAt,
-  }) : null), [challenge?.id, data.entries, data.votes, data.users, data.sponsorConsents, data.challengeDeals, issuedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }) : null), [challenge?.id, data.entries, data.votes, data.users, data.sponsorConsents, data.challengeDeals, data.userDemographics, data.challengeReminders, issuedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const brandName = sponsor.name || challenge?.sponsor || 'Marca';
   const reference = reportReference(challengeId, issuedAt);
@@ -249,6 +251,10 @@ export default function BrandReportPage() {
               <div className="flex justify-between gap-3"><dt className="text-gray-500">Prémio</dt><dd className="text-right font-medium">{challenge.prize || '—'}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-gray-500">Formato</dt><dd className="text-right">{challenge.allowedMediaType === 'video' ? 'Vídeo' : challenge.allowedMediaType === 'photo' ? 'Foto' : 'Foto e vídeo'}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-gray-500">Vence</dt><dd className="text-right">{challenge.voteGoal ? `1.º a ${challenge.voteGoal} votos ou mais votado no fim` : 'Mais votado no fim'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-gray-500">Público</dt><dd className="text-right">{report.minAge ? `Só ${report.minAge}+ (idade declarada${challenge.alcohol ? '; álcool' : ''})` : 'Todas as idades (13+)'}</dd></div>
+              {report.reminders > 0 && (
+                <div className="flex justify-between gap-3"><dt className="text-gray-500">Pediram aviso antes do lançamento</dt><dd className="text-right font-medium">{formatNumber(report.reminders)}</dd></div>
+              )}
             </dl>
           </div>
           <div className="border border-gray-200 rounded-lg p-4">
@@ -307,6 +313,47 @@ export default function BrandReportPage() {
             </tbody>
           </table>
         )}
+
+        <div className="mt-8 break-inside-avoid">
+          <SectionTitle n={next()} hint="idade declarada na app; números agregados">Faixa etária</SectionTitle>
+          {report.ages.audience.known === 0 ? (
+            <p className="text-gray-500 text-[9.5pt]">Ainda sem idades declaradas para esta audiência.</p>
+          ) : (
+            <>
+              <table className="w-full text-[9pt]">
+                <thead>
+                  <tr className="text-left text-gray-500 text-[8pt] uppercase tracking-wide">
+                    <th className="py-1.5 font-medium">Idade</th>
+                    <th className="py-1.5 font-medium w-[45%]" />
+                    <th className="py-1.5 font-medium text-right">Participantes</th>
+                    <th className="py-1.5 font-medium text-right">Audiência</th>
+                    <th className="py-1.5 font-medium text-right">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.ages.audience.bands.map((b, i) => (
+                    <tr key={b.label} className="border-t border-gray-100">
+                      <td className="py-1.5 font-medium">{b.label}</td>
+                      <td className="py-1.5 pr-3">
+                        <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div className="h-full rounded-full bg-gradient-to-r from-brand-600 to-accent-600" style={{ width: `${b.share * 100}%` }} />
+                        </div>
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums">{report.ages.participants.bands[i].count}</td>
+                      <td className="py-1.5 text-right tabular-nums">{b.count}</td>
+                      <td className="py-1.5 text-right tabular-nums">{pct(b.share)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {report.ages.audience.unknown > 0 && (
+                <p className="text-[8pt] text-gray-500 mt-1.5">
+                  {formatNumber(report.ages.audience.unknown)} pessoa(s) sem idade declarada não entram nas percentagens.
+                </p>
+              )}
+            </>
+          )}
+        </div>
 
         <div className="mt-8">
           <SectionTitle n={next()}>Vencedor e publicações mais votadas</SectionTitle>
@@ -430,6 +477,7 @@ export default function BrandReportPage() {
           <li><b>Votos</b>: um voto por conta verificada por número de telefone. Contas banidas e votos removidos pela moderação não contam.</li>
           <li><b>Novos utilizadores</b>: pessoas envolvidas cuja conta foi criada durante o período da campanha.</li>
           <li><b>Província</b>: indicada pelo próprio utilizador no perfil.</li>
+          <li><b>Faixa etária</b>: a partir da data de nascimento declarada na app; só números agregados, sem datas individuais.{report.minAge ? ` Desafio restrito a ${report.minAge}+: não aparece a menores nem a quem não indicou a idade, e a idade do vencedor é confirmada com documento na entrega do prémio.` : ''}</li>
           <li><b>Contactos autorizados</b>: só constam participantes que aceitaram, na app, ser contactados por {brandName}. Os restantes aparecem apenas pelo nome de utilizador público.</li>
           <li><b>Custos por resultado</b>: investimento dividido pelo número de resultados; valores indicativos.</li>
           <li>Dados extraídos da plataforma VotaSnap a {fullDate(issuedAt)}{challenge.status === 'active' ? ', com a campanha ainda em curso' : ''}.</li>

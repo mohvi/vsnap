@@ -7,6 +7,7 @@ const { firebaseAdmin } = require('./_lib/admin');
 const { sendToUsers } = require('./_lib/expo');
 const {
   flushDue, voteMessage, challengesToRemind, reminderMessage, inviteCampaignReminderMessage, REMINDER_WINDOW_MS,
+  meetsChallengeAge,
 } = require('./_lib/events');
 
 module.exports = async (req, res) => {
@@ -22,13 +23,15 @@ module.exports = async (req, res) => {
     const now = Date.now();
     const report = { votes: 0, challenges: [], invite: false };
 
-    const [usersSnap, digestsSnap, challengesSnap, remindedSnap, campaignsSnap] = await Promise.all([
+    const [usersSnap, digestsSnap, challengesSnap, remindedSnap, campaignsSnap, demographicsSnap] = await Promise.all([
       db.ref('users').get(),
       db.ref('pushState/voteDigest').get(),
       db.ref('challenges').orderByChild('status').equalTo('active').get(),
       db.ref('pushState/reminded').get(),
       db.ref('inviteCampaigns').orderByChild('status').equalTo('active').get(),
+      db.ref('userDemographics').get(),
     ]);
+    const demographics = demographicsSnap.val() || {};
     const users = usersSnap.val() || {};
     const reminded = remindedSnap.val() || {};
     const challenges = challengesSnap.val() || {};
@@ -48,7 +51,9 @@ module.exports = async (req, res) => {
       await db.ref(`pushState/reminded/${challenge.id}`).set(now);
       const entries = (await db.ref(`entries/${challenge.id}`).get()).val() || {};
       const participants = new Set(Object.values(entries).map((e) => e?.userId));
-      const result = await sendToUsers(db, Object.keys(users).filter((uid) => !participants.has(uid)), reminderMessage(challenge), users);
+      // Desafios 18+ não são lembrados a menores nem a quem não indicou a idade.
+      const targets = Object.keys(users).filter((uid) => !participants.has(uid) && meetsChallengeAge(challenge, demographics[uid], now));
+      const result = await sendToUsers(db, targets, reminderMessage(challenge), users);
       report.challenges.push({ id: challenge.id, ...result });
     }
 

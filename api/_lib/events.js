@@ -42,6 +42,25 @@ function challengesToRemind(challenges, reminded, now) {
     .map(([id, c]) => ({ id, ...c }));
 }
 
+// Idade a partir de 'AAAA-MM-DD' (igual a src/data/audience.js).
+function ageFrom(birthDate, now) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthDate || '');
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const today = new Date(now);
+  let age = today.getUTCFullYear() - y;
+  if (today.getUTCMonth() < mo - 1 || (today.getUTCMonth() === mo - 1 && today.getUTCDate() < d)) age -= 1;
+  return age;
+}
+
+// Desafios 18+ (ou de álcool) só para quem declarou idade suficiente.
+function meetsChallengeAge(challenge, demographics, now) {
+  const minAge = challenge?.alcohol ? 18 : Number(challenge?.minAge) || 0;
+  if (!minAge) return true;
+  const age = ageFrom(demographics?.birthDate, now);
+  return age !== null && age >= minAge;
+}
+
 function reminderMessage(challenge) {
   return message(`⏳ Último dia: ${challenge.title}`, 'O desafio termina amanhã. Ainda vais a tempo de participar!', `/challenge/${challenge.id}`);
 }
@@ -52,5 +71,5 @@ function inviteCampaignReminderMessage(campaign) {
 
 module.exports = {
   VOTE_DIGEST_MS, REMINDER_WINDOW_MS, addVote, flushDue, voteMessage, inviteMessage,
-  challengesToRemind, reminderMessage, inviteCampaignReminderMessage,
+  challengesToRemind, reminderMessage, inviteCampaignReminderMessage, ageFrom, meetsChallengeAge,
 };

@@ -11,6 +11,7 @@ import { useAdminData } from '../data/AdminDataProvider';
 import { toList } from '../data/metrics';
 import { errorMessage } from '../utils/runAction';
 import { DAY_MS } from '../config';
+import { challengeAudience, challengeMinAge } from '../data/audience';
 
 const CATEGORIES = [
   { value: 'fotografia', label: '📸 Fotografia' },
@@ -21,6 +22,27 @@ const CATEGORIES = [
   { value: 'desporto', label: '⚽ Desporto' },
   { value: 'arte', label: '🎨 Arte' },
   { value: 'humor', label: '😂 Humor' },
+  { value: 'beleza', label: '💄 Beleza' },
+  { value: 'bebidas', label: '🍺 Bebidas' },
+  { value: 'tecnologia', label: '📱 Tecnologia' },
+  { value: 'viagens', label: '✈️ Viagens' },
+];
+
+const AGE_OPTIONS = [
+  { value: 0, label: 'Livre' },
+  { value: 16, label: '16+' },
+  { value: 18, label: '18+' },
+];
+
+const NOTIFY_MODES = [
+  { value: 'all', label: 'Todos (com idade)' },
+  { value: 'interested', label: 'Só interessados' },
+  { value: 'none', label: 'Ninguém' },
+];
+
+const START_MODES = [
+  { value: 'now', label: 'Abrir já' },
+  { value: 'scheduled', label: 'Agendar (Em breve)' },
 ];
 
 const MEDIA_TYPES = [
@@ -62,6 +84,10 @@ const INITIAL_FORM = {
   durationDays: 7,
   allowedMediaType: 'photo', // photo | video | both
   voteGoal: '', // opcional — vazio = só prazo
+  startMode: 'now', // now | scheduled
+  startsAtLocal: '', // datetime-local quando agendado
+  minAge: 0, // 0 | 16 | 18
+  alcohol: false, // bebidas alcoólicas → 18+ e aviso legal na app
 };
 
 const MAX_BANNER_BYTES = 5 * 1024 * 1024;
@@ -96,8 +122,8 @@ function OptionGroup({ label, options, value, onChange, activeClass = () => 'bor
 }
 
 export default function CreateChallengeForm() {
-  const { sponsors, users } = useAdminData();
-  const [notifyAll, setNotifyAll] = useState(true);
+  const { sponsors, users, userDemographics } = useAdminData();
+  const [notifyMode, setNotifyMode] = useState('all');
   const activeSponsors = useMemo(
     () => toList(sponsors).filter((s) => s.active !== false).sort((a, b) => (a.name || '').localeCompare(b.name || '')),
     [sponsors],
@@ -168,6 +194,11 @@ export default function CreateChallengeForm() {
     if (!Number.isInteger(days) || days < 1 || days > 30) return 'A duração tem de ser entre 1 e 30 dias.';
     if (formData.prizeType === 'cash' && !(Number(formData.prize) > 0)) return 'O valor do prémio tem de ser maior que 0.';
     if (formData.voteGoal !== '' && !(Number(formData.voteGoal) > 0)) return 'A meta de votos, se definida, tem de ser maior que 0.';
+    if (formData.startMode === 'scheduled') {
+      const start = new Date(formData.startsAtLocal).getTime();
+      if (!Number.isFinite(start) || start <= Date.now() + 5 * 60000) return 'Escolhe uma data de início no futuro (pelo menos daqui a 5 minutos).';
+      if (start > Date.now() + 60 * DAY_MS) return 'A data de início não pode passar 60 dias.';
+    }
     return '';
   };
 
@@ -184,6 +215,12 @@ export default function CreateChallengeForm() {
       // Upload primeiro — se falhar, o desafio não é criado.
       const bannerUrl = await uploadBanner(challengeId);
       const now = Date.now();
+      const startsAt = formData.startMode === 'scheduled' ? new Date(formData.startsAtLocal).getTime() : now;
+      const minAge = formData.alcohol ? 18 : Number(formData.minAge) || 0;
+      // Só avisa quem tem idade para o desafio (e, se escolhido, quem marcou a categoria).
+      const audience = notifyMode === 'none' ? [] : challengeAudience({
+        users, demographics: userDemographics, challenge: { category: formData.category, alcohol: formData.alcohol, minAge }, mode: notifyMode,
+      });
       const hasVoteGoal = formData.voteGoal !== '';
       const prize = String(formData.prize).trim();
       const isSponsored = formData.type === 'sponsored';
@@ -208,7 +245,10 @@ export default function CreateChallengeForm() {
         status: 'active',
         createdBy: 'admin',
         createdAt: now,
-        endsAt: now + Number(formData.durationDays) * DAY_MS,
+        startsAt,
+        endsAt: startsAt + Number(formData.durationDays) * DAY_MS,
+        minAge,
+        alcohol: !!formData.alcohol,
         // Fecha no prazo OU quando uma entrada atingir voteGoal (o que vier primeiro) —
         // a verificação da meta é feita pela Cloud Function de votos.
         voteGoal: hasVoteGoal ? Number(formData.voteGoal) : null,
@@ -222,9 +262,9 @@ export default function CreateChallengeForm() {
         prizeProvider: formData.prizeProvider,
         prizeNotes: formData.prizeNotes.trim() || null,
         createdAt: now,
-      } : null, notifyAll ? Object.keys(users) : []);
+      } : null, audience);
 
-      toast.success(notifyAll ? 'Desafio criado e utilizadores avisados' : 'Desafio criado com sucesso!');
+      toast.success(audience.length ? `Desafio criado e ${audience.length} utilizadores avisados` : 'Desafio criado com sucesso!');
       setFormData(INITIAL_FORM);
       removeBanner();
     } catch (err) {
@@ -235,6 +275,11 @@ export default function CreateChallengeForm() {
       setUploadProgress(0);
     }
   };
+
+  const effectiveMinAge = challengeMinAge({ alcohol: formData.alcohol, minAge: formData.minAge });
+  const audiencePreview = useMemo(() => (notifyMode === 'none' ? 0 : challengeAudience({
+    users, demographics: userDemographics, challenge: { category: formData.category, alcohol: formData.alcohol, minAge: formData.minAge }, mode: notifyMode,
+  }).length), [users, userDemographics, formData.category, formData.alcohol, formData.minAge, notifyMode]);
 
   const typeLabel = formData.type === 'sponsored'
     ? `patrocinado por ${sponsors[formData.sponsorId]?.name || '...'}`
@@ -443,6 +488,48 @@ export default function CreateChallengeForm() {
             </label>
           </div>
 
+          <div className="space-y-4 p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+            <OptionGroup
+              label="Início"
+              options={START_MODES}
+              value={formData.startMode}
+              onChange={(v) => handleChange('startMode', v)}
+            />
+            {formData.startMode === 'scheduled' && (
+              <label className="block space-y-2">
+                <span className="text-sm text-gray-400">Data e hora de abertura</span>
+                <input
+                  type="datetime-local"
+                  className={inputClass}
+                  value={formData.startsAtLocal}
+                  onChange={(e) => handleChange('startsAtLocal', e.target.value)}
+                />
+                <span className="block text-xs text-gray-500">
+                  Até lá aparece na app em "Em breve", com o botão "Avisa-me". A duração conta a partir desta data.
+                </span>
+              </label>
+            )}
+
+            <OptionGroup
+              label="Idade mínima"
+              options={AGE_OPTIONS.map((o) => ({ ...o, value: String(o.value) }))}
+              value={String(effectiveMinAge)}
+              onChange={(v) => !formData.alcohol && handleChange('minAge', Number(v))}
+            />
+            <label className="flex items-start gap-3 text-sm text-gray-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="mt-0.5 w-4 h-4 accent-brand-500"
+                checked={formData.alcohol}
+                onChange={(e) => handleChange('alcohol', e.target.checked)}
+              />
+              <span>
+                Envolve bebidas alcoólicas (marca de cerveja, prémio com álcool…). Fica 18+, menores e visitantes não o vêem,
+                e a app mostra "Proibido a menores de 18 anos. Beba com moderação." Confirmar o BI na entrega do prémio.
+              </span>
+            </label>
+          </div>
+
           <div className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-1 text-sm text-gray-300 break-words">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Resumo</p>
             <p><span className="text-white font-medium">{formData.title || 'Sem título'}</span> — {typeLabel}</p>
@@ -459,12 +546,30 @@ export default function CreateChallengeForm() {
               </span>
             </p>
             <p>Mídia aceite: <span className="text-white">{MEDIA_TYPES.find((m) => m.value === formData.allowedMediaType)?.label}</span></p>
+            <p>
+              Abre: <span className="text-white">
+                {formData.startMode === 'scheduled' && formData.startsAtLocal
+                  ? new Date(formData.startsAtLocal).toLocaleString('pt-MZ')
+                  : 'imediatamente'}
+              </span>
+              {' · '}Idade: <span className="text-white">{effectiveMinAge ? `${effectiveMinAge}+` : 'livre'}</span>
+            </p>
           </div>
 
-<label className="flex items-start gap-3 text-sm text-gray-300 cursor-pointer select-none">
-            <input type="checkbox" className="mt-0.5 w-4 h-4 accent-brand-500" checked={notifyAll} onChange={(e) => setNotifyAll(e.target.checked)} />
-            <span>Avisar todos os utilizadores com uma notificação push (abre o desafio ao tocar)</span>
-          </label>
+          <div className="space-y-2">
+            <OptionGroup
+              label="Notificação push"
+              options={NOTIFY_MODES}
+              value={notifyMode}
+              onChange={setNotifyMode}
+            />
+            <p className="text-xs text-gray-500">
+              {notifyMode === 'none'
+                ? 'Ninguém é avisado.'
+                : `${audiencePreview} utilizadores vão ser avisados${effectiveMinAge ? ` (só quem declarou ${effectiveMinAge}+ anos)` : ''}${notifyMode === 'interested' ? ', só os que marcaram esta categoria nos interesses' : ''}.`}
+              {formData.startMode === 'scheduled' && notifyMode !== 'none' && ' A notificação anuncia o desafio como "Em breve".'}
+            </p>
+          </div>
 
           <button
             type="submit"

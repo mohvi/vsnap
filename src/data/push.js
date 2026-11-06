@@ -73,6 +73,13 @@ export function winnerMessages(challengeId, challenge, entries = {}) {
 
 export function newChallengeMessage(uids, challengeId, challenge) {
   const prize = challenge.prize ? ` Prémio: ${challenge.prize}.` : '';
+  // Agendado: anuncia o lançamento e convida a pedir aviso.
+  if (Number(challenge.startsAt) > Date.now() + 60000) {
+    const when = new Date(challenge.startsAt).toLocaleString('pt-MZ', {
+      weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Maputo',
+    });
+    return message(uids, `🗓️ Em breve: ${challenge.title}`, `Abre ${when}.${prize} Toca em "Avisa-me" para não perderes.`, `/challenge/${challengeId}`);
+  }
   return message(uids, `📸 Novo desafio: ${challenge.title}`, `Já podes participar! Publica a tua foto e concorre.${prize}`, `/challenge/${challengeId}`);
 }
 

@@ -14,6 +14,7 @@ import { timeLeft } from '../utils/format';
 import { PageLoader } from './ui/Spinner';
 import PageHeader from './ui/PageHeader';
 import ConfirmDialog from './ui/ConfirmDialog';
+import { challengeMinAge } from '../data/audience';
 import Modal, { ModalButton } from './ui/Modal';
 
 const STATUS_STYLES = {
@@ -189,7 +190,18 @@ export default function ChallengesList() {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <span className={`text-xs px-2 py-1 rounded-full border ${statusStyle.color}`}>{statusStyle.label}</span>
+                        {challenge.status === 'active' && Number(challenge.startsAt) > Date.now() ? (
+                          <span className="text-xs px-2 py-1 rounded-full border bg-sky-500/10 text-sky-300 border-sky-500/30">
+                            Em breve · abre {new Date(challenge.startsAt).toLocaleString('pt-MZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        ) : (
+                          <span className={`text-xs px-2 py-1 rounded-full border ${statusStyle.color}`}>{statusStyle.label}</span>
+                        )}
+                        {challengeMinAge(challenge) > 0 && (
+                          <span className="text-xs px-2 py-1 rounded-full border bg-red-500/10 text-red-300 border-red-500/30">
+                            {challengeMinAge(challenge)}+{challenge.alcohol ? ' · álcool' : ''}
+                          </span>
+                        )}
                         <span className={`text-xs font-medium ${typeStyle.color}`}>{typeStyle.label}</span>
                         <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-gray-400 flex items-center gap-1">
                           <MediaIcon className="w-3 h-3" />

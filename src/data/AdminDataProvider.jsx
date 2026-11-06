@@ -24,6 +24,10 @@ const NODES = {
   // Quem aceitou ser contactado pela marca de um desafio (relatórios PDF).
   sponsorConsents: 'sponsorConsents',
   company: 'adminSettings/company',
+  // Idade e interesses declarados na app (público-alvo e faixas etárias).
+  userDemographics: 'userDemographics',
+  // Quem tocou em "Avisa-me" num desafio agendado.
+  challengeReminders: 'challengeReminders',
 };
 
 const AdminDataContext = createContext(null);

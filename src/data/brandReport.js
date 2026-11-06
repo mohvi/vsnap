@@ -8,6 +8,7 @@
 import { DAY_MS } from '../config';
 import { provinceName } from '../utils/provinces';
 import { dayKey } from './metrics';
+import { ageBreakdown, challengeMinAge } from './audience';
 
 const list = (obj) => Object.entries(obj || {}).map(([id, v]) => ({ id, ...v }));
 
@@ -27,8 +28,10 @@ export function interestTier(rank, total) {
 
 export function buildBrandReport({
   challenge, entries = {}, votes = {}, users = {}, consents = {}, deal = null, now = Date.now(),
+  demographics = {}, reminders = {},
 }) {
-  const start = challenge.createdAt || now;
+  // Desafios agendados contam a partir da abertura.
+  const start = challenge.startsAt || challenge.createdAt || now;
   const end = Math.min(challenge.endsAt || now, now);
   const entryList = list(entries).sort((a, b) => (b.votes || 0) - (a.votes || 0));
   const voteList = Object.entries(votes || {})
@@ -166,6 +169,13 @@ export function buildBrandReport({
     } : null,
     participants,
     leads,
+    // Faixas etárias (só números agregados) e pedidos de aviso antes do lançamento.
+    ages: {
+      audience: ageBreakdown([...audienceIds], demographics, now),
+      participants: ageBreakdown([...participantIds], demographics, now),
+    },
+    minAge: challengeMinAge(challenge),
+    reminders: Object.keys(reminders || {}).length,
   };
 }
 
