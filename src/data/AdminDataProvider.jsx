@@ -21,6 +21,9 @@ const NODES = {
   sponsorPrivate: 'sponsorPrivate',
   challengeDeals: 'challengeDeals',
   inviteCampaigns: 'inviteCampaigns',
+  // Quem aceitou ser contactado pela marca de um desafio (relatórios PDF).
+  sponsorConsents: 'sponsorConsents',
+  company: 'adminSettings/company',
 };
 
 const AdminDataContext = createContext(null);

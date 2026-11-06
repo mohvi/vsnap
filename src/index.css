@@ -10,3 +10,36 @@ body {
   @apply bg-ink-950 text-white antialiased;
   overflow-x: hidden;
 }
+
+/* Relatórios para as marcas (BrandReportPage): folhas A4 com numeração. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 14mm 16mm;
+    @bottom-left {
+      content: "VotaSnap · Relatório de campanha · Confidencial";
+      font: 7.5pt Inter, sans-serif;
+      color: #9ca3af;
+    }
+    @bottom-right {
+      content: "Página " counter(page) " de " counter(pages);
+      font: 7.5pt Inter, sans-serif;
+      color: #9ca3af;
+    }
+  }
+  @page :first {
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+  }
+  html, body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .report-sheet + .report-sheet {
+    break-before: page;
+  }
+  tr, figure, .break-inside-avoid {
+    break-inside: avoid;
+  }
+}

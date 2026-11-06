@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, BarChart3, Download, Printer, Trophy, Users, Vote, TrendingUp, Video, Crown,
+  ArrowLeft, BarChart3, Download, FileText, Trophy, Users, Vote, TrendingUp, Video, Crown,
 } from 'lucide-react';
 import { useAdminData } from '../data/AdminDataProvider';
 import { updateChallengeDeal } from '../data/actions';
@@ -120,9 +120,9 @@ function ChallengeReport({ challenge, report, deal }) {
           <button onClick={exportCsv} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-200">
             <Download className="w-4 h-4" /> CSV
           </button>
-          <button onClick={() => window.print()} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-200">
-            <Printer className="w-4 h-4" /> Imprimir / PDF
-          </button>
+          <Link to={`/relatorio/${challenge.id}`} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-brand-600 to-accent-600 text-sm font-semibold text-white">
+            <FileText className="w-4 h-4" /> Relatório PDF
+          </Link>
         </div>
       </div>
 

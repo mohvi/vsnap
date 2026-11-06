@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
-  Building2, Plus, Edit2, Globe, Phone, Mail, BarChart3, Upload, X, Power, Search,
+  Building2, Plus, Edit2, Globe, Phone, Mail, BarChart3, Upload, X, Power, Search, FileText,
 } from 'lucide-react';
 import { storage } from '../fb';
 import { useAdminData } from '../data/AdminDataProvider';
-import { newSponsorId, saveSponsor, setSponsorActive } from '../data/actions';
+import { newSponsorId, saveCompanySettings, saveSponsor, setSponsorActive } from '../data/actions';
 import { computeSponsorSummary, toList } from '../data/metrics';
 import { runAction } from '../utils/runAction';
 import { formatNumber } from '../utils/format';
@@ -29,8 +29,9 @@ export function SponsorLogo({ sponsor, size = 'w-12 h-12' }) {
 }
 
 export default function SponsorsPage() {
-  const { loading, sponsors, sponsorPrivate, challenges, challengeDeals } = useAdminData();
+  const { loading, sponsors, sponsorPrivate, challenges, challengeDeals, company } = useAdminData();
   const [editing, setEditing] = useState(null); // null | { id?: string }
+  const [editingCompany, setEditingCompany] = useState(false);
   const [search, setSearch] = useState('');
 
   const list = useMemo(() => {
@@ -50,12 +51,20 @@ export default function SponsorsPage() {
         title="Marcas"
         subtitle="Patrocinadores dos desafios. Nome e logótipo aparecem na app; contactos e valores ficam só no painel."
         actions={(
-          <button
-            onClick={() => setEditing({})}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-600 to-brand-600 rounded-xl text-white font-medium text-sm"
-          >
-            <Plus className="w-4 h-4" /> Nova marca
-          </button>
+          <>
+            <button
+              onClick={() => setEditingCompany(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-gray-200 font-medium text-sm"
+            >
+              <FileText className="w-4 h-4" /> Dados da VotaSnap
+            </button>
+            <button
+              onClick={() => setEditing({})}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-600 to-brand-600 rounded-xl text-white font-medium text-sm"
+            >
+              <Plus className="w-4 h-4" /> Nova marca
+            </button>
+          </>
         )}
       />
 
@@ -160,6 +169,8 @@ export default function SponsorsPage() {
         </div>
       )}
 
+      {editingCompany && <CompanyModal company={company} onClose={() => setEditingCompany(false)} />}
+
       {editing && (
         <SponsorModal
           sponsor={editing}
@@ -181,6 +192,10 @@ function SponsorModal({ sponsor, contact, challenges, onClose }) {
     contactPhone: contact?.contactPhone || '',
     contactEmail: contact?.contactEmail || '',
     notes: contact?.notes || '',
+    legalName: contact?.legalName || '',
+    nuit: contact?.nuit || '',
+    address: contact?.address || '',
+    sector: contact?.sector || '',
   });
   const [logoUrl, setLogoUrl] = useState(sponsor.logoUrl || '');
   const [logoFile, setLogoFile] = useState(null);
@@ -214,6 +229,7 @@ function SponsorModal({ sponsor, contact, challenges, onClose }) {
     if (!form.name.trim()) return setError('Indica o nome da marca.');
     if (website && !/^https?:\/\//i.test(website)) return setError('O site tem de começar por http:// ou https://');
     if (form.contactEmail.trim() && !/^\S+@\S+\.\S+$/.test(form.contactEmail.trim())) return setError('Email inválido.');
+    if (form.nuit.trim() && !/^\d{9}$/.test(form.nuit.trim())) return setError('O NUIT tem 9 dígitos.');
     setError('');
     setSaving(true);
     const sponsorId = sponsor.id || newSponsorId();
@@ -238,6 +254,10 @@ function SponsorModal({ sponsor, contact, challenges, onClose }) {
           contactPhone: form.contactPhone.trim() || null,
           contactEmail: form.contactEmail.trim() || null,
           notes: form.notes.trim() || null,
+          legalName: form.legalName.trim() || null,
+          nuit: form.nuit.trim() || null,
+          address: form.address.trim() || null,
+          sector: form.sector.trim() || null,
         },
         challenges,
       );
@@ -297,6 +317,26 @@ function SponsorModal({ sponsor, contact, challenges, onClose }) {
           <input className={inputClass} value={form.website} onChange={set('website')} placeholder="https://..." />
         </label>
 
+        <p className="text-xs text-gray-500 uppercase tracking-wide pt-2">Dados fiscais (aparecem no relatório PDF)</p>
+        <label className="block">
+          <span className="text-sm text-gray-400 block mb-1">Razão social</span>
+          <input className={inputClass} value={form.legalName} onChange={set('legalName')} maxLength={120} placeholder="Ex: Connection Mozambique, Lda" />
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-sm text-gray-400 block mb-1">NUIT</span>
+            <input className={inputClass} value={form.nuit} onChange={set('nuit')} inputMode="numeric" maxLength={9} placeholder="9 dígitos" />
+          </label>
+          <label className="block">
+            <span className="text-sm text-gray-400 block mb-1">Sector de actividade</span>
+            <input className={inputClass} value={form.sector} onChange={set('sector')} maxLength={60} placeholder="Ex: Telecomunicações" />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-sm text-gray-400 block mb-1">Morada</span>
+          <input className={inputClass} value={form.address} onChange={set('address')} maxLength={160} placeholder="Av., número, cidade" />
+        </label>
+
         <p className="text-xs text-gray-500 uppercase tracking-wide pt-2">Interno (só no painel)</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
@@ -316,6 +356,62 @@ function SponsorModal({ sponsor, contact, challenges, onClose }) {
           <span className="text-sm text-gray-400 block mb-1">Notas</span>
           <textarea className={`${inputClass} min-h-[80px]`} value={form.notes} onChange={set('notes')} placeholder="Condições combinadas, histórico..." />
         </label>
+      </div>
+    </Modal>
+  );
+}
+
+// Dados da VotaSnap usados no cabeçalho e rodapé dos relatórios PDF.
+const COMPANY_FIELDS = [
+  ['name', 'Nome comercial', 'VotaSnap'],
+  ['legalName', 'Razão social', 'Ex: VotaSnap, Lda'],
+  ['nuit', 'NUIT', '9 dígitos'],
+  ['address', 'Morada', 'Av., número, cidade'],
+  ['email', 'Email', 'geral@votasnap.co.mz'],
+  ['phone', 'Telefone', '+258 84 000 0000'],
+  ['website', 'Site', 'https://votasnap.vercel.app'],
+  ['signatory', 'Responsável que assina os relatórios', 'Nome e cargo'],
+];
+
+function CompanyModal({ company, onClose }) {
+  const [form, setForm] = useState(() => Object.fromEntries(COMPANY_FIELDS.map(([k]) => [k, company?.[k] || (k === 'name' ? 'VotaSnap' : '')])));
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const save = async () => {
+    if (!form.name.trim()) return setError('Indica o nome comercial.');
+    if (form.nuit.trim() && !/^[0-9]{9}$/.test(form.nuit.trim())) return setError('O NUIT tem 9 dígitos.');
+    setError('');
+    setSaving(true);
+    const ok = await runAction(
+      () => saveCompanySettings(Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim() || null]))),
+      { success: 'Dados da VotaSnap guardados' },
+    );
+    setSaving(false);
+    if (ok) onClose();
+  };
+
+  return (
+    <Modal
+      title="Dados da VotaSnap"
+      onClose={saving ? () => {} : onClose}
+      footer={(
+        <>
+          <ModalButton onClick={onClose} disabled={saving}>Cancelar</ModalButton>
+          <ModalButton variant="primary" onClick={save} disabled={saving}>{saving ? 'A guardar...' : 'Guardar'}</ModalButton>
+        </>
+      )}
+    >
+      <p className="text-gray-400 text-sm mb-4">Aparecem na capa e no rodapé dos relatórios entregues às marcas.</p>
+      {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {COMPANY_FIELDS.map(([k, label, placeholder]) => (
+          <label key={k} className={`block ${k === 'address' || k === 'signatory' ? 'sm:col-span-2' : ''}`}>
+            <span className="text-sm text-gray-400 block mb-1">{label}</span>
+            <input className={inputClass} value={form[k]} onChange={set(k)} placeholder={placeholder} maxLength={160} />
+          </label>
+        ))}
       </div>
     </Modal>
   );

@@ -23,3 +23,14 @@ export function AdminShell() {
     </RequireAdmin>
   );
 }
+
+// Páginas de admin sem menu nem barra de topo (relatórios para imprimir/PDF).
+export function AdminBareShell() {
+  return (
+    <RequireAdmin>
+      <AdminDataProvider>
+        <Outlet />
+      </AdminDataProvider>
+    </RequireAdmin>
+  );
+}

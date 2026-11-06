@@ -24,6 +24,7 @@ export const AUDIT_ACTIONS = {
   'invite.end': { label: 'Encerrou o desafio de convites', group: 'Convites' },
   'invite.void': { label: 'Anulou um convite de', group: 'Convites' },
   'push.send': { label: 'Enviou notificação a', group: 'Notificações' },
+  'company.save': { label: 'Actualizou os dados da', group: 'Marcas' },
 };
 
 const PUSH_AUDIENCE_LABELS = { all: 'todos os utilizadores', inactive: 'utilizadores inactivos', warned: 'utilizadores avisados' };
@@ -38,6 +39,7 @@ export function auditTargetLabel(target, { users = {}, challenges = {}, sponsors
   if (target.type === 'sponsor') return sponsors[target.id]?.name || target.id;
   if (target.type === 'invite') return inviteCampaigns[target.id]?.title ? `"${inviteCampaigns[target.id].title}"` : target.id;
   if (target.type === 'push') return PUSH_AUDIENCE_LABELS[target.id] || target.id;
+  if (target.type === 'company') return 'VotaSnap';
   return target.id;
 }
 

@@ -417,3 +417,13 @@ function autoNotify(msg, auditTarget, audience) {
     toast.warning('A acção foi feita, mas a notificação não foi enviada', { description: err?.message });
   });
 }
+
+// ── Dados da empresa (relatórios) ──
+
+export async function saveCompanySettings(fields) {
+  const updates = {};
+  Object.entries(fields).forEach(([k, v]) => { updates[`adminSettings/company/${k}`] = v; });
+  updates['adminSettings/company/updatedAt'] = Date.now();
+  addAudit(updates, 'company.save', { type: 'company', id: 'votasnap' }, null);
+  await update(ref(db), updates);
+}

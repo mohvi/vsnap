@@ -27,6 +27,8 @@ const UserDetailPage = lazy(() => import('./components/users/UserDetailPage'));
 const AuditLog = lazy(() => import('./components/AuditLog'));
 const InviteCampaignsPage = lazy(() => import('./components/InviteCampaignsPage'));
 const NotificationsPage = lazy(() => import('./components/NotificationsPage'));
+const AdminBareShell = lazy(() => import('./auth/AdminRoot').then((m) => ({ default: m.AdminBareShell })));
+const BrandReportPage = lazy(() => import('./components/BrandReportPage'));
 
 export default function App() {
   return (
@@ -60,6 +62,11 @@ export default function App() {
               <Route path="/wc" element={<WinnersConfirmation />} />
               <Route path="/mc" element={<ModerationPanel />} />
               {ENABLE_MOCK && <Route path="/mock" element={<MockDataPanel />} />}
+            </Route>
+
+            {/* Relatórios em folhas A4, sem o menu do painel */}
+            <Route element={<AdminBareShell />}>
+              <Route path="/relatorio/:challengeId" element={<BrandReportPage />} />
             </Route>
           </Route>
 
