@@ -1,5 +1,5 @@
 import {
-  PlusCircle, ListChecks, Users, Flag, Trophy, LayoutDashboard, FlaskConical, Building2, ScrollText, UserPlus, Bell,
+  PlusCircle, ListChecks, Users, Flag, Trophy, LayoutDashboard, FlaskConical, Building2, ScrollText, UserPlus, Bell, Gift,
 } from 'lucide-react';
 import { ENABLE_MOCK } from '../config';
 
@@ -15,6 +15,7 @@ export const NAV_GROUPS = [
       { path: '/cc', label: 'Criar desafio', icon: PlusCircle },
       { path: '/cl', label: 'Desafios', icon: ListChecks, badge: 'activeChallengesCount' },
       { path: '/wc', label: 'Vencedores', icon: Trophy, badge: 'winnersPendingCount', alert: true },
+      { path: '/premios', label: 'Entrega de prémios', icon: Gift, badge: 'prizesPendingCount', alert: true },
       { path: '/mc', label: 'Moderação', icon: Flag, badge: 'pendingReportsCount', alert: true },
       { path: '/convites', label: 'Convites', icon: UserPlus },
     ],

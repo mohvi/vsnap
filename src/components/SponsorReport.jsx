@@ -210,6 +210,7 @@ function ChallengeReport({ challenge, report, deal }) {
 // Acordo comercial (só admin): não entra no CSV nem na impressão.
 function DealPanel({ challengeId, deal }) {
   const [amount, setAmount] = useState(deal?.amountMzn ?? '');
+  const [prizeValue, setPrizeValue] = useState(deal?.prizeValueMzn ?? '');
   const [saving, setSaving] = useState(false);
 
   const save = async (fields, success) => {
@@ -223,7 +224,7 @@ function DealPanel({ challengeId, deal }) {
   return (
     <div className="bg-ink-900 border border-white/10 rounded-2xl p-4 print:hidden">
       <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-3">Acordo com a marca (interno)</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
         <label className="block">
           <span className="text-sm text-gray-400 block mb-1">Valor acordado (MZN)</span>
           <input
@@ -237,6 +238,24 @@ function DealPanel({ challengeId, deal }) {
               const value = amount === '' ? 0 : Number(amount);
               if (Number.isFinite(value) && value >= 0 && value !== Number(deal?.amountMzn || 0)) {
                 save({ amountMzn: value }, 'Valor actualizado');
+              }
+            }}
+          />
+        </label>
+        <label className="block">
+          <span className="text-sm text-gray-400 block mb-1">Valor estimado dos prémios (MZN)</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            className="w-full bg-ink-800 border border-white/5 rounded-xl p-3 text-white outline-none focus:border-brand-500"
+            placeholder="Produto oferecido"
+            value={prizeValue}
+            onChange={(e) => setPrizeValue(e.target.value)}
+            onBlur={() => {
+              const value = prizeValue === '' ? null : Number(prizeValue);
+              if ((value === null || (Number.isFinite(value) && value >= 0)) && value !== (deal?.prizeValueMzn ?? null)) {
+                save({ prizeValueMzn: value }, 'Valor dos prémios actualizado');
               }
             }}
           />

@@ -5,8 +5,9 @@ import { auth, db, storage } from '../fb';
 import { DAY_MS, PARTICIPATION_SNAPS, WINNER_SNAPS } from '../config';
 import { adminRequest } from '../services/adminApi';
 import {
-  inviteWinnerMessage, newChallengeMessage, newInviteCampaignMessage, warningMessage, winnerMessages,
+  inviteWinnerMessage, newChallengeMessage, newInviteCampaignMessage, placeMessage, warningMessage, winnerMessages,
 } from './push';
+import { challengePrizes, nextEligible, rankPlaces } from './prizes';
 
 // Todas as escritas do painel ficam aqui. Regras seguidas:
 //  - contadores usam increment() (sem ler-modificar-escrever → sem corridas);
@@ -129,20 +130,81 @@ export async function updateChallengeDeal(challengeId, fields) {
 
 // ── Vencedores ──
 
+// Confirma o resultado e abre uma entrega por prémio (1.º, 2.º…). O prémio só
+// fica "entregue" quando o admin o marca em Prémios (com BI, se 18+).
 export async function confirmWinner(challengeId) {
+  const entries = (await get(ref(db, `entries/${challengeId}`)).catch(() => null))?.val() || {};
   const challenge = await transitionChallenge(
     challengeId,
     (c) => c.status === 'pending_confirmation' && !c.isTie && !!c.winnerId,
-    () => ({ status: 'completed', confirmedAt: Date.now(), prizePaid: true }),
+    (c) => {
+      const podium = rankPlaces(entries, c, challengePrizes(c).length)
+        .map((p, i) => ({ place: i + 1, uid: p.uid, entryId: p.entryId }));
+      return { status: 'completed', confirmedAt: Date.now(), prizePaid: false, podium };
+    },
     'Este desafio já foi confirmado ou alterado por outro admin.',
   );
-  await logAudit('winner.confirm', { type: 'challenge', id: challengeId });
-  const entries = (await get(ref(db, `entries/${challengeId}`)).catch(() => null))?.val() || {};
-  winnerMessages(challengeId, challenge, entries).forEach((m, i) => autoNotify(
-    m,
-    i === 0 ? { type: 'user', id: challenge.winnerId } : { type: 'challenge', id: challengeId },
-    i === 0 ? 'user' : 'challenge',
-  ));
+  const prizes = challengePrizes(challenge);
+  const places = (challenge.podium || []).map((p) => ({ ...p, prize: prizes[p.place - 1] }));
+  const updates = {};
+  places.forEach((p) => {
+    updates[`prizeDeliveries/${challengeId}/${p.place}`] = {
+      place: p.place, uid: p.uid, entryId: p.entryId || null, prize: p.prize || '', status: 'pending', createdAt: Date.now(),
+    };
+  });
+  addAudit(updates, 'winner.confirm', { type: 'challenge', id: challengeId }, { places: places.length });
+  await update(ref(db), updates);
+  const awarded = new Set(places.map((p) => p.uid));
+  winnerMessages(challengeId, challenge, entries, places).forEach((m) => {
+    const single = m.uids.length === 1 && awarded.has(m.uids[0]);
+    autoNotify(m, single ? { type: 'user', id: m.uids[0] } : { type: 'challenge', id: challengeId }, single ? 'user' : 'challenge');
+  });
+}
+
+// Marca um prémio como entregue. Em desafios 18+ o BI tem de ter sido verificado.
+// A foto só fica pública (app e relatório) se o vencedor autorizou.
+export async function markPrizeDelivered(challengeId, place, { idChecked, notes, photoUrl, photoPublic }, challenge) {
+  const minAge = challenge?.alcohol ? 18 : Number(challenge?.minAge) || 0;
+  if (minAge && !idChecked) throw new Error(`Desafio ${minAge}+: confirma que verificaste o BI antes de entregar.`);
+  const base = `prizeDeliveries/${challengeId}/${place}`;
+  const updates = {
+    [`${base}/status`]: 'delivered',
+    [`${base}/deliveredAt`]: Date.now(),
+    [`${base}/idChecked`]: !!idChecked,
+    [`${base}/notes`]: notes?.trim() || null,
+    [`${base}/photoUrl`]: photoUrl || null,
+    [`${base}/photoPublic`]: !!(photoUrl && photoPublic),
+    [`${base}/deliveredBy`]: auth.currentUser?.uid || null,
+  };
+  // Na app (secção Vencedores) mostra-se "Prémio entregue" e, se autorizada, a foto.
+  updates[`challenges/${challengeId}/podium/${place - 1}/delivered`] = true;
+  if (photoUrl && photoPublic) updates[`challenges/${challengeId}/podium/${place - 1}/deliveryPhotoUrl`] = photoUrl;
+  if (place === 1) updates[`challenges/${challengeId}/prizePaid`] = true;
+  addAudit(updates, 'prize.deliver', { type: 'challenge', id: challengeId }, { place, idChecked: !!idChecked });
+  await update(ref(db), updates);
+}
+
+// O premiado não pode receber (idade, não levantou no prazo…): o prémio passa
+// ao classificado seguinte que ainda não ganhou nada, que é avisado.
+export async function forfeitPrize(challengeId, place, reason, challenge, deliveries) {
+  const current = deliveries?.[place];
+  if (!current || current.status !== 'pending') throw new StaleStateError('Esta entrega já foi alterada.');
+  const entries = (await get(ref(db, `entries/${challengeId}`))).val() || {};
+  const taken = Object.values(deliveries || {}).flatMap((d) => [d.uid, ...(d.history || []).map((h) => h.uid)]);
+  const next = nextEligible(entries, taken);
+  const base = `prizeDeliveries/${challengeId}/${place}`;
+  const record = {
+    ...current,
+    history: [...(current.history || []), { uid: current.uid, entryId: current.entryId || null, reason, at: Date.now() }],
+  };
+  if (next) Object.assign(record, { uid: next.uid, entryId: next.entryId, status: 'pending', createdAt: Date.now() });
+  else Object.assign(record, { status: 'forfeited' });
+  const updates = { [base]: record };
+  if (next) updates[`challenges/${challengeId}/podium/${place - 1}`] = { place, uid: next.uid, entryId: next.entryId };
+  addAudit(updates, 'prize.forfeit', { type: 'challenge', id: challengeId }, { place, reason, nextUid: next?.uid || null });
+  await update(ref(db), updates);
+  if (next) autoNotify(placeMessage(next.uid, place, challengeId, challenge, current.prize), { type: 'user', id: next.uid }, 'user');
+  return next;
 }
 
 // Resolve um empate numa única escrita: vencedor, Snaps e registo entram juntos

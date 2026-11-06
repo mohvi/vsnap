@@ -1,6 +1,7 @@
 import { DAY_MS } from '../config';
 import { toCsv } from '../utils/csv';
 import { countExpiredBans } from './users';
+import { pendingDeliveriesCount } from './prizes';
 
 // Funções puras que derivam métricas a partir dos nós do Realtime Database.
 // Ficam separadas do provider para poderem ser testadas sem Firebase.
@@ -9,6 +10,7 @@ export const toList = (obj) => Object.entries(obj || {}).map(([id, v]) => ({ id,
 
 export function computeDashboardMetrics({
   users = {}, challenges = {}, entries = {}, votes = {}, snapsHistory = {}, reports = {}, sponsors = {}, challengeDeals = {},
+  prizeDeliveries = {},
 }, now = Date.now()) {
   const usersList = Object.values(users);
   const challengesList = Object.values(challenges);
@@ -37,6 +39,7 @@ export function computeDashboardMetrics({
     ).length,
     // O ecrã de vencedores lista exactamente os desafios neste estado.
     winnersPendingCount: challengesList.filter((c) => c.status === 'pending_confirmation').length,
+    prizesPendingCount: pendingDeliveriesCount(prizeDeliveries),
     pendingReportsCount: Object.values(reports).filter((r) => r.status === 'pending').length,
     expiredBansCount: countExpiredBans(users, now),
     activeSponsorsCount: Object.values(sponsors).filter((s) => s.active !== false).length,

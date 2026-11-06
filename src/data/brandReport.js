@@ -9,6 +9,7 @@ import { DAY_MS } from '../config';
 import { provinceName } from '../utils/provinces';
 import { dayKey } from './metrics';
 import { ageBreakdown, challengeMinAge } from './audience';
+import { challengePrizes } from './prizes';
 
 const list = (obj) => Object.entries(obj || {}).map(([id, v]) => ({ id, ...v }));
 
@@ -28,7 +29,7 @@ export function interestTier(rank, total) {
 
 export function buildBrandReport({
   challenge, entries = {}, votes = {}, users = {}, consents = {}, deal = null, now = Date.now(),
-  demographics = {}, reminders = {},
+  demographics = {}, reminders = {}, deliveries = {},
 }) {
   // Desafios agendados contam a partir da abertura.
   const start = challenge.startsAt || challenge.createdAt || now;
@@ -124,8 +125,27 @@ export function buildBrandReport({
     });
 
   const winnerEntry = challenge.winnerEntryId ? entryList.find((e) => e.id === challenge.winnerEntryId) : null;
-  const amount = Number(deal?.amountMzn) || 0;
+  // Investimento = valor pago à VotaSnap + valor estimado dos prémios (produto incluído).
+  const fee = Number(deal?.amountMzn) || 0;
+  const prizeValue = Number(deal?.prizeValueMzn) || 0;
+  const amount = fee + prizeValue;
   const per = (n) => (amount > 0 && n > 0 ? Math.round((amount / n) * 100) / 100 : null);
+  const prizeList = challengePrizes(challenge);
+  const prizes = prizeList.map((prize, i) => {
+    const place = i + 1;
+    const d = deliveries?.[place];
+    const podium = (challenge.podium || []).find((p) => p.place === place);
+    const uid = d?.uid || podium?.uid || (place === 1 ? challenge.winnerId : null);
+    return {
+      place,
+      prize,
+      username: uid ? users[uid]?.username || uid : null,
+      status: d?.status || (uid ? 'pending' : null),
+      deliveredAt: d?.deliveredAt || null,
+      idChecked: !!d?.idChecked,
+      photoUrl: d?.photoPublic ? d.photoUrl : null,
+    };
+  });
   const newUsers = [...audienceIds].filter(isNewUser).length;
 
   return {
@@ -144,6 +164,8 @@ export function buildBrandReport({
     },
     investment: amount > 0 ? {
       amount,
+      fee,
+      prizeValue,
       perParticipant: per(participantIds.size),
       perAudience: per(audienceIds.size),
       perVote: per(voteList.length),
@@ -175,6 +197,8 @@ export function buildBrandReport({
       participants: ageBreakdown([...participantIds], demographics, now),
     },
     minAge: challengeMinAge(challenge),
+    // Prémios por posição e o estado da entrega.
+    prizes,
     reminders: Object.keys(reminders || {}).length,
   };
 }

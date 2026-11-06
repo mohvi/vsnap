@@ -14,6 +14,8 @@ export const AUDIT_ACTIONS = {
   'winner.confirm': { label: 'Confirmou o vencedor de', group: 'Vencedores' },
   'winner.tie': { label: 'Resolveu o empate de', group: 'Vencedores' },
   'winner.revert': { label: 'Reverteu o desafio', group: 'Vencedores' },
+  'prize.deliver': { label: 'Entregou um prémio de', group: 'Vencedores' },
+  'prize.forfeit': { label: 'Passou ao seguinte um prémio de', group: 'Vencedores' },
   'sponsor.save': { label: 'Guardou a marca', group: 'Marcas' },
   'sponsor.activate': { label: 'Activou a marca', group: 'Marcas' },
   'sponsor.deactivate': { label: 'Desactivou a marca', group: 'Marcas' },

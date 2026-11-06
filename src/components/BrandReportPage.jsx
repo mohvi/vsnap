@@ -119,8 +119,9 @@ export default function BrandReportPage() {
     deal: data.challengeDeals[challengeId],
     demographics: data.userDemographics,
     reminders: data.challengeReminders?.[challengeId],
+    deliveries: data.prizeDeliveries?.[challengeId],
     now: issuedAt,
-  }) : null), [challenge?.id, data.entries, data.votes, data.users, data.sponsorConsents, data.challengeDeals, data.userDemographics, data.challengeReminders, issuedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }) : null), [challenge?.id, data.entries, data.votes, data.users, data.sponsorConsents, data.challengeDeals, data.userDemographics, data.challengeReminders, data.prizeDeliveries, issuedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const brandName = sponsor.name || challenge?.sponsor || 'Marca';
   const reference = reportReference(challengeId, issuedAt);
@@ -261,7 +262,13 @@ export default function BrandReportPage() {
             <p className="text-[8pt] uppercase tracking-wide text-gray-500 mb-2">Investimento e eficiência</p>
             {report.investment ? (
               <dl className="space-y-1">
-                <div className="flex justify-between gap-3"><dt className="text-gray-500">Investimento</dt><dd className="font-semibold">{money(report.investment.amount)}</dd></div>
+                {report.investment.prizeValue > 0 && (
+                  <>
+                    <div className="flex justify-between gap-3"><dt className="text-gray-500">Campanha VotaSnap</dt><dd>{money(report.investment.fee)}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-gray-500">Prémios (valor estimado)</dt><dd>{money(report.investment.prizeValue)}</dd></div>
+                  </>
+                )}
+                <div className="flex justify-between gap-3"><dt className="text-gray-500">Investimento{report.investment.prizeValue > 0 ? ' total' : ''}</dt><dd className="font-semibold">{money(report.investment.amount)}</dd></div>
                 {report.investment.perAudience != null && <div className="flex justify-between gap-3"><dt className="text-gray-500">Custo por pessoa envolvida</dt><dd>{money(report.investment.perAudience)}</dd></div>}
                 {report.investment.perParticipant != null && <div className="flex justify-between gap-3"><dt className="text-gray-500">Custo por participante</dt><dd>{money(report.investment.perParticipant)}</dd></div>}
                 {report.investment.perVote != null && <div className="flex justify-between gap-3"><dt className="text-gray-500">Custo por voto</dt><dd>{money(report.investment.perVote)}</dd></div>}
@@ -366,6 +373,35 @@ export default function BrandReportPage() {
                 <p className="text-gray-600">{formatNumber(report.winner.votes)} votos · Prémio: {challenge.prize}</p>
               </div>
             </div>
+          )}
+          {report.prizes.some((p) => p.username) && (
+            <table className="w-full text-[9pt] mb-4 break-inside-avoid">
+              <thead>
+                <tr className="text-left text-gray-500 text-[8pt] uppercase tracking-wide">
+                  <th className="py-1.5 font-medium">Posição</th>
+                  <th className="py-1.5 font-medium">Premiado</th>
+                  <th className="py-1.5 font-medium">Prémio</th>
+                  <th className="py-1.5 font-medium text-right">Entrega</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.prizes.map((p) => (
+                  <tr key={p.place} className="border-t border-gray-100 align-middle">
+                    <td className="py-1.5 font-semibold">{p.place}.º</td>
+                    <td className="py-1.5">{p.username ? `@${p.username}` : '—'}</td>
+                    <td className="py-1.5">{p.prize}</td>
+                    <td className="py-1.5 text-right">
+                      <span className="inline-flex items-center gap-2 justify-end">
+                        {p.photoUrl && <img src={p.photoUrl} alt="" className="w-8 h-8 rounded object-cover" />}
+                        {p.status === 'delivered'
+                          ? `Entregue a ${fullDate(p.deliveredAt)}${p.idChecked ? ' · BI verificado' : ''}`
+                          : p.status === 'forfeited' ? 'Não atribuído' : p.username ? 'Por entregar' : '—'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
           {report.topEntries.length === 0 ? (
             <p className="text-gray-500 text-[9.5pt]">Ainda sem publicações.</p>

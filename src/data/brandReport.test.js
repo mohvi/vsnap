@@ -47,8 +47,23 @@ describe('relatório da marca', () => {
   });
 
   it('calcula o custo por resultado a partir do investimento', () => {
-    expect(report.investment).toEqual({ amount: 1000, perParticipant: 500, perAudience: 250, perVote: 250, perLead: 1000 });
+    expect(report.investment).toEqual({ amount: 1000, fee: 1000, prizeValue: 0, perParticipant: 500, perAudience: 250, perVote: 250, perLead: 1000 });
     expect(buildBrandReport({ challenge, now: START }).investment).toBeNull();
+  });
+
+  it('soma o valor dos prémios físicos ao investimento e mostra a entrega por posição', () => {
+    const withPrizes = buildBrandReport({
+      challenge: { ...challenge, prizes: ['2 grades', '1 grade'], winnerId: 'ana', podium: [{ place: 1, uid: 'ana' }, { place: 2, uid: 'rui' }] },
+      entries, votes, users,
+      deal: { amountMzn: 1000, prizeValueMzn: 3000 },
+      deliveries: { 1: { uid: 'ana', status: 'delivered', deliveredAt: START, idChecked: true, photoUrl: 'x', photoPublic: false } },
+      now: START + 10 * DAY,
+    });
+    expect(withPrizes.investment).toMatchObject({ amount: 4000, fee: 1000, prizeValue: 3000 });
+    expect(withPrizes.prizes).toEqual([
+      expect.objectContaining({ place: 1, username: 'ana', status: 'delivered', idChecked: true, photoUrl: null }),
+      expect.objectContaining({ place: 2, username: 'rui', status: 'pending' }),
+    ]);
   });
 
   it('gera resumo, referência e níveis de interesse', () => {

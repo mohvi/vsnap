@@ -28,6 +28,8 @@ const NODES = {
   userDemographics: 'userDemographics',
   // Quem tocou em "Avisa-me" num desafio agendado.
   challengeReminders: 'challengeReminders',
+  // Entrega dos prémios por desafio e posição (BI verificado, foto, notas).
+  prizeDeliveries: 'prizeDeliveries',
 };
 
 const AdminDataContext = createContext(null);

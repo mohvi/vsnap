@@ -29,6 +29,7 @@ const InviteCampaignsPage = lazy(() => import('./components/InviteCampaignsPage'
 const NotificationsPage = lazy(() => import('./components/NotificationsPage'));
 const AdminBareShell = lazy(() => import('./auth/AdminRoot').then((m) => ({ default: m.AdminBareShell })));
 const BrandReportPage = lazy(() => import('./components/BrandReportPage'));
+const PrizeDeliveriesPage = lazy(() => import('./components/PrizeDeliveriesPage'));
 
 export default function App() {
   return (
@@ -60,6 +61,7 @@ export default function App() {
               <Route path="/convites" element={<InviteCampaignsPage />} />
               <Route path="/notificacoes" element={<NotificationsPage />} />
               <Route path="/wc" element={<WinnersConfirmation />} />
+              <Route path="/premios" element={<PrizeDeliveriesPage />} />
               <Route path="/mc" element={<ModerationPanel />} />
               {ENABLE_MOCK && <Route path="/mock" element={<MockDataPanel />} />}
             </Route>

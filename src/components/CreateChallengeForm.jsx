@@ -12,6 +12,7 @@ import { toList } from '../data/metrics';
 import { errorMessage } from '../utils/runAction';
 import { DAY_MS } from '../config';
 import { challengeAudience, challengeMinAge } from '../data/audience';
+import { buildPrizeList, MAX_PLACES, placeLabel } from '../data/prizes';
 
 const CATEGORIES = [
   { value: 'fotografia', label: '📸 Fotografia' },
@@ -64,8 +65,8 @@ const PRIZE_PROVIDERS = [
 ];
 
 const PRIZE_TYPES = [
+  { value: 'physical', label: '🎁 Produto / físico' },
   { value: 'cash', label: '💰 Dinheiro' },
-  { value: 'physical', label: '🎁 Físico' },
   { value: 'badge', label: '🏅 Badge' },
 ];
 
@@ -74,8 +75,11 @@ const INITIAL_FORM = {
   description: '',
   category: 'fotografia',
   type: 'free', // free (comunidade) | sponsored
-  prize: '',
-  prizeType: 'cash', // cash | physical | badge
+  // Um prémio por posição: [1.º, 2.º, 3.º…]. O 1.º é obrigatório.
+  prizes: [''],
+  prizeType: 'physical', // physical | cash | badge
+  prizeValue: '', // valor estimado dos prémios (MZN), interno
+  pickupInfo: '', // como e onde levantar — aparece na app e na notificação
   sponsorId: '',
   // Acordo com a marca — gravado em challengeDeals/, nunca no desafio público.
   dealAmount: '',
@@ -184,7 +188,7 @@ export default function CreateChallengeForm() {
 
   const validate = () => {
     const days = Number(formData.durationDays);
-    if (!formData.title.trim() || !formData.description.trim() || !String(formData.prize).trim()) {
+    if (!formData.title.trim() || !formData.description.trim() || !String(formData.prizes[0] ?? '').trim()) {
       return 'Preenche título, descrição e prémio.';
     }
     if (formData.type === 'sponsored' && !sponsors[formData.sponsorId]) return 'Escolhe a marca patrocinadora.';
@@ -192,7 +196,13 @@ export default function CreateChallengeForm() {
       return 'O valor acordado com a marca não pode ser negativo.';
     }
     if (!Number.isInteger(days) || days < 1 || days > 30) return 'A duração tem de ser entre 1 e 30 dias.';
-    if (formData.prizeType === 'cash' && !(Number(formData.prize) > 0)) return 'O valor do prémio tem de ser maior que 0.';
+    if (formData.prizeType === 'cash' && formData.prizes.some((p) => String(p).trim() !== '' && !(Number(p) > 0))) {
+      return 'Os valores dos prémios em dinheiro têm de ser maiores que 0.';
+    }
+    if (formData.prizeValue !== '' && !(Number(formData.prizeValue) >= 0)) return 'O valor estimado dos prémios não pode ser negativo.';
+    if (formData.prizeType === 'physical' && !formData.pickupInfo.trim()) {
+      return 'Indica como e onde o vencedor levanta o prémio físico.';
+    }
     if (formData.voteGoal !== '' && !(Number(formData.voteGoal) > 0)) return 'A meta de votos, se definida, tem de ser maior que 0.';
     if (formData.startMode === 'scheduled') {
       const start = new Date(formData.startsAtLocal).getTime();
@@ -222,7 +232,7 @@ export default function CreateChallengeForm() {
         users, demographics: userDemographics, challenge: { category: formData.category, alcohol: formData.alcohol, minAge }, mode: notifyMode,
       });
       const hasVoteGoal = formData.voteGoal !== '';
-      const prize = String(formData.prize).trim();
+      const prizes = buildPrizeList(formData.prizeType, formData.prizes);
       const isSponsored = formData.type === 'sponsored';
       const sponsor = isSponsored ? sponsors[formData.sponsorId] : null;
 
@@ -232,8 +242,11 @@ export default function CreateChallengeForm() {
         description: formData.description.trim(),
         category: formData.category,
         type: formData.type,
-        prize: formData.prizeType === 'cash' ? `${prize} MZN` : prize,
+        // `prize` = 1.º lugar (app antiga e API); `prizes` = todas as posições.
+        prize: prizes[0],
+        prizes,
         prizeType: formData.prizeType,
+        pickupInfo: formData.pickupInfo.trim() || null,
         // Nome e logótipo copiados para o desafio: a app lê só o desafio.
         // Editar a marca volta a propagar estes campos (saveSponsor).
         sponsorId: sponsor ? formData.sponsorId : null,
@@ -261,6 +274,8 @@ export default function CreateChallengeForm() {
         paymentStatus: 'pending',
         prizeProvider: formData.prizeProvider,
         prizeNotes: formData.prizeNotes.trim() || null,
+        // Valor estimado dos prémios (produto incluído) — entra no investimento do relatório.
+        prizeValueMzn: formData.prizeValue === '' ? null : Number(formData.prizeValue),
         createdAt: now,
       } : null, audience);
 
@@ -441,25 +456,84 @@ export default function CreateChallengeForm() {
             onChange={(v) => handleChange('prizeType', v)}
           />
 
-          <label className="block space-y-2">
-            <span className="text-sm text-gray-400 flex items-center gap-1">
+          <fieldset className="space-y-2">
+            <legend className="text-sm text-gray-400 flex items-center gap-1 mb-2">
               <Trophy className="w-3 h-3" />
-              {formData.prizeType === 'cash' ? 'Valor do prémio (MZN)' : 'Descrição do prémio'}
-            </span>
-            <input
-              type={formData.prizeType === 'cash' ? 'number' : 'text'}
-              inputMode={formData.prizeType === 'cash' ? 'numeric' : undefined}
-              className={inputClass}
-              placeholder={
-                formData.prizeType === 'cash' ? '500'
-                  : formData.prizeType === 'physical' ? 'Ex: 2 Cervejas no Bar Wimbi'
-                    : 'Ex: Badge Chef MZ'
-              }
-              value={formData.prize}
-              onChange={(e) => handleChange('prize', e.target.value)}
-              min={formData.prizeType === 'cash' ? '1' : undefined}
-            />
-          </label>
+              {formData.prizeType === 'cash' ? 'Prémios por posição (MZN)' : 'Prémios por posição'}
+            </legend>
+            {formData.prizes.map((value, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="w-10 text-sm text-gray-500 flex-shrink-0">{placeLabel(i + 1)}</span>
+                <input
+                  type={formData.prizeType === 'cash' ? 'number' : 'text'}
+                  inputMode={formData.prizeType === 'cash' ? 'numeric' : undefined}
+                  className={inputClass}
+                  aria-label={`Prémio do ${placeLabel(i + 1)} lugar`}
+                  placeholder={
+                    formData.prizeType === 'cash' ? (i === 0 ? '500' : '200')
+                      : formData.prizeType === 'physical' ? (i === 0 ? 'Ex: 2 grades de 2M + T-shirt' : 'Ex: 1 grade de 2M')
+                        : 'Ex: Badge Chef MZ'
+                  }
+                  value={value}
+                  onChange={(e) => handleChange('prizes', formData.prizes.map((p, j) => (j === i ? e.target.value : p)))}
+                  min={formData.prizeType === 'cash' ? '1' : undefined}
+                />
+                {i > 0 && (
+                  <button
+                    type="button"
+                    aria-label={`Remover prémio do ${placeLabel(i + 1)} lugar`}
+                    onClick={() => handleChange('prizes', formData.prizes.filter((_, j) => j !== i))}
+                    className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {formData.prizes.length < MAX_PLACES && (
+              <button
+                type="button"
+                onClick={() => handleChange('prizes', [...formData.prizes, ''])}
+                className="text-sm text-brand-400 hover:text-brand-300"
+              >
+                + Prémio para o {placeLabel(formData.prizes.length + 1)} lugar
+              </button>
+            )}
+            <p className="text-xs text-gray-500">Cada pessoa recebe no máximo um prémio, mesmo com várias publicações.</p>
+          </fieldset>
+
+          {formData.prizeType !== 'badge' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="block space-y-2 sm:col-span-2">
+                <span className="text-sm text-gray-400">Como e onde se levanta o prémio {formData.prizeType === 'physical' ? '' : '(opcional)'}</span>
+                <textarea
+                  className={`${inputClass} min-h-[70px]`}
+                  placeholder={formData.prizeType === 'cash'
+                    ? 'Ex: pago por M-Pesa no número da conta, até 7 dias após o fim'
+                    : 'Ex: levantar na loja da Av. Julius Nyerere, 2.ª a 6.ª, 9h–17h, até 15 dias após o fim. Trazer BI.'}
+                  value={formData.pickupInfo}
+                  onChange={(e) => handleChange('pickupInfo', e.target.value)}
+                  maxLength={400}
+                />
+                <span className="block text-xs text-gray-500">Aparece no desafio na app e na notificação aos vencedores.</span>
+              </label>
+              {formData.type === 'sponsored' && (
+                <label className="block space-y-2">
+                  <span className="text-sm text-gray-400">Valor estimado dos prémios (MZN, interno)</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    className={inputClass}
+                    placeholder="Ex: 6000"
+                    value={formData.prizeValue}
+                    onChange={(e) => handleChange('prizeValue', e.target.value)}
+                  />
+                  <span className="block text-xs text-gray-500">Soma ao investimento da marca no relatório PDF.</span>
+                </label>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="block space-y-2">
@@ -535,7 +609,7 @@ export default function CreateChallengeForm() {
             <p><span className="text-white font-medium">{formData.title || 'Sem título'}</span> — {typeLabel}</p>
             <p>
               Prémio: <span className="text-yellow-400 font-medium">
-                {formData.prizeType === 'cash' && formData.prize ? `${formData.prize} MZN` : formData.prize || '...'}
+                {buildPrizeList(formData.prizeType, formData.prizes).map((p, i) => `${placeLabel(i + 1)} ${p}`).join(' · ') || '...'}
               </span>
             </p>
             <p>

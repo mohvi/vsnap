@@ -59,15 +59,28 @@ const clip = (s, max) => {
 };
 const message = (uids, title, body, url = null) => ({ uids, title: clip(title, TITLE_MAX), body: clip(body, BODY_MAX), url });
 
-// Vencedor confirmado: uma mensagem para o vencedor e outra para os restantes participantes.
-export function winnerMessages(challengeId, challenge, entries = {}) {
+// Mensagem a quem ganhou um prémio (qualquer posição): o quê, como levantar e o BI.
+export function placeMessage(uid, place, challengeId, challenge, prize) {
+  const title = place === 1 ? '🏆 Ganhaste o desafio!' : `🎉 Ficaste em ${place}.º lugar!`;
+  const parts = [`Parabéns! Em "${challenge?.title || 'VotaSnap'}" ganhaste: ${prize}.`];
+  if (challenge?.pickupInfo) parts.push(challenge.pickupInfo);
+  else parts.push('Vamos contactar-te para combinar a entrega.');
+  if (challenge?.alcohol || Number(challenge?.minAge) > 0) parts.push('Leva o teu BI: a idade é confirmada na entrega.');
+  return message([uid], title, parts.join(' '), `/challenge/${challengeId}`);
+}
+
+// Vencedores confirmados: uma mensagem a cada premiado e outra para os restantes participantes.
+// `places` = [{ place, uid, prize }]; sem `places` usa só o vencedor oficial (desafios antigos).
+export function winnerMessages(challengeId, challenge, entries = {}, places = null) {
   const url = `/challenge/${challengeId}`;
-  const winner = challenge?.winnerId;
-  const others = [...new Set(Object.values(entries).map((e) => e?.userId).filter((id) => id && id !== winner))];
-  const prize = challenge?.prize ? ` e o prémio: ${challenge.prize}` : '';
+  const awarded = places?.length
+    ? places
+    : (challenge?.winnerId ? [{ place: 1, uid: challenge.winnerId, prize: challenge.prize || 'o prémio' }] : []);
+  const awardedIds = new Set(awarded.map((p) => p.uid));
+  const others = [...new Set(Object.values(entries).map((e) => e?.userId).filter((id) => id && !awardedIds.has(id)))];
   return [
-    winner && message([winner], '🏆 Ganhaste o desafio!', `Parabéns! Ganhaste "${challenge.title}"${prize}. Vamos contactar-te em breve.`, url),
-    others.length && message(others, '🏁 Desafio terminado', `Já há vencedor em "${challenge?.title || 'VotaSnap'}". Vê os resultados!`, url),
+    ...awarded.map((p) => placeMessage(p.uid, p.place, challengeId, challenge, p.prize)),
+    others.length && message(others, '🏁 Desafio terminado', `Já há vencedores em "${challenge?.title || 'VotaSnap'}". Vê os resultados!`, url),
   ].filter(Boolean);
 }
 
