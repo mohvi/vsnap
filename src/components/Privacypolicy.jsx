@@ -13,7 +13,7 @@ const CONTACT = {
   phone: '+258 84 023 7100',
   email: 'geral@votasnap.com',
   city: 'Pemba, Cabo Delgado, Moçambique',
-  lastUpdated: '2 de julho de 2026',
+  lastUpdated: '7 de novembro de 2026',
 };
 
 const SECTIONS = [
@@ -88,16 +88,18 @@ const PLAY_DATA_TYPES = [
   {
     category: 'Informações pessoais',
     items: [
-      { name: 'Número de telefone', collected: true, shared: false, encrypted: true, deletable: true, required: true },
-      { name: 'Nome e username', collected: true, shared: false, encrypted: false, deletable: true, required: true },
+      { name: 'Número de telefone', collected: true, shared: true, encrypted: true, deletable: true, required: true },
+      { name: 'Nome e username', collected: true, shared: true, encrypted: false, deletable: true, required: true },
       { name: 'Foto de perfil', collected: true, shared: false, encrypted: false, deletable: true, required: false },
       { name: 'Biografia', collected: true, shared: false, encrypted: false, deletable: true, required: false },
+      { name: 'Data de nascimento', collected: true, shared: false, encrypted: false, deletable: true, required: true },
+      { name: 'Interesses (categorias escolhidas)', collected: true, shared: false, encrypted: false, deletable: true, required: false },
     ],
   },
   {
     category: 'Informações de localização',
     items: [
-      { name: 'Localização aproximada (província/cidade)', collected: true, shared: false, encrypted: false, deletable: true, required: true },
+      { name: 'Localização aproximada (província/cidade)', collected: true, shared: true, encrypted: false, deletable: true, required: true },
     ],
   },
   {
@@ -205,7 +207,8 @@ export default function PrivacyPolicy() {
               </div>
               <DataRow category="Conta" data="Número de telefone (autenticação)" purpose="Criar e proteger a tua conta" />
               <DataRow category="Perfil" data="Nome, username, biografia, foto de perfil" purpose="Identificar-te na comunidade" />
-              <DataRow category="Localização geral" data="Província e cidade/distrito (seleção manual, sem GPS)" purpose="Contexto de participação regional" />
+              <DataRow category="Idade e interesses" data="Data de nascimento e categorias de interesse" purpose="Mostrar só desafios adequados à tua idade (ex.: 18+) e avisar-te dos que te interessam" />
+              <DataRow category="Localização geral" data="Província e cidade/distrito (seleção manual, sem GPS)" purpose="Desafios regionais e contexto de participação" />
               <DataRow category="Conteúdo" data="Fotos e vídeos submetidos, legendas" purpose="Participar nos desafios e aparecer no feed" />
               <DataRow category="Atividade" data="Votos dados/recebidos, desafios, denúncias" purpose="Funcionamento da votação e moderação" />
               <DataRow category="Dispositivo" data="Token de notificações push" purpose="Notificações e deteção de contas duplicadas" />
@@ -213,7 +216,7 @@ export default function PrivacyPolicy() {
             <p className="text-xs text-gray-500 mt-4 flex items-start gap-2">
               <ShieldCheck className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
               Não recolhemos localização GPS precisa nem dados de pagamento diretamente na app.
-              Não usamos SDKs de publicidade nem partilhamos dados com anunciantes.
+              Não usamos SDKs de publicidade. As marcas só recebem dados teus se o autorizares (ver secção 5).
             </p>
           </SectionCard>
 
@@ -223,7 +226,9 @@ export default function PrivacyPolicy() {
                 'Criar e manter a tua conta e perfil público dentro da app',
                 'Mostrar as tuas participações no feed e permitir votação por outros utilizadores',
                 'Calcular e apresentar vencedores de desafios',
-                'Enviar notificações relevantes (ex: alguém votou na tua participação)',
+                'Enviar notificações relevantes (ex: alguém votou na tua participação, novo desafio do teu interesse)',
+                'Aplicar idades mínimas (desafios 18+ e de bebidas alcoólicas) e desafios só para algumas províncias',
+                'Dar às marcas que patrocinam desafios relatórios com números agregados (participantes, votos, faixas etárias, províncias), sem identificar pessoas',
                 'Prevenir fraude e abuso, incluindo deteção de múltiplas contas no mesmo dispositivo — usada só para sinalização interna, nunca bloqueio automático',
                 'Rever denúncias de conteúdo e aplicar as regras da comunidade',
                 'Melhorar a estabilidade e o desempenho da app',
@@ -248,7 +253,8 @@ export default function PrivacyPolicy() {
                 ['Firebase Authentication', 'Login por número de telefone'],
                 ['Realtime Database', 'Perfis, desafios, votos, denúncias'],
                 ['Firebase Storage', 'Fotos, vídeos e avatares'],
-                ['Cloud Messaging', 'Notificações push'],
+                ['Expo / Firebase Cloud Messaging', 'Notificações push'],
+                ['Vercel', 'Verificações no servidor (idade, região) e envio de notificações'],
               ].map(([name, desc]) => (
                 <div key={name} className="bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2.5">
                   <p className="text-white text-xs font-semibold">{name}</p>
@@ -266,7 +272,8 @@ export default function PrivacyPolicy() {
             <p className="mb-2">Não vendemos os teus dados pessoais. Só partilhamos dados nestas situações:</p>
             <ul className="space-y-2 list-none">
               {[
-                'Com o Firebase/Google, como processador técnico necessário ao funcionamento da app',
+                'Com o Firebase/Google, Expo e Vercel, como processadores técnicos necessários ao funcionamento da app',
+                'Com a marca que patrocina um desafio, só se ao participar aceitares ser contactado por ela: nome, telefone e cidade/província. Podes participar sem aceitar. As marcas recebem também o teu @username público e números agregados, nunca a tua data de nascimento',
                 'Quando exigido por lei, ordem judicial, ou para proteger direitos e segurança do VotaSnap e dos seus utilizadores',
                 'Conteúdo que publicas (nome, username, avatar, fotos/vídeos, votos recebidos) é visível publicamente para outros utilizadores, por ser o propósito central da votação em comunidade',
               ].map((item, i) => (
