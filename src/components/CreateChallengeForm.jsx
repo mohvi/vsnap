@@ -12,6 +12,7 @@ import { toList } from '../data/metrics';
 import { errorMessage } from '../utils/runAction';
 import { DAY_MS } from '../config';
 import { challengeAudience, challengeMinAge } from '../data/audience';
+import PROVINCES, { provinceName } from '../utils/provinces';
 import { buildPrizeList, MAX_PLACES, placeLabel } from '../data/prizes';
 
 const CATEGORIES = [
@@ -92,10 +93,56 @@ const INITIAL_FORM = {
   startsAtLocal: '', // datetime-local quando agendado
   minAge: 0, // 0 | 16 | 18
   alcohol: false, // bebidas alcoólicas → 18+ e aviso legal na app
+  provinces: [], // vazio = todo o país; senão só participa quem vive nestas províncias
 };
 
 const MAX_BANNER_BYTES = 5 * 1024 * 1024;
 const inputClass = 'w-full bg-ink-800 border border-white/5 rounded-xl p-3 text-white focus:border-brand-500 outline-none';
+
+// Grande Maputo = província de Maputo + Maputo Cidade (a app trata-as em separado).
+const GREATER_MAPUTO = ['MP', 'MC'];
+
+// Onde corre o desafio: todo o país ou só nas províncias escolhidas.
+function RegionPicker({ value, onChange }) {
+  const selected = new Set(value);
+  const toggle = (code) => {
+    const next = new Set(selected);
+    if (next.has(code)) next.delete(code);
+    else next.add(code);
+    onChange(PROVINCES.map((p) => p.code).filter((c) => next.has(c)));
+  };
+  const chip = (active) => `px-3 py-1.5 rounded-full border text-xs sm:text-sm font-medium transition-colors ${
+    active ? 'border-brand-500 bg-white/5 text-white' : 'border-white/10 text-gray-500 hover:border-white/20'
+  }`;
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm text-gray-400 mb-2">Onde</legend>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" aria-pressed={value.length === 0} className={chip(value.length === 0)} onClick={() => onChange([])}>
+          Todo o país
+        </button>
+        <button
+          type="button"
+          aria-pressed={value.length === 2 && GREATER_MAPUTO.every((c) => selected.has(c))}
+          className={chip(value.length === 2 && GREATER_MAPUTO.every((c) => selected.has(c)))}
+          onClick={() => onChange(GREATER_MAPUTO)}
+        >
+          Grande Maputo
+        </button>
+        {PROVINCES.map((p) => (
+          <button key={p.code} type="button" aria-pressed={selected.has(p.code)} className={chip(selected.has(p.code))} onClick={() => toggle(p.code)}>
+            {p.name}
+          </button>
+        ))}
+      </div>
+      <span className="block text-xs text-gray-500">
+        {value.length === 0
+          ? 'Nacional: aparece e aceita participações de todo o país.'
+          : `Regional: só aparece e só aceita participações de quem tem ${value.map(provinceName).join(', ')} no perfil. Qualquer pessoa pode votar pelo link partilhado.`}
+      </span>
+    </fieldset>
+  );
+}
 
 function OptionGroup({ label, options, value, onChange, activeClass = () => 'border-brand-500' }) {
   return (
@@ -229,7 +276,7 @@ export default function CreateChallengeForm() {
       const minAge = formData.alcohol ? 18 : Number(formData.minAge) || 0;
       // Só avisa quem tem idade para o desafio (e, se escolhido, quem marcou a categoria).
       const audience = notifyMode === 'none' ? [] : challengeAudience({
-        users, demographics: userDemographics, challenge: { category: formData.category, alcohol: formData.alcohol, minAge }, mode: notifyMode,
+        users, demographics: userDemographics, challenge: { category: formData.category, alcohol: formData.alcohol, minAge, provinces: formData.provinces }, mode: notifyMode,
       });
       const hasVoteGoal = formData.voteGoal !== '';
       const prizes = buildPrizeList(formData.prizeType, formData.prizes);
@@ -262,6 +309,7 @@ export default function CreateChallengeForm() {
         endsAt: startsAt + Number(formData.durationDays) * DAY_MS,
         minAge,
         alcohol: !!formData.alcohol,
+        provinces: formData.provinces.length ? formData.provinces : null,
         // Fecha no prazo OU quando uma entrada atingir voteGoal (o que vier primeiro) —
         // a verificação da meta é feita pela Cloud Function de votos.
         voteGoal: hasVoteGoal ? Number(formData.voteGoal) : null,
@@ -293,8 +341,8 @@ export default function CreateChallengeForm() {
 
   const effectiveMinAge = challengeMinAge({ alcohol: formData.alcohol, minAge: formData.minAge });
   const audiencePreview = useMemo(() => (notifyMode === 'none' ? 0 : challengeAudience({
-    users, demographics: userDemographics, challenge: { category: formData.category, alcohol: formData.alcohol, minAge: formData.minAge }, mode: notifyMode,
-  }).length), [users, userDemographics, formData.category, formData.alcohol, formData.minAge, notifyMode]);
+    users, demographics: userDemographics, challenge: { category: formData.category, alcohol: formData.alcohol, minAge: formData.minAge, provinces: formData.provinces }, mode: notifyMode,
+  }).length), [users, userDemographics, formData.category, formData.alcohol, formData.minAge, formData.provinces, notifyMode]);
 
   const typeLabel = formData.type === 'sponsored'
     ? `patrocinado por ${sponsors[formData.sponsorId]?.name || '...'}`
@@ -602,6 +650,8 @@ export default function CreateChallengeForm() {
                 e a app mostra "Proibido a menores de 18 anos. Beba com moderação." Confirmar o BI na entrega do prémio.
               </span>
             </label>
+
+            <RegionPicker value={formData.provinces} onChange={(v) => handleChange('provinces', v)} />
           </div>
 
           <div className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-1 text-sm text-gray-300 break-words">
@@ -640,7 +690,7 @@ export default function CreateChallengeForm() {
             <p className="text-xs text-gray-500">
               {notifyMode === 'none'
                 ? 'Ninguém é avisado.'
-                : `${audiencePreview} utilizadores vão ser avisados${effectiveMinAge ? ` (só quem declarou ${effectiveMinAge}+ anos)` : ''}${notifyMode === 'interested' ? ', só os que marcaram esta categoria nos interesses' : ''}.`}
+                : `${audiencePreview} utilizadores vão ser avisados${effectiveMinAge ? ` (só quem declarou ${effectiveMinAge}+ anos)` : ''}${formData.provinces.length ? `, só em ${formData.provinces.map(provinceName).join(', ')}` : ''}${notifyMode === 'interested' ? ', só os que marcaram esta categoria nos interesses' : ''}.`}
               {formData.startMode === 'scheduled' && notifyMode !== 'none' && ' A notificação anuncia o desafio como "Em breve".'}
             </p>
           </div>

@@ -74,3 +74,24 @@ describe('verificação antes de participar/votar', () => {
     expect(gateChallengeAction('vote', {}, null, adult, NOW)).toMatch(/não existe/);
   });
 });
+
+describe('desafios regionais', () => {
+  const { gateChallengeAction, inChallengeRegion } = events;
+  const beira = { status: 'active', startsAt: NOW - HOUR, endsAt: NOW + 24 * HOUR, provinces: ['SF'] };
+
+  it('só participa quem tem a província no perfil', () => {
+    expect(gateChallengeAction('submit', {}, beira, null, NOW, 'SF')).toBeNull();
+    expect(gateChallengeAction('submit', {}, beira, null, NOW, 'MP')).toMatch(/região/);
+    expect(gateChallengeAction('submit', {}, beira, null, NOW, null)).toMatch(/província/);
+  });
+
+  it('votar continua aberto a todos', () => {
+    expect(gateChallengeAction('vote', {}, beira, null, NOW, 'MP')).toBeNull();
+  });
+
+  it('desafios nacionais aceitam todas as províncias', () => {
+    expect(inChallengeRegion({}, 'NI')).toBe(true);
+    expect(inChallengeRegion({ provinces: ['MP', 'MC'] }, 'MC')).toBe(true);
+    expect(inChallengeRegion({ provinces: ['MP', 'MC'] }, 'GZ')).toBe(false);
+  });
+});

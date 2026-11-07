@@ -1,6 +1,6 @@
 // Porta de entrada para participar e votar: a app chama esta função, que
 // verifica no servidor o que o backend (Cloud Functions) não verifica — idade
-// mínima do desafio e abertura agendada — e só depois reencaminha o pedido,
+// mínima, província (desafios regionais) e abertura agendada — e só depois reencaminha o pedido,
 // com o mesmo token, para o backend, que faz o resto (prazo, duplicados, contadores).
 //   POST /api/challenge-action?action=submit  { challengeId, mediaUrl, mediaType, caption }
 //   POST /api/challenge-action?action=vote    { challengeId, entryId, remove }
@@ -50,11 +50,12 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const [challenge, demographics] = await Promise.all([
+    const [challenge, demographics, province] = await Promise.all([
       db.ref(`challenges/${body.challengeId}`).get().then((s) => s.val()),
       db.ref(`userDemographics/${uid}`).get().then((s) => s.val()),
+      db.ref(`users/${uid}/province`).get().then((s) => s.val()),
     ]);
-    const blocked = gateChallengeAction(action, body, challenge, demographics, Date.now());
+    const blocked = gateChallengeAction(action, body, challenge, demographics, Date.now(), province);
     if (blocked) return json(res, 403, { success: false, error: blocked });
   } catch (err) {
     console.error('[challenge-action] verificação falhou', err);

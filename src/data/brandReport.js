@@ -8,7 +8,7 @@
 import { DAY_MS } from '../config';
 import { provinceName } from '../utils/provinces';
 import { dayKey } from './metrics';
-import { ageBreakdown, challengeMinAge } from './audience';
+import { ageBreakdown, challengeMinAge, challengeProvinces } from './audience';
 import { challengePrizes } from './prizes';
 
 const list = (obj) => Object.entries(obj || {}).map(([id, v]) => ({ id, ...v }));
@@ -197,6 +197,7 @@ export function buildBrandReport({
       participants: ageBreakdown([...participantIds], demographics, now),
     },
     minAge: challengeMinAge(challenge),
+    region: challengeProvinces(challenge).map(provinceName),
     // Prémios por posição e o estado da entrega.
     prizes,
     reminders: Object.keys(reminders || {}).length,

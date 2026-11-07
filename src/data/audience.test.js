@@ -38,3 +38,12 @@ describe('audience', () => {
     expect(result.bands.find((b) => b.label === '45+').count).toBe(1);
   });
 });
+
+describe('audiência regional', () => {
+  it('só avisa quem vive nas províncias do desafio', async () => {
+    const { challengeAudience } = await import('./audience');
+    const users = { a: { province: 'SF' }, b: { province: 'MP' }, c: {} };
+    expect(challengeAudience({ users, demographics: {}, challenge: { provinces: ['SF'] } })).toEqual(['a']);
+    expect(challengeAudience({ users, demographics: {}, challenge: {} })).toEqual(['a', 'b', 'c']);
+  });
+});

@@ -8,6 +8,7 @@ const { sendToUsers } = require('./_lib/expo');
 const {
   flushDue, voteMessage, challengesToRemind, reminderMessage, inviteCampaignReminderMessage, REMINDER_WINDOW_MS,
   meetsChallengeAge,
+  inChallengeRegion,
 } = require('./_lib/events');
 
 module.exports = async (req, res) => {
@@ -52,7 +53,8 @@ module.exports = async (req, res) => {
       const entries = (await db.ref(`entries/${challenge.id}`).get()).val() || {};
       const participants = new Set(Object.values(entries).map((e) => e?.userId));
       // Desafios 18+ não são lembrados a menores nem a quem não indicou a idade.
-      const targets = Object.keys(users).filter((uid) => !participants.has(uid) && meetsChallengeAge(challenge, demographics[uid], now));
+      const targets = Object.keys(users).filter((uid) => !participants.has(uid) && meetsChallengeAge(challenge, demographics[uid], now)
+        && inChallengeRegion(challenge, users[uid]?.province));
       const result = await sendToUsers(db, targets, reminderMessage(challenge), users);
       report.challenges.push({ id: challenge.id, ...result });
     }

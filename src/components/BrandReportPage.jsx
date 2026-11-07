@@ -253,6 +253,7 @@ export default function BrandReportPage() {
               <div className="flex justify-between gap-3"><dt className="text-gray-500">Formato</dt><dd className="text-right">{challenge.allowedMediaType === 'video' ? 'Vídeo' : challenge.allowedMediaType === 'photo' ? 'Foto' : 'Foto e vídeo'}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-gray-500">Vence</dt><dd className="text-right">{challenge.voteGoal ? `1.º a ${challenge.voteGoal} votos ou mais votado no fim` : 'Mais votado no fim'}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-gray-500">Público</dt><dd className="text-right">{report.minAge ? `Só ${report.minAge}+ (idade declarada${challenge.alcohol ? '; álcool' : ''})` : 'Todas as idades (13+)'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-gray-500">Região</dt><dd className="text-right">{report.region?.length ? `Só ${report.region.join(', ')}` : 'Todo o país'}</dd></div>
               {report.reminders > 0 && (
                 <div className="flex justify-between gap-3"><dt className="text-gray-500">Pediram aviso antes do lançamento</dt><dd className="text-right font-medium">{formatNumber(report.reminders)}</dd></div>
               )}

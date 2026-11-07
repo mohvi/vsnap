@@ -61,10 +61,18 @@ function meetsChallengeAge(challenge, demographics, now) {
   return age !== null && age >= minAge;
 }
 
+// Desafio regional: só quem tem uma das províncias no perfil (igual a src/data/audience.js).
+function inChallengeRegion(challenge, province) {
+  const p = challenge?.provinces;
+  const list = (Array.isArray(p) ? p : p && typeof p === 'object' ? Object.values(p) : []).filter((x) => typeof x === 'string' && x);
+  return list.length === 0 || (!!province && list.includes(province));
+}
+
 // Verificação de servidor antes de participar/votar. Devolve a mensagem de
 // recusa, ou null se pode seguir para o backend. Retirar um voto é sempre
 // permitido; o resto (prazo, duplicados) é verificado pelo backend.
-function gateChallengeAction(action, body, challenge, demographics, now) {
+// Votar é aberto a todo o país; participar num desafio regional não.
+function gateChallengeAction(action, body, challenge, demographics, now, province = null) {
   if (action === 'vote' && body?.remove) return null;
   if (!challenge) return 'Este desafio não existe.';
   const startsAt = Number(challenge.startsAt);
@@ -74,6 +82,11 @@ function gateChallengeAction(action, body, challenge, demographics, now) {
     return ageFrom(demographics?.birthDate, now) === null
       ? `Este desafio é só para maiores de ${minAge} anos. Indica a tua data de nascimento em Perfil → Idade e interesses.`
       : `Este desafio é só para maiores de ${minAge} anos.`;
+  }
+  if (action === 'submit' && !inChallengeRegion(challenge, province)) {
+    return province
+      ? 'Este desafio é só para quem vive na região indicada. Podes votar e partilhar.'
+      : 'Indica a tua província no perfil para participar neste desafio.';
   }
   return null;
 }
@@ -88,5 +101,5 @@ function inviteCampaignReminderMessage(campaign) {
 
 module.exports = {
   VOTE_DIGEST_MS, REMINDER_WINDOW_MS, addVote, flushDue, voteMessage, inviteMessage,
-  challengesToRemind, reminderMessage, inviteCampaignReminderMessage, ageFrom, meetsChallengeAge, gateChallengeAction,
+  challengesToRemind, reminderMessage, inviteCampaignReminderMessage, ageFrom, meetsChallengeAge, gateChallengeAction, inChallengeRegion,
 };

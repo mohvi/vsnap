@@ -60,10 +60,23 @@ export function meetsMinAge(minAge, age) {
 
 // Destinatários de uma notificação de novo desafio.
 // mode: 'all' (todos os que têm idade) | 'interested' (só quem marcou a categoria).
+// Províncias de um desafio regional (códigos como 'SF'); vazio = nacional.
+export function challengeProvinces(challenge) {
+  const p = challenge?.provinces;
+  const list = Array.isArray(p) ? p : p && typeof p === 'object' ? Object.values(p) : [];
+  return list.filter((x) => typeof x === 'string' && x);
+}
+
+export function inRegion(challenge, province) {
+  const list = challengeProvinces(challenge);
+  return list.length === 0 || (!!province && list.includes(province));
+}
+
 export function challengeAudience({ users = {}, demographics = {}, challenge, mode = 'all', now = Date.now() }) {
   const minAge = challengeMinAge(challenge);
   return Object.keys(users).filter((uid) => {
     if (!meetsMinAge(minAge, userAge(demographics, uid, now))) return false;
+    if (!inRegion(challenge, users[uid]?.province)) return false;
     if (mode === 'interested') return demographics?.[uid]?.interests?.[challenge.category] === true;
     return true;
   });
