@@ -4,7 +4,7 @@
 // do convite. Lê só nós públicos da Realtime Database (sem credenciais).
 
 const DB_URL = (process.env.REACT_APP_FIREBASE_DATABASE_URL || 'https://votasnap-default-rtdb.firebaseio.com').replace(/\/$/, '');
-const SITE = 'https://votasnap.vercel.app';
+const SITE = 'https://votasnap.com';
 const DEFAULT_IMAGE = `${SITE}/logo512.png`;
 const SAFE_ID = /^[A-Za-z0-9_.-]{1,64}$/;
 
