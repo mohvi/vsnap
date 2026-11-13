@@ -1,10 +1,1 @@
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "mz.votasnap.app",
-      "sha256_cert_fingerprints": ["8F:82:0B:9D:B8:05:22:B8:F9:8C:0F:DC:FC:8E:5D:8C:65:EF:20:DA:5C:D3:69:AE:DC:26:2B:72:3B:F7:99:C1"]
-    }
-  }
-]
+[{"relation": ["delegate_permission/common.handle_all_urls"], "target": {"namespace": "android_app", "package_name": "mz.votasnap.app", "sha256_cert_fingerprints": ["DA:B9:C8:CD:E8:3C:7F:FC:7C:D2:4B:1B:45:01:C5:65:86:C3:E7:F8:7B:F7:DB:8A:BF:63:0A:E6:C7:98:F1:4E", "8F:82:0B:9D:B8:05:22:B8:F9:8C:0F:DC:FC:8E:5D:8C:65:EF:20:DA:5C:D3:69:AE:DC:26:2B:72:3B:F7:99:C1"]}}]
