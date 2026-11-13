@@ -367,9 +367,9 @@ const COMPANY_FIELDS = [
   ['legalName', 'Razão social', 'Ex: VotaSnap, Lda'],
   ['nuit', 'NUIT', '9 dígitos'],
   ['address', 'Morada', 'Av., número, cidade'],
-  ['email', 'Email', 'geral@votasnap.co.mz'],
+  ['email', 'Email', 'geral@votasnap.com'],
   ['phone', 'Telefone', '+258 84 000 0000'],
-  ['website', 'Site', 'https://votasnap.vercel.app'],
+  ['website', 'Site', 'https://votasnap.com'],
   ['signatory', 'Responsável que assina os relatórios', 'Nome e cargo'],
 ];
 
